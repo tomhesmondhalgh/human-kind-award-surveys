@@ -33,8 +33,8 @@ const PublicSurveyForm: React.FC = () => {
   useEffect(() => {
     if (surveyId) {
       console.log(`Public survey form loaded with ID: ${surveyId}, preview mode: ${isPreview}`);
-      // Do not access protected properties like supabaseUrl
-      console.log(`Using Supabase anonymous client for survey submissions`);
+      console.log(`Using Supabase client with URL: ${supabase.supabaseUrl}`);
+      console.log(`Using anonymous client for survey submissions`);
     } else {
       console.error('No survey ID provided in URL parameters');
     }

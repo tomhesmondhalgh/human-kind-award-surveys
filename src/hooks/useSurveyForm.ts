@@ -57,8 +57,9 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
       console.log('Form data:', formData);
       console.log('Custom responses being submitted:', formData.custom_responses);
       
-      // Debug info without accessing protected properties
+      // Debug info for client
       console.log('Using Supabase client from integrations/supabase/client');
+      console.log('Supabase URL:', supabase.supabaseUrl);
       console.log('Submission URL:', `${window.location.origin}/survey?id=${surveyId}`);
       
       // Construct response payload
@@ -80,11 +81,10 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
       };
       
       // Add additional debug information
-      console.log('Using anonymous client for submissions');
       console.log('Detailed response payload:', JSON.stringify(responsePayload));
+      console.log('Now attempting to insert survey response');
       
       // Use an explicit public insert with no auth
-      console.log('Attempting to insert survey response with public access');
       const { data: responseData, error: responseError } = await supabase
         .from('survey_responses')
         .insert(responsePayload)
@@ -97,16 +97,7 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
         console.error('Error message:', responseError.message);
         console.error('Error details:', responseError.details);
         
-        // Check for specific RLS errors
-        if (responseError.message.includes('violates row-level security policy')) {
-          toast.error('Permission denied: The submission is blocked by security policies. Please contact support.');
-          console.error('RLS policy violation - Need to update Supabase policies to allow public submissions.');
-          console.error('This generally means the RLS policy is not properly allowing anonymous users to insert data.');
-          console.error('Please check that the RLS policy named "Allow anonymous survey submissions" exists and is properly configured.');
-          return false;
-        } else {
-          toast.error(`Submission error: ${responseError.message}`);
-        }
+        toast.error(`Submission error: ${responseError.message}`);
         return false;
       }
       
