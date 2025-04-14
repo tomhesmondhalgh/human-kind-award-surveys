@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { SurveyFormData } from '../types/surveyForm';
 import { toast } from 'sonner';
@@ -55,7 +54,6 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
       
       console.log('Submitting survey response for survey ID:', surveyId);
       console.log('Form data:', formData);
-      console.log('Custom responses:', formData.custom_responses);
       
       // Construct response payload
       const responsePayload = {
@@ -75,7 +73,7 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
         improvements: formData.improvements
       };
       
-      // Insert using our RLS-enabled table with correct policies
+      // Insert using public table with new RLS policies
       console.log('Submitting response with payload:', responsePayload);
       const { data: responseData, error: responseError } = await supabase
         .from('survey_responses')
@@ -85,9 +83,6 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
       
       if (responseError) {
         console.error('Error submitting survey response:', responseError);
-        console.error('Error code:', responseError.code);
-        console.error('Error message:', responseError.message);
-        console.error('Error details:', responseError.details);
         throw new Error(`Submission error: ${responseError.message}`);
       }
       
@@ -112,7 +107,6 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
             
             if (customError) {
               console.error('Error saving custom responses:', customError);
-              console.error('Custom error details:', customError.details);
               toast.error('Some responses may not have been fully saved');
             } else {
               console.log('Custom responses saved successfully');
@@ -120,7 +114,6 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
           }
         } catch (customErr) {
           console.error('Exception handling custom responses:', customErr);
-          // Continue with navigation even if custom responses fail
         }
       }
       
