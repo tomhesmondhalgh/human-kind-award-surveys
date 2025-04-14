@@ -17,7 +17,8 @@ const PublicSurveyForm: React.FC = () => {
   
   const { 
     isLoading, 
-    surveyData
+    surveyData,
+    error
   } = useSurveyData(surveyId, isPreview);
   
   const {
@@ -29,10 +30,16 @@ const PublicSurveyForm: React.FC = () => {
   } = useSurveyForm(surveyId, isPreview);
   
   useEffect(() => {
+    if (surveyId) {
+      console.log(`Public survey form loaded with ID: ${surveyId}, preview mode: ${isPreview}`);
+    } else {
+      console.error('No survey ID provided in URL parameters');
+    }
+    
     if (surveyId && surveyData) {
       console.log(`Survey data loaded for ID: ${surveyId}`);
     }
-  }, [surveyId, surveyData]);
+  }, [surveyId, surveyData, isPreview]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,8 +59,8 @@ const PublicSurveyForm: React.FC = () => {
     return <SurveyLoading />;
   }
   
-  if (!surveyId || !surveyData) {
-    return <SurveyNotFound />;
+  if (!surveyId || !surveyData || error) {
+    return <SurveyNotFound errorMessage={error || undefined} />;
   }
   
   return (

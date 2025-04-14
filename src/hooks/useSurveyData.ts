@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '../integrations/supabase/client';
 import { getSurveyById } from '../utils/survey/templates';
@@ -16,12 +15,17 @@ export function useSurveyData(surveyId: string | null, isPreview: boolean) {
   const [surveyName, setSurveyName] = useState('Wellbeing Survey');
   const [surveyData, setSurveyData] = useState<SurveyTemplate | null>(null);
   const [customQuestions, setCustomQuestions] = useState<CustomQuestionType[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!surveyId) {
+      console.log('No survey ID provided');
       setIsLoading(false);
+      setError('No survey ID provided');
       return;
     }
+    
+    console.log(`Attempting to fetch survey with ID: ${surveyId}`);
     
     const fetchSurveyData = async () => {
       try {
@@ -29,16 +33,20 @@ export function useSurveyData(surveyId: string | null, isPreview: boolean) {
         const surveyTemplate = await getSurveyById(surveyId);
         
         if (!surveyTemplate) {
-          console.error('Survey not found');
+          console.error(`Survey not found with ID: ${surveyId}`);
           setIsLoading(false);
+          setError(`Survey with ID ${surveyId} not found`);
           return;
         }
         
         if (isSurveyClosed(surveyTemplate) && !isPreview) {
+          console.log(`Survey ${surveyId} is closed and not in preview mode`);
           setIsLoading(false);
+          setError('This survey has closed');
           return { isClosed: true };
         }
         
+        console.log(`Successfully loaded survey: ${surveyTemplate.name}`);
         setSurveyName(surveyTemplate.name);
         setSurveyData(surveyTemplate);
         
@@ -160,6 +168,7 @@ export function useSurveyData(surveyId: string | null, isPreview: boolean) {
         console.error('Error fetching survey data:', error);
         toast.error('Failed to load survey');
         setIsLoading(false);
+        setError('Error loading survey data');
         return { isClosed: false };
       }
     };
@@ -268,6 +277,7 @@ export function useSurveyData(surveyId: string | null, isPreview: boolean) {
     isLoading,
     surveyName,
     surveyData,
-    customQuestions
+    customQuestions,
+    error
   };
 }

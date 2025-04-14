@@ -3,8 +3,13 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '../layout/MainLayout';
 import PageTitle from '../ui/PageTitle';
+import { AlertTriangle } from 'lucide-react';
 
-const SurveyNotFound: React.FC = () => {
+interface SurveyNotFoundProps {
+  errorMessage?: string;
+}
+
+const SurveyNotFound: React.FC<SurveyNotFoundProps> = ({ errorMessage }) => {
   const navigate = useNavigate();
   
   return (
@@ -14,8 +19,14 @@ const SurveyNotFound: React.FC = () => {
           title="Survey Not Found" 
         />
         <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 text-center">
+          <div className="flex justify-center mb-4">
+            <AlertTriangle className="h-12 w-12 text-amber-500" />
+          </div>
           <p className="text-gray-700 mb-6">
-            The survey you are looking for could not be found or has expired.
+            {errorMessage || "The survey you are looking for could not be found or has expired."}
+          </p>
+          <p className="text-sm text-gray-500 mb-6">
+            If you've recently received this link, please contact the sender to verify it's correct.
           </p>
           <button 
             onClick={() => navigate('/')}
