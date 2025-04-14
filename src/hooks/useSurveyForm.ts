@@ -59,7 +59,6 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
       
       // Debug info for client
       console.log('Using Supabase client from integrations/supabase/client');
-      console.log('Supabase URL:', supabase.supabaseUrl);
       console.log('Submission URL:', `${window.location.origin}/survey?id=${surveyId}`);
       
       // Construct response payload
