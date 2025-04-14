@@ -24,12 +24,31 @@ serve(async (req) => {
     console.log('Raw request body:', requestBody);
     
     // Parse the JSON body
-    let { surveyId, surveyName, emails, surveyUrl, isReminder } = JSON.parse(requestBody);
+    let requestData;
+    try {
+      requestData = JSON.parse(requestBody);
+      console.log('Parsed request data:', requestData);
+    } catch (parseError) {
+      console.error('Error parsing request body:', parseError);
+      throw new Error('Invalid JSON in request body');
+    }
+    
+    const { surveyId, surveyName, emails, surveyUrl, isReminder } = requestData;
+    
+    // Validate required fields
+    if (!surveyId || !surveyName || !emails || !surveyUrl) {
+      console.error('Missing required fields:', { surveyId, surveyName, emails: Array.isArray(emails) ? emails.length : 'not array', surveyUrl });
+      throw new Error('Missing required fields in request');
+    }
     
     console.log(`Processing email request for survey: ${surveyName} (${surveyId})`);
-    console.log(`Recipients: ${Array.isArray(emails) ? emails.join(', ') : 'Invalid emails format'}`);
+    console.log(`Recipients: ${Array.isArray(emails) ? emails.join(', ') : 'Invalid emails format - not an array'}`);
     console.log(`Survey URL: ${surveyUrl}`);
     console.log(`Is reminder: ${isReminder}`);
+    
+    if (!Array.isArray(emails) || emails.length === 0) {
+      throw new Error('No valid email addresses provided');
+    }
     
     // Initialize Resend with API key
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
@@ -56,6 +75,7 @@ serve(async (req) => {
           ? `Reminder: Please complete the "${surveyName}" wellbeing survey`
           : `You're invited to complete the "${surveyName}" wellbeing survey`;
         
+        // Updated: Use the new sender format
         const response = await resend.emails.send({
           from: "Human Kind <contact@humankindaward.com>",
           to: email,
