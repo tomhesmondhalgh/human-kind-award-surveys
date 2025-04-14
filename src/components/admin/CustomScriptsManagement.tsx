@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '../ui/alert';
 import { AlertCircle, Save, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Cache for script content management
 const adminScriptCache = {
@@ -19,6 +20,7 @@ const CustomScriptsManagement = () => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
   // Fetch existing script content on component mount
   useEffect(() => {
@@ -67,6 +69,11 @@ const CustomScriptsManagement = () => {
   }, []);
 
   const handleSaveScripts = async () => {
+    if (!user) {
+      toast.error('You must be logged in to save scripts');
+      return;
+    }
+
     try {
       setIsSaving(true);
       setSaveSuccess(false);
@@ -80,14 +87,18 @@ const CustomScriptsManagement = () => {
 
       if (updateError) {
         console.error('Error deactivating old scripts:', updateError);
+        toast.error('Error deactivating old scripts');
+        setError('Failed to deactivate old scripts. Please try again.');
+        return;
       }
       
-      // Insert new script record
+      // Insert new script record with the user_id field to satisfy RLS
       const { error } = await supabase
         .from('custom_scripts')
         .insert({
           script_content: scriptContent,
-          is_active: true
+          is_active: true,
+          user_id: user.id // Add user_id to satisfy RLS policy
         });
       
       if (error) {
