@@ -8,6 +8,7 @@ import SurveyNotFound from '../components/survey-form/SurveyNotFound';
 import SurveyFormWrapper from '../components/survey-form/SurveyFormWrapper';
 import { CustomQuestionsProvider } from '../contexts/CustomQuestionsContext'; 
 import { toast } from 'sonner';
+import { supabase } from '../integrations/supabase/client';
 
 const PublicSurveyForm: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -32,6 +33,7 @@ const PublicSurveyForm: React.FC = () => {
   useEffect(() => {
     if (surveyId) {
       console.log(`Public survey form loaded with ID: ${surveyId}, preview mode: ${isPreview}`);
+      console.log(`Using Supabase URL: ${supabase.supabaseUrl}`);
     } else {
       console.error('No survey ID provided in URL parameters');
     }

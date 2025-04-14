@@ -58,7 +58,7 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
       console.log('Custom responses being submitted:', formData.custom_responses);
       
       // Debug info without accessing protected properties
-      console.log('Using Supabase anonymous client for submission');
+      console.log('Using Supabase client from integrations/supabase/client');
       console.log('Submission URL:', `${window.location.origin}/survey?id=${surveyId}`);
       
       // Construct response payload
@@ -79,11 +79,12 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
         improvements: formData.improvements
       };
       
-      // Log detailed information about the payload and request
+      // Add additional debug information
+      console.log('Client URL:', supabase.supabaseUrl);
+      console.log('Using anonymous client:', !supabase.auth.getSession());
       console.log('Detailed response payload:', JSON.stringify(responsePayload));
       
-      // Insert using public table with updated RLS policies
-      console.log('Submitting response with payload:', responsePayload);
+      // Insert directly without any transformations
       const { data: responseData, error: responseError } = await supabase
         .from('survey_responses')
         .insert(responsePayload)
