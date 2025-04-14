@@ -196,18 +196,21 @@ export type Database = {
           id: string
           is_active: boolean
           script_content: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           is_active?: boolean
           script_content: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           is_active?: boolean
           script_content?: string
+          user_id?: string | null
         }
         Relationships: []
       }
