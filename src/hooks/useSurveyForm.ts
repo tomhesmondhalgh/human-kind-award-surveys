@@ -57,9 +57,9 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
       console.log('Form data:', formData);
       console.log('Custom responses being submitted:', formData.custom_responses);
       
-      // Log Supabase anon key header for debugging (masked)
-      const apiKey = supabase.supabaseKey;
-      console.log('Using API key (first 6 chars):', apiKey.substring(0, 6) + '...');
+      // Debug info without accessing protected properties
+      console.log('Using Supabase anonymous client for submission');
+      console.log('Submission URL:', `${window.location.origin}/survey?id=${surveyId}`);
       
       // Construct response payload
       const responsePayload = {
