@@ -1,5 +1,4 @@
-
-import { supabase } from "../../lib/supabase";
+import { supabase } from "../../integrations/supabase/client";
 import { SurveyTemplate, SurveyWithResponses } from "../types/survey";
 import { countSurveyResponses } from "./responses";
 import { isSurveyClosed } from "./status";
@@ -14,51 +13,25 @@ export const getSurveyById = async (id: string): Promise<SurveyTemplate | null> 
       throw new Error('Database connection error');
     }
     
-    // First, try with integrations/supabase/client
-    try {
-      const { data, error } = await supabase
-        .from('survey_templates')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle();
-      
-      if (error) {
-        console.error('Error fetching survey template:', error);
-        throw error;
-      }
-      
-      if (!data) {
-        console.error('No survey template found with ID:', id);
-        return null;
-      }
-      
-      console.log('Survey template found:', data);
-      return data as SurveyTemplate;
-    } catch (primaryError) {
-      console.error('Error with primary Supabase client, trying fallback:', primaryError);
-      
-      // Fallback to lib/supabase client
-      const altSupabase = require("../../integrations/supabase/client").supabase;
-      
-      const { data, error } = await altSupabase
-        .from('survey_templates')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle();
-      
-      if (error) {
-        console.error('Error fetching survey template with fallback:', error);
-        return null;
-      }
-      
-      if (!data) {
-        console.error('No survey template found with ID (fallback):', id);
-        return null;
-      }
-      
-      console.log('Survey template found with fallback:', data);
-      return data as SurveyTemplate;
+    // Use a consistent client from integrations/supabase/client
+    const { data, error } = await supabase
+      .from('survey_templates')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    
+    if (error) {
+      console.error('Error fetching survey template:', error);
+      throw error;
     }
+    
+    if (!data) {
+      console.error('No survey template found with ID:', id);
+      return null;
+    }
+    
+    console.log('Survey template found:', data);
+    return data as SurveyTemplate;
   } catch (error) {
     console.error('Unexpected error in getSurveyById:', error);
     return null;

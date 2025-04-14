@@ -80,11 +80,11 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
       };
       
       // Add additional debug information
-      console.log('Client URL:', supabase.supabaseUrl);
-      console.log('Using anonymous client:', !supabase.auth.getSession());
+      console.log('Using anonymous client for submissions');
       console.log('Detailed response payload:', JSON.stringify(responsePayload));
       
-      // Insert directly without any transformations
+      // Use an explicit public insert with no auth
+      console.log('Attempting to insert survey response with public access');
       const { data: responseData, error: responseError } = await supabase
         .from('survey_responses')
         .insert(responsePayload)
