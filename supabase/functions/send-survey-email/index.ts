@@ -17,20 +17,47 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Received request to send-survey-email function');
+    
     // Get the request body
-    const { surveyId, surveyName, emails, surveyUrl, isReminder } = await req.json();
+    const requestBody = await req.text();
+    console.log('Raw request body:', requestBody);
+    
+    // Parse the JSON body
+    let requestData;
+    try {
+      requestData = JSON.parse(requestBody);
+      console.log('Parsed request data:', requestData);
+    } catch (parseError) {
+      console.error('Error parsing request body:', parseError);
+      throw new Error('Invalid JSON in request body');
+    }
+    
+    const { surveyId, surveyName, emails, surveyUrl, isReminder } = requestData;
+    
+    // Validate required fields
+    if (!surveyId || !surveyName || !emails || !surveyUrl) {
+      console.error('Missing required fields:', { surveyId, surveyName, emails: Array.isArray(emails) ? emails.length : 'not array', surveyUrl });
+      throw new Error('Missing required fields in request');
+    }
     
     console.log(`Processing email request for survey: ${surveyName} (${surveyId})`);
-    console.log(`Recipients: ${emails.join(', ')}`);
+    console.log(`Recipients: ${Array.isArray(emails) ? emails.join(', ') : 'Invalid emails format - not an array'}`);
     console.log(`Survey URL: ${surveyUrl}`);
     console.log(`Is reminder: ${isReminder}`);
+    
+    if (!Array.isArray(emails) || emails.length === 0) {
+      throw new Error('No valid email addresses provided');
+    }
     
     // Initialize Resend with API key
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     if (!resendApiKey) {
+      console.error('Missing RESEND_API_KEY environment variable');
       throw new Error("Missing RESEND_API_KEY environment variable");
     }
     
+    console.log('Initializing Resend with API key');
     const resend = new Resend(resendApiKey);
     
     // Track successful and failed emails
@@ -40,8 +67,10 @@ serve(async (req) => {
     };
     
     // Send individual emails to each recipient
+    console.log(`Starting to send emails to ${emails.length} recipients`);
     for (const email of emails) {
       try {
+        console.log(`Sending email to: ${email}`);
         const subject = isReminder 
           ? `Reminder: Please complete the "${surveyName}" wellbeing survey`
           : `You're invited to complete the "${surveyName}" wellbeing survey`;
@@ -80,7 +109,7 @@ serve(async (req) => {
           `,
         });
         
-        console.log(`Email sent successfully to ${email}`);
+        console.log(`Email sent successfully to ${email}, response:`, response);
         results.successful.push(email);
       } catch (emailError) {
         console.error(`Failed to send email to ${email}:`, emailError);
@@ -88,12 +117,15 @@ serve(async (req) => {
       }
     }
     
+    // Prepare response data
     const responseData = {
       success: true,
       message: `Processed ${emails.length} emails`,
       count: results.successful.length,
       results: results,
     };
+    
+    console.log('Email sending complete, response:', responseData);
     
     return new Response(
       JSON.stringify(responseData),

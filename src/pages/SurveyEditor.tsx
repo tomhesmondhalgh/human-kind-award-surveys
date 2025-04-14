@@ -340,6 +340,14 @@ const SurveyEditor = () => {
       // Validate emails before sending
       const { validEmails, invalidEmails } = validateEmails(emails);
       
+      console.log('Email validation results:', { 
+        totalEmails: emails.split(',').length,
+        validCount: validEmails.length, 
+        invalidCount: invalidEmails.length,
+        validEmails: validEmails,
+        invalidEmails: invalidEmails
+      });
+      
       if (invalidEmails.length > 0) {
         toast.error(`Found ${invalidEmails.length} invalid email ${invalidEmails.length === 1 ? 'address' : 'addresses'}`, {
           description: `Invalid: ${invalidEmails.join(', ')}. Please correct these before sending.`
@@ -360,15 +368,20 @@ const SurveyEditor = () => {
       console.log('Sending survey emails to:', validEmails);
       console.log('Survey URL:', surveyUrl);
       
+      // Build request payload for edge function
+      const payload = { 
+        surveyId: surveyId,
+        surveyName: surveyData?.name || "Wellbeing Survey",
+        emails: validEmails,
+        surveyUrl: surveyUrl,
+        isReminder: false
+      };
+      
+      console.log('Edge function payload:', payload);
+      
       // Send emails
       const { data, error } = await supabase.functions.invoke('send-survey-email', {
-        body: { 
-          surveyId: surveyId,
-          surveyName: surveyData?.name || "Wellbeing Survey",
-          emails: validEmails,
-          surveyUrl: surveyUrl,
-          isReminder: false
-        }
+        body: payload
       });
       
       if (error) {
