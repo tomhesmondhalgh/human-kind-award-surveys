@@ -47,8 +47,10 @@ const PublicSurveyForm: React.FC = () => {
     console.log('Custom responses being submitted:', formData.custom_responses);
     
     try {
-      await submitForm(navigate);
-      toast.success('Survey submitted successfully');
+      const success = await submitForm(navigate);
+      if (success) {
+        toast.success('Survey submitted successfully');
+      }
     } catch (error) {
       console.error('Error submitting survey:', error);
       toast.error('Failed to submit survey');

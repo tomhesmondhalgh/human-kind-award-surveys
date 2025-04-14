@@ -79,7 +79,10 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
         improvements: formData.improvements
       };
       
-      // Insert using public table with new RLS policies
+      // Log detailed information about the payload and request
+      console.log('Detailed response payload:', JSON.stringify(responsePayload));
+      
+      // Insert using public table with updated RLS policies
       console.log('Submitting response with payload:', responsePayload);
       const { data: responseData, error: responseError } = await supabase
         .from('survey_responses')
@@ -99,6 +102,7 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
           console.error('RLS policy violation - Need to update Supabase policies to allow public submissions.');
           console.error('This generally means the RLS policy is not properly allowing anonymous users to insert data.');
           console.error('Please check that the RLS policy named "Allow anonymous survey submissions" exists and is properly configured.');
+          return false;
         } else {
           toast.error(`Submission error: ${responseError.message}`);
         }
