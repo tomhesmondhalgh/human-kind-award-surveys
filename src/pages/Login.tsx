@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
@@ -52,16 +51,12 @@ const Login = () => {
     }
   }, [isAuthenticated, isLoading, navigate, location.search]);
 
-  // Check for email confirmation success, password reset, or password reset success in the URL
+  // Check for email confirmation success and auto-login the user
+  // We don't need this anymore since we're redirecting directly to the dashboard
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     
-    if (params.get('email_confirmed') === 'true') {
-      toast.success('Email confirmed successfully!', {
-        description: 'You can now log in to your account.'
-      });
-    }
-    
+    // We'll still keep this toast for other scenarios
     if (params.get('email_reset') === 'true') {
       toast.success('Password reset email sent!', {
         description: 'Please check your inbox for instructions to reset your password.'

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,7 +35,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [authCheckComplete, setAuthCheckComplete] = useState(false);
 
   useEffect(() => {
-    // Get initial session
     const getInitialSession = async () => {
       try {
         setIsLoading(true);
@@ -58,20 +56,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     getInitialSession();
 
-    // Set up auth subscription
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user || null);
       setAuthCheckComplete(true);
     });
 
-    // Cleanup
     return () => {
       subscription.unsubscribe();
     };
   }, []);
 
-  // Sign in function
   const signIn = async (email: string, password: string) => {
     setIsLoading(true);
     try {
@@ -88,20 +83,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Sign up function - Modified to require email confirmation
   const signUp = async (email: string, password: string, userData?: any) => {
     setIsLoading(true);
     try {
-      // No longer set redirectTo: window.location.origin + '/dashboard'
-      // Let Supabase handle the default confirmation flow
       const options = userData ? {
         data: {
           first_name: userData.firstName,
           last_name: userData.lastName,
         },
-        emailRedirectTo: `${window.location.origin}/login`,
+        emailRedirectTo: `${window.location.origin}/dashboard`,
       } : {
-        emailRedirectTo: `${window.location.origin}/login`,
+        emailRedirectTo: `${window.location.origin}/dashboard`,
       };
 
       const { data, error } = await supabase.auth.signUp({
@@ -116,9 +108,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw new Error('Failed to create user account');
       }
       
-      // Don't attempt to sign in the user immediately
-      // Let them confirm their email first
-      
       return { error: null, success: true, user: data.user };
     } catch (error: any) {
       console.error('Error signing up:', error);
@@ -128,7 +117,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Sign out function
   const signOut = async () => {
     setIsLoading(true);
     try {
@@ -140,7 +128,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Update user profile
   const completeUserProfile = async (userData: any) => {
     try {
       const { error } = await supabase.rpc('create_or_update_profile', {
@@ -180,5 +167,4 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   );
 };
 
-// Use this Provider as the main Auth provider in your application
 export default AuthContext;
