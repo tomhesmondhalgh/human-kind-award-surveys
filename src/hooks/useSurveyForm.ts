@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { SurveyFormData } from '../types/surveyForm';
 import { toast } from 'sonner';
@@ -54,6 +55,7 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
       
       console.log('Submitting survey response for survey ID:', surveyId);
       console.log('Form data:', formData);
+      console.log('Custom responses being submitted:', formData.custom_responses);
       
       // Construct response payload
       const responsePayload = {
@@ -83,7 +85,18 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
       
       if (responseError) {
         console.error('Error submitting survey response:', responseError);
-        throw new Error(`Submission error: ${responseError.message}`);
+        console.error('Error code:', responseError.code);
+        console.error('Error message:', responseError.message);
+        console.error('Error details:', responseError.details);
+        
+        // Check for specific RLS errors
+        if (responseError.message.includes('violates row-level security policy')) {
+          toast.error('Permission denied: The submission is blocked by security policies. Please contact support.');
+          console.error('RLS policy violation - Need to update Supabase policies to allow public submissions.');
+        } else {
+          toast.error(`Submission error: ${responseError.message}`);
+        }
+        return false;
       }
       
       console.log('Survey response created with ID:', responseData?.id);
@@ -107,6 +120,7 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
             
             if (customError) {
               console.error('Error saving custom responses:', customError);
+              console.error('Custom error details:', customError.details);
               toast.error('Some responses may not have been fully saved');
             } else {
               console.log('Custom responses saved successfully');
@@ -114,6 +128,7 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
           }
         } catch (customErr) {
           console.error('Exception handling custom responses:', customErr);
+          // Continue with navigation even if custom responses fail
         }
       }
       
