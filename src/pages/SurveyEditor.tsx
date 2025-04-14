@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
@@ -18,6 +17,7 @@ import { useAuth } from '../contexts/AuthContext';
 import SurveyLoading from '../components/survey-form/SurveyLoading';
 import { sendUserToHubspot } from '../utils/auth';
 import ArchiveSurveyDialog from '../components/surveys/ArchiveSurveyDialog';
+import { validateEmails } from '../utils/survey/sendReminder';
 
 const SurveyEditor = () => {
   const { id } = useParams<{ id: string }>();
@@ -128,6 +128,27 @@ const SurveyEditor = () => {
         });
         navigate('/login');
         return null;
+      }
+
+      // Validate emails if this is a send action and using email distribution
+      if (action === 'send' && data.distributionMethod === 'email' && data.recipients) {
+        const { validEmails, invalidEmails } = validateEmails(data.recipients);
+        
+        if (invalidEmails.length > 0) {
+          toast.error(`Found ${invalidEmails.length} invalid email ${invalidEmails.length === 1 ? 'address' : 'addresses'}`, {
+            description: `Invalid: ${invalidEmails.join(', ')}. Please correct these before sending.`
+          });
+          setIsSubmitting(false);
+          return null;
+        }
+        
+        if (validEmails.length === 0) {
+          toast.error("No valid email addresses found", {
+            description: "Please add valid email addresses separated by commas."
+          });
+          setIsSubmitting(false);
+          return null;
+        }
       }
 
       const surveyDate = new Date(data.date);
@@ -316,13 +337,17 @@ const SurveyEditor = () => {
         return;
       }
       
-      // Handle email distribution
-      const emailList = emails
-        .split(',')
-        .map((email: string) => email.trim())
-        .filter((email: string) => email !== '' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+      // Validate emails before sending
+      const { validEmails, invalidEmails } = validateEmails(emails);
       
-      if (emailList.length === 0) {
+      if (invalidEmails.length > 0) {
+        toast.error(`Found ${invalidEmails.length} invalid email ${invalidEmails.length === 1 ? 'address' : 'addresses'}`, {
+          description: `Invalid: ${invalidEmails.join(', ')}. Please correct these before sending.`
+        });
+        return;
+      }
+      
+      if (validEmails.length === 0) {
         toast.info("No valid email recipients found", {
           description: "Use the survey link to share with participants."
         });
@@ -337,7 +362,7 @@ const SurveyEditor = () => {
         body: { 
           surveyId: surveyId,
           surveyName: surveyData?.name || "Wellbeing Survey",
-          emails: emailList,
+          emails: validEmails,
           surveyUrl: surveyUrl,
           isReminder: false
         }
@@ -348,7 +373,7 @@ const SurveyEditor = () => {
       }
       
       toast.success("Survey sent successfully!", {
-        description: `Sent to ${data?.count || emailList.length} recipients.`
+        description: `Sent to ${data?.count || validEmails.length} recipients.`
       });
     } catch (error) {
       console.error('Error sending survey emails:', error);
