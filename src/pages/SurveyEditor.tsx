@@ -357,6 +357,9 @@ const SurveyEditor = () => {
       const baseUrl = window.location.origin;
       const surveyUrl = `${baseUrl}/survey?id=${surveyId}`;
       
+      console.log('Sending survey emails to:', validEmails);
+      console.log('Survey URL:', surveyUrl);
+      
       // Send emails
       const { data, error } = await supabase.functions.invoke('send-survey-email', {
         body: { 
@@ -369,8 +372,11 @@ const SurveyEditor = () => {
       });
       
       if (error) {
+        console.error('Error invoking send-survey-email function:', error);
         throw error;
       }
+      
+      console.log('Send survey email response:', data);
       
       toast.success("Survey sent successfully!", {
         description: `Sent to ${data?.count || validEmails.length} recipients.`
