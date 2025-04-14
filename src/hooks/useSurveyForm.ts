@@ -57,6 +57,10 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
       console.log('Form data:', formData);
       console.log('Custom responses being submitted:', formData.custom_responses);
       
+      // Log Supabase anon key header for debugging (masked)
+      const apiKey = supabase.supabaseKey;
+      console.log('Using API key (first 6 chars):', apiKey.substring(0, 6) + '...');
+      
       // Construct response payload
       const responsePayload = {
         survey_template_id: surveyId,
@@ -93,6 +97,8 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
         if (responseError.message.includes('violates row-level security policy')) {
           toast.error('Permission denied: The submission is blocked by security policies. Please contact support.');
           console.error('RLS policy violation - Need to update Supabase policies to allow public submissions.');
+          console.error('This generally means the RLS policy is not properly allowing anonymous users to insert data.');
+          console.error('Please check that the RLS policy named "Allow anonymous survey submissions" exists and is properly configured.');
         } else {
           toast.error(`Submission error: ${responseError.message}`);
         }
