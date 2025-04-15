@@ -100,6 +100,24 @@ export const SimplifiedAuthProvider: React.FC<{ children: ReactNode }> = ({ chil
         password,
         options,
       });
+      
+      // If sign up was successful and we have user data, update the profile
+      if (response.data?.user && userData) {
+        try {
+          // Fix: Ensure profile_id is the first parameter and all parameters are in the correct order
+          await supabase.rpc('create_or_update_profile', {
+            profile_id: response.data.user.id,
+            profile_first_name: userData.firstName,
+            profile_last_name: userData.lastName,
+            profile_job_title: userData.jobTitle || '',
+            profile_school_name: userData.schoolName || '',
+            profile_school_address: userData.schoolAddress || ''
+          });
+        } catch (profileError) {
+          console.error('Error updating profile in simplified context:', profileError);
+          // Continue even if profile update fails
+        }
+      }
 
       return response;
     } catch (error) {
@@ -139,3 +157,4 @@ export const SimplifiedAuthProvider: React.FC<{ children: ReactNode }> = ({ chil
     </AuthContext.Provider>
   );
 };
+

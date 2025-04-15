@@ -72,20 +72,26 @@ const SignUp = () => {
       }
       
       // Store user data for profile completion
-      const userData = {
-        jobTitle: data.jobTitle,
-        schoolName: data.schoolName,
-        schoolAddress: data.schoolAddress || compileCustomAddress(data),
-        email: data.email,
-        firstName: data.firstName,
-        lastName: data.lastName,
-      };
-
-      // Complete user profile in database
-      const { error: profileError, success: profileSuccess } = await completeUserProfile(userData);
-      
-      if (!profileSuccess) {
-        throw profileError || new Error('Failed to complete profile');
+      if (user) {
+        try {
+          // Fix: Call the RPC function directly with correct parameter order
+          const { error: profileError } = await supabase.rpc('create_or_update_profile', {
+            profile_id: user.id,
+            profile_first_name: data.firstName,
+            profile_last_name: data.lastName,
+            profile_job_title: data.jobTitle,
+            profile_school_name: data.schoolName,
+            profile_school_address: data.schoolAddress || compileCustomAddress(data),
+          });
+          
+          if (profileError) {
+            console.error('Error updating profile directly:', profileError);
+            // Continue with the flow even if profile update fails
+          }
+        } catch (directProfileError) {
+          console.error('Exception during direct profile update:', directProfileError);
+          // Continue with the flow even if profile update fails
+        }
       }
       
       // Redirect to email confirmation page instead of automatically logging in
