@@ -26,7 +26,39 @@ export function useIsMobile() {
     }
   }, [])
 
-  // Return true if definitely mobile, otherwise default to false
-  // This ensures components don't flash desktop layout before detection
+  // Return true if definitely mobile, false if desktop, and false as a default
   return isMobile === undefined ? false : isMobile
+}
+
+// Add a hook for orientation detection as well
+export function useOrientation() {
+  const [orientation, setOrientation] = React.useState<'portrait' | 'landscape' | undefined>(undefined)
+  const isMobile = useIsMobile()
+
+  React.useEffect(() => {
+    const updateOrientation = () => {
+      if (!isMobile) {
+        setOrientation(undefined)
+        return
+      }
+      
+      if (window.matchMedia("(orientation: portrait)").matches) {
+        setOrientation('portrait')
+      } else {
+        setOrientation('landscape')
+      }
+    }
+
+    updateOrientation()
+
+    window.addEventListener('resize', updateOrientation)
+    window.addEventListener('orientationchange', updateOrientation)
+
+    return () => {
+      window.removeEventListener('resize', updateOrientation)
+      window.removeEventListener('orientationchange', updateOrientation)
+    }
+  }, [isMobile])
+
+  return orientation
 }
