@@ -46,7 +46,7 @@ export async function signUpWithEmail(email: string, password: string, userData?
     // Set up the user profile
     try {
       console.log('Setting up user profile');
-      // Here's the fix: Ensuring profile_id is the first parameter and all parameters are present
+      // Fix: Ensure profile_id is the first parameter and all parameters are present in the correct order
       const { error: profileError } = await supabase.rpc(
         'create_or_update_profile',
         {

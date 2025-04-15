@@ -45,7 +45,7 @@ export async function signUpWithEmail(email: string, password: string, userData?
     // If we have user data, update the profile
     if (userData && data.user) {
       try {
-        // Here's the fix: Ensuring profile_id is the first parameter and all parameters are present
+        // Fix: Ensure profile_id is the first parameter and all parameters are present in the correct order
         const { error: profileError } = await supabase.rpc(
           'create_or_update_profile',
           {

@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -130,6 +131,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const completeUserProfile = async (userData: any) => {
     try {
+      // Fix: Ensure the profile_id parameter is first and all parameters are in the correct order
       const { error } = await supabase.rpc('create_or_update_profile', {
         profile_id: user?.id,
         profile_first_name: userData.firstName,

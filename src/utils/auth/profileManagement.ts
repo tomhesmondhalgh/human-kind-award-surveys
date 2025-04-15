@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { sendUserToHubspot } from './hubspot';
@@ -21,8 +20,7 @@ export async function completeUserProfile(userId: string, userData: any) {
       throw metadataError;
     }
 
-    // Use service role to bypass RLS policies for initial profile creation
-    // Here's the fix: Ensuring profile_id is the first parameter
+    // Fix: Ensure profile_id is the first parameter and all parameters are in the correct order
     const { error: profileError } = await supabase.rpc('create_or_update_profile', {
       profile_id: userId,
       profile_first_name: userData.firstName,
