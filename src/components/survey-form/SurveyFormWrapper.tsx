@@ -28,7 +28,11 @@ const SurveyFormWrapper: React.FC<SurveyFormWrapperProps> = ({
   handleSubmit
 }) => {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-purple-50">
+    <main 
+      className="min-h-screen bg-gradient-to-b from-white to-purple-50"
+      role="main"
+      aria-labelledby="survey-title"
+    >
       <div className="container mx-auto px-4 py-8 max-w-3xl">
         <div className="bg-white shadow-md rounded-lg p-6 md:p-8 border border-purple-100">
           <SurveyIntro surveyTemplate={surveyTemplate} />
@@ -42,10 +46,14 @@ const SurveyFormWrapper: React.FC<SurveyFormWrapperProps> = ({
             handleSubmit={handleSubmit}
           />
           
-          {isPreview && <PreviewModeFooter />}
+          {isPreview && (
+            <div aria-live="polite">
+              <PreviewModeFooter />
+            </div>
+          )}
         </div>
       </div>
-    </div>
+    </main>
   );
 };
 

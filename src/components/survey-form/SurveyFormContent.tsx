@@ -52,19 +52,32 @@ const SurveyFormContent: React.FC<SurveyFormContentProps> = ({
   console.log('Is loading questions:', isLoading);
   
   return (
-    <form onSubmit={handleSubmit} className="mt-8 space-y-8">
-      <StandardQuestions 
-        formData={formData} 
-        handleInputChange={handleInputChange} 
-      />
-      
-      <CustomQuestionsSection 
-        questions={questions}
-        responses={responses}
-        onResponse={handleQuestionResponse}
-        isLoading={isLoading}
-        error={error}
-      />
+    <form 
+      onSubmit={handleSubmit} 
+      className="mt-8 space-y-8"
+      aria-label="Survey form"
+      noValidate
+    >
+      {isLoading ? (
+        <div className="text-center py-6" aria-live="polite" aria-busy="true">
+          <p>Loading survey questions...</p>
+        </div>
+      ) : (
+        <>
+          <StandardQuestions 
+            formData={formData} 
+            handleInputChange={handleInputChange} 
+          />
+          
+          <CustomQuestionsSection 
+            questions={questions}
+            responses={responses}
+            onResponse={handleQuestionResponse}
+            isLoading={isLoading}
+            error={error}
+          />
+        </>
+      )}
       
       <div className="pt-6">
         <SubmitButton isSubmitting={isSubmitting} />

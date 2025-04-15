@@ -8,7 +8,7 @@ import Pagination from '../components/surveys/Pagination';
 import { toast } from "sonner";
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { useMediaQuery } from '../hooks/use-media-query';
+import { useIsMobile } from '../hooks/use-mobile';
 import { sendSurveyReminder } from '../utils/survey/sendReminder';
 
 const SURVEYS_PER_PAGE = 10;
@@ -21,7 +21,7 @@ const Surveys = () => {
   const [totalSurveys, setTotalSurveys] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [canCreateSurveys, setCanCreateSurveys] = useState(true);
-  const isMobile = useMediaQuery("(max-width: 768px)");
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     setCanCreateSurveys(!!user);
@@ -190,6 +190,7 @@ const Surveys = () => {
             <Link 
               to="/new-survey"
               className={`btn-primary ${isMobile ? 'w-full text-center py-3' : ''}`}
+              aria-label="Create new survey"
             >
               + New Survey
             </Link>
@@ -197,8 +198,8 @@ const Surveys = () => {
         </div>
 
         {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin h-8 w-8 border-4 border-brandPurple-500 border-t-transparent rounded-full mx-auto"></div>
+          <div className="text-center py-12" aria-live="polite" aria-busy="true">
+            <div className="animate-spin h-8 w-8 border-4 border-brandPurple-500 border-t-transparent rounded-full mx-auto" role="progressbar"></div>
             <p className="mt-4 text-gray-600">Loading surveys...</p>
           </div>
         ) : (
@@ -207,16 +208,22 @@ const Surveys = () => {
               <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-12 text-center">
                 <h2 className="text-xl font-semibold mb-2">No surveys found</h2>
                 <p className="text-gray-500 mb-6">You haven't created any surveys yet.</p>
-                <Link to="/new-survey" className="bg-brandPurple-500 hover:bg-brandPurple-600 text-white font-medium py-2 px-6 rounded-md transition-all duration-200 inline-block">
+                <Link 
+                  to="/new-survey" 
+                  className="bg-brandPurple-500 hover:bg-brandPurple-600 text-white font-medium py-2 px-6 rounded-md transition-all duration-200 inline-block"
+                  aria-label="Create your first survey"
+                >
                   Create Your First Survey
                 </Link>
               </div>
             ) : (
               <>
-                <SurveyList 
-                  surveys={surveys} 
-                  onSendReminder={handleSendReminder}
-                />
+                <div aria-live="polite">
+                  <SurveyList 
+                    surveys={surveys} 
+                    onSendReminder={handleSendReminder}
+                  />
+                </div>
                 
                 {totalPages > 1 && (
                   <div className="mt-8">
