@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { User, ShieldCheck, LogOut, Users, CreditCard } from 'lucide-react';
+import { User, ShieldCheck, LogOut, CreditCard } from 'lucide-react';
 import { NavLinks } from './NavLinks';
 import { useAdminRole } from '../../hooks/useAdminRole';
 
@@ -10,7 +9,6 @@ interface MobileMenuProps {
   isAuthenticated: boolean;
   hideAuthButtons: boolean;
   isAdmin: boolean;
-  canManageTeam: boolean;
   handleSignOut: () => Promise<void>;
   setIsMenuOpen: (isOpen: boolean) => void;
 }
@@ -20,16 +18,13 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
   isAuthenticated,
   hideAuthButtons,
   isAdmin,
-  canManageTeam,
   handleSignOut,
   setIsMenuOpen,
 }) => {
   if (!isOpen) return null;
 
-  // Get access to the current admin status from our optimized hook
   const { isAdmin: isAdminFromHook } = useAdminRole();
   
-  // Use either the admin status passed as prop or from the hook
   const showAdminLink = isAdmin || isAdminFromHook;
 
   return (
@@ -41,12 +36,10 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
               <NavLinks setIsMenuOpen={setIsMenuOpen} />
             </div>
             
-            {/* Settings Section Header */}
             <div className="px-4 pt-2 pb-1 text-base font-semibold text-gray-500">
               Settings
             </div>
             
-            {/* Settings Items */}
             <Link 
               to="/profile" 
               className="block px-4 py-2 rounded-md font-medium text-base hover:bg-brandPurple-50"
@@ -69,18 +62,6 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
               </span>
             </Link>
             
-            <Link 
-              to="/team" 
-              className="block px-4 py-2 rounded-md font-medium text-base hover:bg-brandPurple-50"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <span className="flex items-center">
-                <Users size={16} className="mr-2" />
-                Team
-              </span>
-            </Link>
-            
-            {/* Show Admin link if user has admin access */}
             {showAdminLink && (
               <Link 
                 to="/admin" 
@@ -103,7 +84,6 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
             </button>
           </>
         ) : (
-          // Only show login/signup options if not on survey response or complete pages
           !hideAuthButtons && (
             <>
               <Link 
