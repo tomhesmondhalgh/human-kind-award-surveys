@@ -37,7 +37,7 @@ const StandardQuestions: React.FC<StandardQuestionsProps> = ({
       'health_state': ['health', 'physical', 'mental'],
       'valued_member': ['valued', 'team value'],
       'support_access': ['support', 'access'],
-      'confidence_in_role': ['confidence', 'role confidence'],
+      'confidence_in_role': ['confidence', 'role confidence', 'performing my role', 'chances to grow'],
       'org_pride': ['pride', 'organisation', 'proud'],
       'recommendation_score': ['recommend', 'recommendation'],
       'leaving_contemplation': ['leaving', 'contemplation'],
@@ -50,10 +50,18 @@ const StandardQuestions: React.FC<StandardQuestionsProps> = ({
       fieldKeywords.push(...fieldMappings[fieldName]);
     }
     
+    console.log(`Checking field: ${fieldName}, keywords: ${fieldKeywords.join(', ')}`);
+    
     // Check if any validation error contains any of the field keywords
-    return validationErrors.some(error => 
+    const hasError = validationErrors.some(error => 
       fieldKeywords.some(keyword => error.toLowerCase().includes(keyword))
     );
+    
+    if (hasError) {
+      console.log(`Field ${fieldName} has validation error`);
+    }
+    
+    return hasError;
   };
 
   // Helper function to get error message for a field
