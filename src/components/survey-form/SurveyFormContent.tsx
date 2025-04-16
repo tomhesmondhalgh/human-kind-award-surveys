@@ -56,39 +56,153 @@ const SurveyFormContent: React.FC<SurveyFormContentProps> = ({
   useEffect(() => {
     if (isFormValidated && Object.values(formData).some(value => value)) {
       // Only clear errors if the user has started filling out the form
-      const newErrors = [...validationErrors];
+      console.log("Checking for fields that should have validation errors cleared");
+      
+      // Create new error array
+      let newErrors = [...validationErrors];
       let errorCleared = false;
       
-      // Check if any standard fields have been filled
-      Object.entries(formData).forEach(([key, value]) => {
-        if (key !== 'custom_responses' && value && validationErrors.some(err => err.toLowerCase().includes(key.toLowerCase()))) {
-          // Remove errors for fields that have been filled
-          const index = newErrors.findIndex(err => err.toLowerCase().includes(key.toLowerCase()));
-          if (index !== -1) {
-            newErrors.splice(index, 1);
-            errorCleared = true;
-          }
+      // Clear errors for standard fields that have been filled
+      if (formData.role) {
+        const index = newErrors.findIndex(err => err === "Role is required");
+        if (index !== -1) {
+          newErrors.splice(index, 1);
+          errorCleared = true;
+          console.log("Cleared validation error for role");
         }
-      });
+      }
+      
+      if (formData.leadership_prioritize) {
+        const index = newErrors.findIndex(err => err === "Leadership prioritisation rating is required");
+        if (index !== -1) {
+          newErrors.splice(index, 1);
+          errorCleared = true;
+          console.log("Cleared validation error for leadership_prioritize");
+        }
+      }
+      
+      if (formData.manageable_workload) {
+        const index = newErrors.findIndex(err => err === "Workload rating is required");
+        if (index !== -1) {
+          newErrors.splice(index, 1);
+          errorCleared = true;
+          console.log("Cleared validation error for manageable_workload");
+        }
+      }
+      
+      if (formData.work_life_balance) {
+        const index = newErrors.findIndex(err => err === "Work-life balance rating is required");
+        if (index !== -1) {
+          newErrors.splice(index, 1);
+          errorCleared = true;
+          console.log("Cleared validation error for work_life_balance");
+        }
+      }
+      
+      if (formData.health_state) {
+        const index = newErrors.findIndex(err => err === "Health state rating is required");
+        if (index !== -1) {
+          newErrors.splice(index, 1);
+          errorCleared = true;
+          console.log("Cleared validation error for health_state");
+        }
+      }
+      
+      if (formData.valued_member) {
+        const index = newErrors.findIndex(err => err === "Team value rating is required");
+        if (index !== -1) {
+          newErrors.splice(index, 1);
+          errorCleared = true;
+          console.log("Cleared validation error for valued_member");
+        }
+      }
+      
+      if (formData.support_access) {
+        const index = newErrors.findIndex(err => err === "Support access rating is required");
+        if (index !== -1) {
+          newErrors.splice(index, 1);
+          errorCleared = true;
+          console.log("Cleared validation error for support_access");
+        }
+      }
+      
+      if (formData.confidence_in_role) {
+        const index = newErrors.findIndex(err => err === "Role confidence rating is required");
+        if (index !== -1) {
+          newErrors.splice(index, 1);
+          errorCleared = true;
+          console.log("Cleared validation error for confidence_in_role");
+        }
+      }
+      
+      if (formData.org_pride) {
+        const index = newErrors.findIndex(err => err === "Organisation pride rating is required");
+        if (index !== -1) {
+          newErrors.splice(index, 1);
+          errorCleared = true;
+          console.log("Cleared validation error for org_pride");
+        }
+      }
+      
+      if (formData.recommendation_score) {
+        const index = newErrors.findIndex(err => err === "Recommendation score is required");
+        if (index !== -1) {
+          newErrors.splice(index, 1);
+          errorCleared = true;
+          console.log("Cleared validation error for recommendation_score");
+        }
+      }
+      
+      if (formData.leaving_contemplation) {
+        const index = newErrors.findIndex(err => err === "Leaving contemplation response is required");
+        if (index !== -1) {
+          newErrors.splice(index, 1);
+          errorCleared = true;
+          console.log("Cleared validation error for leaving_contemplation");
+        }
+      }
+      
+      if (formData.doing_well) {
+        const index = newErrors.findIndex(err => err === "Doing well response is required");
+        if (index !== -1) {
+          newErrors.splice(index, 1);
+          errorCleared = true;
+          console.log("Cleared validation error for doing_well");
+        }
+      }
+      
+      if (formData.improvements) {
+        const index = newErrors.findIndex(err => err === "Improvements response is required");
+        if (index !== -1) {
+          newErrors.splice(index, 1);
+          errorCleared = true;
+          console.log("Cleared validation error for improvements");
+        }
+      }
       
       // Check custom responses
       if (formData.custom_responses && Object.keys(formData.custom_responses).length > 0) {
         Object.entries(formData.custom_responses).forEach(([questionId, value]) => {
-          if (value && validationErrors.some(err => err.includes(questionId))) {
-            const index = newErrors.findIndex(err => err.includes(questionId));
+          if (value) {
+            const questionText = questions?.find(q => q.id === questionId)?.text || '';
+            const errorText = `Response for "${questionText}" is required`;
+            const index = newErrors.findIndex(err => err === errorText);
+            
             if (index !== -1) {
               newErrors.splice(index, 1);
               errorCleared = true;
+              console.log(`Cleared validation error for custom question: ${questionText}`);
             }
           }
         });
       }
       
       if (errorCleared) {
+        console.log("Setting new validation errors:", newErrors);
         setValidationErrors(newErrors);
       }
     }
-  }, [formData, isFormValidated, validationErrors]);
+  }, [formData, isFormValidated, validationErrors, questions]);
   
   // Validate form before submission
   const validateAndSubmit = (e: React.FormEvent) => {
@@ -139,10 +253,10 @@ const SurveyFormContent: React.FC<SurveyFormContentProps> = ({
     handleSubmit(e);
   };
   
+  // Debug logging
   console.log('Custom questions in SurveyFormContent:', questions);
-  console.log('Has questions:', hasQuestions);
-  console.log('Is loading questions:', isLoading);
   console.log('Current validation errors:', validationErrors);
+  console.log('Confidence in role value:', formData.confidence_in_role);
   
   return (
     <>

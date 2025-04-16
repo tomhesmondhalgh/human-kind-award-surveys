@@ -24,50 +24,45 @@ const StandardQuestions: React.FC<StandardQuestionsProps> = ({
   handleInputChange,
   validationErrors = []
 }) => {
-  // Helper function to check if a field has a validation error
+  // Map of error messages for specific fields
+  const fieldErrorMessages: Record<string, string> = {
+    'role': 'Role is required',
+    'leadership_prioritize': 'Leadership prioritisation rating is required',
+    'manageable_workload': 'Workload rating is required',
+    'work_life_balance': 'Work-life balance rating is required',
+    'health_state': 'Health state rating is required',
+    'valued_member': 'Team value rating is required',
+    'support_access': 'Support access rating is required',
+    'confidence_in_role': 'Role confidence rating is required',
+    'org_pride': 'Organisation pride rating is required',
+    'recommendation_score': 'Recommendation score is required',
+    'leaving_contemplation': 'Leaving contemplation response is required',
+    'doing_well': 'Doing well response is required',
+    'improvements': 'Improvements response is required'
+  };
+
+  // Check if a field has a validation error
   const hasError = (fieldName: string): boolean => {
-    const fieldKeywords = [fieldName.toLowerCase()];
+    // Direct match for field error message
+    const errorMessage = fieldErrorMessages[fieldName];
+    if (!errorMessage) return false;
     
-    // Add additional keywords for matching errors to fields
-    const fieldMappings: Record<string, string[]> = {
-      'role': ['role'],
-      'leadership_prioritize': ['leadership', 'prioritisation'],
-      'manageable_workload': ['workload', 'manageable'],
-      'work_life_balance': ['work-life', 'balance'],
-      'health_state': ['health', 'physical', 'mental'],
-      'valued_member': ['valued', 'team value'],
-      'support_access': ['support', 'access'],
-      'confidence_in_role': ['confidence', 'role confidence', 'performing my role', 'chances to grow'],
-      'org_pride': ['pride', 'organisation', 'proud'],
-      'recommendation_score': ['recommend', 'recommendation'],
-      'leaving_contemplation': ['leaving', 'contemplation'],
-      'doing_well': ['doing well'],
-      'improvements': ['improvements', 'better']
-    };
+    console.log(`Checking field: ${fieldName}, error message: ${errorMessage}`);
     
-    // Add mapped keywords if they exist
-    if (fieldMappings[fieldName]) {
-      fieldKeywords.push(...fieldMappings[fieldName]);
-    }
+    // Check if this exact error message exists in the validation errors
+    const found = validationErrors.includes(errorMessage);
     
-    console.log(`Checking field: ${fieldName}, keywords: ${fieldKeywords.join(', ')}`);
-    
-    // Check if any validation error contains any of the field keywords
-    const hasError = validationErrors.some(error => 
-      fieldKeywords.some(keyword => error.toLowerCase().includes(keyword))
-    );
-    
-    if (hasError) {
+    if (found) {
       console.log(`Field ${fieldName} has validation error`);
     }
     
-    return hasError;
+    return found;
   };
 
   // Helper function to get error message for a field
   const getErrorMessage = (fieldName: string): string | undefined => {
     if (hasError(fieldName)) {
-      return "This field is required";
+      return fieldErrorMessages[fieldName];
     }
     return undefined;
   };
