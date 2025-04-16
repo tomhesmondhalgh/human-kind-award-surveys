@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Send, Copy, Edit } from 'lucide-react';
@@ -37,16 +38,38 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder }) => {
     setCanEditSurveys(!!user);
   }, [user]);
 
-  const copyToClipboard = (id: string, text: string) => {
-    navigator.clipboard.writeText(text)
-      .then(() => {
-        setCopiedId(id);
-        toast.success("Survey link copied to clipboard");
-        setTimeout(() => setCopiedId(null), 2000);
-      })
-      .catch(() => {
-        toast.error("Failed to copy link");
-      });
+  const copyToClipboard = async (id: string, text: string, currentStatus: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      toast.success("Survey link copied to clipboard");
+      
+      // Only update status if it's not already 'Sent' or 'Completed'
+      if (currentStatus !== 'Sent' && currentStatus !== 'Completed') {
+        console.log(`Updating survey ${id} status to Sent after copying link`);
+        
+        const { error } = await supabase
+          .from('survey_templates')
+          .update({ status: 'Sent' })
+          .eq('id', id);
+          
+        if (error) {
+          console.error('Error updating survey status:', error);
+          // Don't show error to user, but log it
+        } else {
+          console.log('Successfully updated survey status to Sent');
+          // Refresh the page to show updated status
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+        }
+      }
+      
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      toast.error("Failed to copy link");
+    }
   };
 
   const handleEditClick = (id: string) => {
@@ -203,7 +226,7 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder }) => {
                 
                 {survey.url && (
                   <button 
-                    onClick={() => copyToClipboard(survey.id, survey.url!)}
+                    onClick={() => copyToClipboard(survey.id, survey.url!, survey.status)}
                     className="flex items-center text-sm text-gray-500 hover:text-brandPurple-600 transition-colors whitespace-nowrap"
                     title="Copy survey link to clipboard"
                   >
@@ -292,7 +315,7 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder }) => {
             
             {survey.url && (
               <button 
-                onClick={() => copyToClipboard(survey.id, survey.url!)}
+                onClick={() => copyToClipboard(survey.id, survey.url!, survey.status)}
                 className="flex items-center text-sm text-gray-500 hover:text-brandPurple-600 transition-colors"
               >
                 <Copy size={16} className="mr-1" />

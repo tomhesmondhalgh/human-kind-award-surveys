@@ -21,6 +21,7 @@ const Surveys = () => {
   const [totalSurveys, setTotalSurveys] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [canCreateSurveys, setCanCreateSurveys] = useState(true);
+  const [refreshFlag, setRefreshFlag] = useState(0); // Add a refresh flag
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -156,7 +157,7 @@ const Surveys = () => {
     };
 
     fetchSurveys();
-  }, [user, currentPage]);
+  }, [user, currentPage, refreshFlag]); // Add refreshFlag to dependencies
 
   const handleSendReminder = async (id: string) => {
     console.log(`Sending reminder for survey ${id}`);
@@ -173,6 +174,11 @@ const Surveys = () => {
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo(0, 0);
+  };
+  
+  // Add function to trigger refresh
+  const refreshSurveys = () => {
+    setRefreshFlag(prev => prev + 1);
   };
 
   const totalPages = Math.ceil(totalSurveys / SURVEYS_PER_PAGE);
@@ -222,6 +228,7 @@ const Surveys = () => {
                   <SurveyList 
                     surveys={surveys} 
                     onSendReminder={handleSendReminder}
+                    refreshList={refreshSurveys} // Pass the refresh function
                   />
                 </div>
                 
