@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { cn } from '../../lib/utils';
 import { Slider } from '../ui/slider';
@@ -50,6 +51,14 @@ const RadioQuestion: React.FC<RadioQuestionProps> = ({
             {required && <span className="sr-only"> (Required)</span>}
           </legend>
           <div className="px-2 md:px-4 py-6">
+            <div className="flex justify-between mb-2">
+              <div className="text-center text-sm text-gray-600">
+                Not at all likely
+              </div>
+              <div className="text-center text-sm text-gray-600">
+                Extremely Likely
+              </div>
+            </div>
             <Slider 
               defaultValue={[currentValue]} 
               max={maxValue} 
@@ -60,14 +69,6 @@ const RadioQuestion: React.FC<RadioQuestionProps> = ({
               className="mb-2"
               aria-label={`${label} scale from ${minValue} to ${maxValue}`}
             />
-            <div className="flex justify-between mt-2">
-              <div className="text-center text-sm text-gray-600">
-                Not at all likely
-              </div>
-              <div className="text-center text-sm text-gray-600">
-                Extremely Likely
-              </div>
-            </div>
             <div className="flex justify-between mt-2">
               {options.map((option) => (
                 <div key={option} className="text-center">
@@ -159,3 +160,4 @@ const RadioQuestion: React.FC<RadioQuestionProps> = ({
 };
 
 export default RadioQuestion;
+
