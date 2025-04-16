@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { SurveyFormData } from '../../types/surveyForm';
 import RatingQuestion from './RatingQuestion';
@@ -22,7 +23,7 @@ const StandardQuestions: React.FC<StandardQuestionsProps> = ({
   handleInputChange
 }) => {
   return (
-    <div className="space-y-12">
+    <div className="space-y-16">  {/* Increased from space-y-12 to space-y-16 */}
       <div className="mb-10">
         <label className="text-lg font-medium mb-3 block text-left">
           What Is Your Role? <span className="text-red-500">*</span>
