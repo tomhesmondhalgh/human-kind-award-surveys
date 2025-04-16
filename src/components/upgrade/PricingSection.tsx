@@ -68,13 +68,6 @@ const PricingSection: React.FC = () => {
     setIsProcessing(false);
     setCurrentPlan(null);
     
-    const overlays = document.querySelectorAll('[data-radix-portal], .fixed.inset-0, [data-radix-focus-guard]');
-    overlays.forEach(overlay => {
-      if (overlay.parentElement) {
-        overlay.parentElement.removeChild(overlay);
-      }
-    });
-    
     document.body.style.overflow = '';
     document.body.style.pointerEvents = '';
     document.body.removeAttribute('aria-hidden');
@@ -83,16 +76,7 @@ const PricingSection: React.FC = () => {
   useEffect(() => {
     cleanupDialogState();
     
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        cleanupDialogState();
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
       cleanupDialogState();
     };
   }, [location.pathname]);
@@ -288,11 +272,8 @@ const PricingSection: React.FC = () => {
 
   const handleDialogClose = (open: boolean) => {
     if (!open) {
-      cleanupDialogState();
-      
       setTimeout(() => {
-        setShowInvoiceDialog(false);
-        setIsProcessing(false);
+        cleanupDialogState();
       }, 150);
     }
   };
