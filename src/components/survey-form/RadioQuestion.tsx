@@ -61,6 +61,14 @@ const RadioQuestion: React.FC<RadioQuestionProps> = ({
               aria-label={`${label} scale from ${minValue} to ${maxValue}`}
             />
             <div className="flex justify-between mt-2">
+              <div className="text-center text-sm text-gray-600">
+                Not at all likely
+              </div>
+              <div className="text-center text-sm text-gray-600">
+                Extremely Likely
+              </div>
+            </div>
+            <div className="flex justify-between mt-2">
               {options.map((option) => (
                 <div key={option} className="text-center">
                   <span className={cn(
