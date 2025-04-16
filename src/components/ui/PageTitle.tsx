@@ -15,7 +15,7 @@ const PageTitle: React.FC<PageTitleProps> = ({
   alignment = 'left'
 }) => {
   return (
-    <div className={`mb-8 ${className}`}>
+    <div className={`${className}`}>
       <h1 className={`text-3xl font-bold text-gray-900 mb-2 text-${alignment}`}>
         {title}
       </h1>

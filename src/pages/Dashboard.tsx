@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
@@ -11,6 +12,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { getDashboardStats, getRecentSurveys, checkForClosedSurveys } from '../utils/surveyUtils';
 import { SurveyWithResponses } from '../utils/surveyUtils';
+import { useIsMobile } from '../hooks/use-mobile';
 
 const Dashboard = () => {
   const [totalSurveys, setTotalSurveys] = useState<number | null>(null);
@@ -21,6 +23,7 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -63,13 +66,17 @@ const Dashboard = () => {
   return (
     <MainLayout>
       <div className="page-container">
-        <div className="flex justify-between items-center mb-6">
+        <div className={`${isMobile ? 'flex flex-col gap-4' : 'flex justify-between items-center'} mb-6`}>
           <PageTitle 
             title="Dashboard" 
             subtitle="At a glance overview of your staff wellbeing"
-            alignment="left"
+            alignment={isMobile ? "center" : "left"}
+            className={isMobile ? "mb-2" : "mb-0"}
           />
-          <Button onClick={() => navigate('/new-survey')}>
+          <Button 
+            onClick={() => navigate('/new-survey')}
+            className={isMobile ? "w-full py-3" : ""}
+          >
             <Plus className="mr-2 h-4 w-4" />
             New Survey
           </Button>
