@@ -49,7 +49,7 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
       toast.error('Survey ID is missing');
       return false;
     }
-
+    
     try {
       setIsSubmitting(true);
       
