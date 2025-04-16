@@ -121,6 +121,7 @@ const SurveyEditor = () => {
       console.log('Survey data to be saved:', data);
       console.log('Custom question IDs:', selectedCustomQuestionIds);
       console.log('Action requested:', action);
+      console.log('Current saved survey ID:', savedSurveyId);
       
       if (!user) {
         toast.error("Authentication required", {
@@ -165,9 +166,11 @@ const SurveyEditor = () => {
       
       let newSurveyId = savedSurveyId;
       
-      if (isEditMode && savedSurveyId) {
+      // If we already have a saved survey ID, OR we're in edit mode, update the existing survey
+      if (savedSurveyId) {
         // Update existing survey
-        console.log('Updating survey with status:', statusToSave);
+        console.log('Updating existing survey with ID:', savedSurveyId);
+        console.log('Setting status to:', statusToSave);
         
         const { error } = await supabase
           .from('survey_templates')
@@ -189,6 +192,7 @@ const SurveyEditor = () => {
           throw error;
         }
         
+        // Delete existing question links before adding new ones
         const { error: deleteError } = await supabase
           .from('survey_questions')
           .delete()
@@ -198,8 +202,8 @@ const SurveyEditor = () => {
           console.error('Error removing existing custom question links:', deleteError);
         }
       } else {
-        // Create new survey
-        console.log('Creating survey with status:', statusToSave);
+        // Only create a new survey if we don't have a saved ID yet
+        console.log('Creating new survey with status:', statusToSave);
         
         const { data: savedSurvey, error } = await supabase
           .from('survey_templates')
@@ -222,7 +226,7 @@ const SurveyEditor = () => {
           throw error;
         }
         
-        console.log('Saved survey:', savedSurvey);
+        console.log('Saved new survey:', savedSurvey);
         newSurveyId = savedSurvey.id;
         setSavedSurveyId(savedSurvey.id);
         
