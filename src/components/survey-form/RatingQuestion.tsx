@@ -25,7 +25,7 @@ const RatingQuestion: React.FC<RatingQuestionProps> = ({
         <legend className="text-lg font-medium mb-3 text-left">
           {label} {required && <span className="text-red-500">*</span>}
         </legend>
-        <div className="grid grid-cols-4 gap-1 text-center">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 text-center">
           {options.map((option) => (
             <div 
               key={option} 
@@ -56,7 +56,7 @@ const RatingQuestion: React.FC<RatingQuestionProps> = ({
                 className="h-4 w-4 text-brandPurple-600 focus:ring-brandPurple-500 border-gray-300 sr-only"
                 required={required}
               />
-              <label htmlFor={`${name}-${option}`} className="text-sm text-gray-700 cursor-pointer whitespace-nowrap text-center">
+              <label htmlFor={`${name}-${option}`} className="text-sm text-gray-700 cursor-pointer whitespace-normal text-center">
                 {option}
               </label>
             </div>
