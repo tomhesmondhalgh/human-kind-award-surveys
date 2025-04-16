@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BookOpen, CheckCircle, List, Rocket } from 'lucide-react';
@@ -23,10 +23,33 @@ const GettingStartedGuide = () => {
   const [open, setOpen] = useState(true);
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
   
+  // Load completed steps from localStorage on component mount
+  useEffect(() => {
+    if (user) {
+      const localStorageKey = `completed-steps-${user.id}`;
+      const savedSteps = localStorage.getItem(localStorageKey);
+      
+      if (savedSteps) {
+        try {
+          const parsedSteps = JSON.parse(savedSteps);
+          if (Array.isArray(parsedSteps)) {
+            setCompletedSteps(parsedSteps);
+          }
+        } catch (error) {
+          console.error('Failed to parse completed steps from localStorage:', error);
+        }
+      }
+    }
+  }, [user]);
+  
   const markStepComplete = (stepId: string) => {
-    if (!completedSteps.includes(stepId)) {
-      setCompletedSteps([...completedSteps, stepId]);
-      // In a real implementation, you would save this to the user's profile or settings
+    if (!completedSteps.includes(stepId) && user) {
+      const updatedSteps = [...completedSteps, stepId];
+      setCompletedSteps(updatedSteps);
+      
+      // Save to localStorage using user ID to namespace the storage
+      const localStorageKey = `completed-steps-${user.id}`;
+      localStorage.setItem(localStorageKey, JSON.stringify(updatedSteps));
     }
   };
   
