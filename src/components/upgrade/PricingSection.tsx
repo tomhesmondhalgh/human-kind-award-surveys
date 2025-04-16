@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import PlanCard, { PlanType } from './PlanCard';
 import { useSubscription } from '../../hooks/useSubscription';
 import { useSubscriptionPlans } from '../../hooks/useSubscriptionPlans';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '../../hooks/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
@@ -31,6 +32,7 @@ interface InvoiceDetails {
 
 const PricingSection: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -61,6 +63,28 @@ const PricingSection: React.FC = () => {
   } = useSubscriptionPlans();
   
   const { toast } = useToast();
+
+  // Clean up dialog state when path changes or component unmounts
+  useEffect(() => {
+    return () => {
+      setShowInvoiceDialog(false);
+      setIsProcessing(false);
+    };
+  }, [location.pathname]);
+
+  // Handle URL parameters for payment cancellation/success
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('payment') === 'cancelled') {
+      toast({
+        title: 'Payment Cancelled',
+        description: 'Your payment process was cancelled.',
+        variant: 'default',
+      });
+      // Clean the URL
+      navigate('/upgrade', { replace: true });
+    }
+  }, [location.search, toast, navigate]);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -234,6 +258,17 @@ const PricingSection: React.FC = () => {
     }
   };
 
+  // Handle dialog close - ensure proper state cleanup
+  const handleDialogClose = (open: boolean) => {
+    if (!open) {
+      setShowInvoiceDialog(false);
+      // Add a small delay to ensure any pending state is reset
+      setTimeout(() => {
+        setIsProcessing(false);
+      }, 100);
+    }
+  };
+
   const getButtonText = (planType: PlanType) => {
     if (planType === 'free' && isFree || planType === 'foundation' && isFoundation || planType === 'progress' && isProgress || planType === 'premium' && isPremium) {
       return 'Your Current Plan';
@@ -376,7 +411,10 @@ const PricingSection: React.FC = () => {
         <p>Need help choosing the right plan? <a href="mailto:contact@humankindaward.com" className="text-brandPurple-600 underline">Contact our support team</a></p>
       </div>
 
-      <Dialog open={showInvoiceDialog} onOpenChange={setShowInvoiceDialog}>
+      <Dialog 
+        open={showInvoiceDialog} 
+        onOpenChange={handleDialogClose}
+      >
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Request Invoice Payment</DialogTitle>
