@@ -49,6 +49,7 @@ const PublicSurveyForm: React.FC = () => {
     console.log('Custom responses being submitted:', formData.custom_responses);
     
     try {
+      // Note: The actual validation happens in SurveyFormContent before this function is called
       const success = await submitForm(navigate);
       if (success) {
         toast.success('Survey submitted successfully');

@@ -27,6 +27,7 @@ const SurveyFormContent: React.FC<SurveyFormContentProps> = ({
   handleSubmit
 }) => {
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [isFormValidated, setIsFormValidated] = useState(false);
   
   const { 
     questions, 
@@ -50,6 +51,14 @@ const SurveyFormContent: React.FC<SurveyFormContentProps> = ({
     handleResponse(questionId, value);
     handleCustomQuestionResponse(questionId, value);
   };
+  
+  // Clear validation errors when form data changes
+  useEffect(() => {
+    if (isFormValidated) {
+      setValidationErrors([]);
+      setIsFormValidated(false);
+    }
+  }, [formData, isFormValidated]);
   
   // Validate form before submission
   const validateAndSubmit = (e: React.FormEvent) => {
@@ -87,8 +96,11 @@ const SurveyFormContent: React.FC<SurveyFormContentProps> = ({
       });
     }
     
+    console.log("Validation errors:", errors);
+    
     if (errors.length > 0) {
       setValidationErrors(errors);
+      setIsFormValidated(true);
       // Scroll to the top to show validation errors
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
@@ -101,6 +113,7 @@ const SurveyFormContent: React.FC<SurveyFormContentProps> = ({
   console.log('Custom questions in SurveyFormContent:', questions);
   console.log('Has questions:', hasQuestions);
   console.log('Is loading questions:', isLoading);
+  console.log('Current validation errors:', validationErrors);
   
   return (
     <>
@@ -122,6 +135,7 @@ const SurveyFormContent: React.FC<SurveyFormContentProps> = ({
         onSubmit={validateAndSubmit} 
         className="mt-8 space-y-8"
         aria-label="Survey form"
+        noValidate
       >
         {isLoading ? (
           <div className="text-center py-6" aria-live="polite" aria-busy="true">
