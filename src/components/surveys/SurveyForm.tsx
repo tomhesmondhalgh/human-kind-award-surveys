@@ -17,6 +17,7 @@ import {
 import CustomQuestionsSelect from './CustomQuestionsSelect';
 import { useNavigate } from 'react-router-dom';
 import { SurveyStatus } from '@/utils/types/survey';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Form schema
 const surveyFormSchema = z.object({
@@ -59,6 +60,7 @@ const SurveyForm: React.FC<SurveyFormProps> = ({
   const [surveyLink, setSurveyLink] = useState<string>('');
   const [selectedCustomQuestionIds, setSelectedCustomQuestionIds] = useState<string[]>(initialCustomQuestionIds);
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   
   React.useEffect(() => {
     if (showSurveyLink && surveyId) {
@@ -87,18 +89,40 @@ const SurveyForm: React.FC<SurveyFormProps> = ({
     }
   };
 
-  const handlePreviewClick = (e: React.MouseEvent) => {
+  const handlePreviewClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault(); // Prevent form submission
+    console.log('Preview button clicked on mobile:', isMobile);
     if (!onPreviewSurvey) return;
     const data = form.getValues();
     onPreviewSurvey(data, selectedCustomQuestionIds || []);
   };
   
-  const handleSendSurvey = (e: React.MouseEvent) => {
+  const handleSendSurvey = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault(); // Prevent form submission
     if (!onSendSurvey) return;
     const data = form.getValues();
     onSendSurvey(data, selectedCustomQuestionIds || []);
+  };
+
+  // Create a wrapper for tooltips that conditionally renders based on device
+  const TooltipWrapper = ({ children, content }: { children: React.ReactNode, content: string }) => {
+    if (isMobile) {
+      // On mobile, skip the tooltip to avoid potential touch conflicts
+      return <>{children}</>;
+    }
+    
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {children}
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            <p>{content}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
   };
 
   return (
@@ -114,67 +138,45 @@ const SurveyForm: React.FC<SurveyFormProps> = ({
           />
           
           <div className="mt-8 flex flex-wrap gap-4 sm:flex-row flex-col">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    type="submit" 
-                    variant="outline"
-                    className="flex-1 sm:flex-none sm:order-1" 
-                    disabled={isSubmitting}
-                  >
-                    <Save className="mr-2 h-4 w-4" />
-                    {isSubmitting ? 'Saving...' : submitButtonText}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <p>Save survey and return to surveys list</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <TooltipWrapper content="Save survey and return to surveys list">
+              <Button 
+                type="submit" 
+                variant="outline"
+                className="flex-1 sm:flex-none sm:order-1" 
+                disabled={isSubmitting}
+              >
+                <Save className="mr-2 h-4 w-4" />
+                {isSubmitting ? 'Saving...' : submitButtonText}
+              </Button>
+            </TooltipWrapper>
             
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    type="button" 
-                    variant="secondary" 
-                    className="flex-1 sm:flex-none sm:order-2" 
-                    onClick={handlePreviewClick}
-                    disabled={isSubmitting}
-                  >
-                    <Play className="mr-2 h-4 w-4" />
-                    {isSubmitting ? 'Please wait...' : 'Preview Survey'}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <p>Save and preview how the survey will look to recipients</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <TooltipWrapper content="Save and preview how the survey will look to recipients">
+              <Button 
+                type="button" 
+                variant="secondary" 
+                className="flex-1 sm:flex-none sm:order-2" 
+                onClick={handlePreviewClick}
+                disabled={isSubmitting}
+              >
+                <Play className="mr-2 h-4 w-4" />
+                {isSubmitting ? 'Please wait...' : 'Preview Survey'}
+              </Button>
+            </TooltipWrapper>
             
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    type="button" 
-                    variant="default" 
-                    className="flex-1 sm:flex-none sm:order-3 bg-brandPurple-500 hover:bg-brandPurple-600" 
-                    onClick={handleSendSurvey}
-                    disabled={isSubmitting}
-                  >
-                    <Send className="mr-2 h-4 w-4" />
-                    {isSubmitting ? 'Sending...' : 'Send Survey'}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <p>{form.watch("distributionMethod") === "email" ? 
-                    "Save, send email invitations and mark as sent" : 
-                    "Save, generate shareable link and mark as sent"}
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <TooltipWrapper content={form.watch("distributionMethod") === "email" ? 
+              "Save, send email invitations and mark as sent" : 
+              "Save, generate shareable link and mark as sent"}>
+              <Button 
+                type="button" 
+                variant="default" 
+                className="flex-1 sm:flex-none sm:order-3 bg-brandPurple-500 hover:bg-brandPurple-600" 
+                onClick={handleSendSurvey}
+                disabled={isSubmitting}
+              >
+                <Send className="mr-2 h-4 w-4" />
+                {isSubmitting ? 'Sending...' : 'Send Survey'}
+              </Button>
+            </TooltipWrapper>
           </div>
         </form>
       </Form>
