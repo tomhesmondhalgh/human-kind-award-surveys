@@ -54,11 +54,41 @@ const SurveyFormContent: React.FC<SurveyFormContentProps> = ({
   
   // Clear validation errors when form data changes
   useEffect(() => {
-    if (isFormValidated) {
-      setValidationErrors([]);
-      setIsFormValidated(false);
+    if (isFormValidated && Object.values(formData).some(value => value)) {
+      // Only clear errors if the user has started filling out the form
+      const newErrors = [...validationErrors];
+      let errorCleared = false;
+      
+      // Check if any standard fields have been filled
+      Object.entries(formData).forEach(([key, value]) => {
+        if (key !== 'custom_responses' && value && validationErrors.some(err => err.toLowerCase().includes(key.toLowerCase()))) {
+          // Remove errors for fields that have been filled
+          const index = newErrors.findIndex(err => err.toLowerCase().includes(key.toLowerCase()));
+          if (index !== -1) {
+            newErrors.splice(index, 1);
+            errorCleared = true;
+          }
+        }
+      });
+      
+      // Check custom responses
+      if (formData.custom_responses && Object.keys(formData.custom_responses).length > 0) {
+        Object.entries(formData.custom_responses).forEach(([questionId, value]) => {
+          if (value && validationErrors.some(err => err.includes(questionId))) {
+            const index = newErrors.findIndex(err => err.includes(questionId));
+            if (index !== -1) {
+              newErrors.splice(index, 1);
+              errorCleared = true;
+            }
+          }
+        });
+      }
+      
+      if (errorCleared) {
+        setValidationErrors(newErrors);
+      }
     }
-  }, [formData, isFormValidated]);
+  }, [formData, isFormValidated, validationErrors]);
   
   // Validate form before submission
   const validateAndSubmit = (e: React.FormEvent) => {
@@ -89,7 +119,6 @@ const SurveyFormContent: React.FC<SurveyFormContentProps> = ({
     if (questions && questions.length > 0) {
       questions.forEach(question => {
         // Assuming all custom questions are required for now
-        // Could be enhanced with an optional flag in the question data
         if (!formData.custom_responses[question.id]) {
           errors.push(`Response for "${question.text}" is required`);
         }

@@ -26,16 +26,46 @@ const StandardQuestions: React.FC<StandardQuestionsProps> = ({
 }) => {
   // Helper function to check if a field has a validation error
   const hasError = (fieldName: string): boolean => {
-    return validationErrors.some(error => error.toLowerCase().includes(fieldName.toLowerCase()));
+    const fieldKeywords = [fieldName.toLowerCase()];
+    
+    // Add additional keywords for matching errors to fields
+    const fieldMappings: Record<string, string[]> = {
+      'role': ['role'],
+      'leadership_prioritize': ['leadership', 'prioritisation'],
+      'manageable_workload': ['workload', 'manageable'],
+      'work_life_balance': ['work-life', 'balance'],
+      'health_state': ['health', 'physical', 'mental'],
+      'valued_member': ['valued', 'team value'],
+      'support_access': ['support', 'access'],
+      'confidence_in_role': ['confidence', 'role confidence'],
+      'org_pride': ['pride', 'organisation', 'proud'],
+      'recommendation_score': ['recommend', 'recommendation'],
+      'leaving_contemplation': ['leaving', 'contemplation'],
+      'doing_well': ['doing well'],
+      'improvements': ['improvements', 'better']
+    };
+    
+    // Add mapped keywords if they exist
+    if (fieldMappings[fieldName]) {
+      fieldKeywords.push(...fieldMappings[fieldName]);
+    }
+    
+    // Check if any validation error contains any of the field keywords
+    return validationErrors.some(error => 
+      fieldKeywords.some(keyword => error.toLowerCase().includes(keyword))
+    );
   };
 
   // Helper function to get error message for a field
   const getErrorMessage = (fieldName: string): string | undefined => {
-    return validationErrors.find(error => error.toLowerCase().includes(fieldName.toLowerCase()));
+    if (hasError(fieldName)) {
+      return "This field is required";
+    }
+    return undefined;
   };
 
   return (
-    <div className="space-y-16">  {/* Increased from space-y-12 to space-y-16 */}
+    <div className="space-y-16">
       <div className="mb-10">
         <label className="text-lg font-medium mb-3 block text-left">
           What Is Your Role? <span className="text-red-500">*</span>
@@ -67,7 +97,7 @@ const StandardQuestions: React.FC<StandardQuestionsProps> = ({
         value={formData.leadership_prioritize}
         onChange={(e) => handleInputChange('leadership_prioritize', e.target.value)}
         required
-        error={hasError('leadership prioritisation') ? 'Required' : undefined}
+        error={getErrorMessage('leadership_prioritize')}
       />
       
       <RatingQuestion
@@ -76,7 +106,7 @@ const StandardQuestions: React.FC<StandardQuestionsProps> = ({
         value={formData.manageable_workload}
         onChange={(e) => handleInputChange('manageable_workload', e.target.value)}
         required
-        error={hasError('workload') ? 'Required' : undefined}
+        error={getErrorMessage('manageable_workload')}
       />
       
       <RatingQuestion
@@ -85,7 +115,7 @@ const StandardQuestions: React.FC<StandardQuestionsProps> = ({
         value={formData.work_life_balance}
         onChange={(e) => handleInputChange('work_life_balance', e.target.value)}
         required
-        error={hasError('work-life balance') ? 'Required' : undefined}
+        error={getErrorMessage('work_life_balance')}
       />
       
       <RatingQuestion
@@ -94,7 +124,7 @@ const StandardQuestions: React.FC<StandardQuestionsProps> = ({
         value={formData.health_state}
         onChange={(e) => handleInputChange('health_state', e.target.value)}
         required
-        error={hasError('health state') ? 'Required' : undefined}
+        error={getErrorMessage('health_state')}
       />
       
       <RatingQuestion
@@ -103,7 +133,7 @@ const StandardQuestions: React.FC<StandardQuestionsProps> = ({
         value={formData.valued_member}
         onChange={(e) => handleInputChange('valued_member', e.target.value)}
         required
-        error={hasError('team value') ? 'Required' : undefined}
+        error={getErrorMessage('valued_member')}
       />
       
       <RatingQuestion
@@ -112,7 +142,7 @@ const StandardQuestions: React.FC<StandardQuestionsProps> = ({
         value={formData.support_access}
         onChange={(e) => handleInputChange('support_access', e.target.value)}
         required
-        error={hasError('support access') ? 'Required' : undefined}
+        error={getErrorMessage('support_access')}
       />
       
       <RatingQuestion
@@ -121,7 +151,7 @@ const StandardQuestions: React.FC<StandardQuestionsProps> = ({
         value={formData.confidence_in_role}
         onChange={(e) => handleInputChange('confidence_in_role', e.target.value)}
         required
-        error={hasError('role confidence') ? 'Required' : undefined}
+        error={getErrorMessage('confidence_in_role')}
       />
       
       <RatingQuestion
@@ -130,7 +160,7 @@ const StandardQuestions: React.FC<StandardQuestionsProps> = ({
         value={formData.org_pride}
         onChange={(e) => handleInputChange('org_pride', e.target.value)}
         required
-        error={hasError('organisation pride') ? 'Required' : undefined}
+        error={getErrorMessage('org_pride')}
       />
       
       <RadioQuestion
@@ -139,7 +169,7 @@ const StandardQuestions: React.FC<StandardQuestionsProps> = ({
         options={['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10']}
         value={formData.recommendation_score}
         onChange={(e) => handleInputChange('recommendation_score', e.target.value)}
-        error={hasError('recommendation score') ? 'Required' : undefined}
+        error={getErrorMessage('recommendation_score')}
         required
         useSlider={true}
       />
@@ -151,7 +181,7 @@ const StandardQuestions: React.FC<StandardQuestionsProps> = ({
         value={formData.leaving_contemplation}
         onChange={(e) => handleInputChange('leaving_contemplation', e.target.value)}
         required
-        error={hasError('leaving contemplation') ? 'Required' : undefined}
+        error={getErrorMessage('leaving_contemplation')}
       />
       
       <TextQuestion
@@ -160,7 +190,7 @@ const StandardQuestions: React.FC<StandardQuestionsProps> = ({
         value={formData.doing_well}
         onChange={(e) => handleInputChange('doing_well', e.target.value)}
         required
-        error={hasError('doing well') ? 'Required' : undefined}
+        error={getErrorMessage('doing_well')}
       />
       
       <TextQuestion
@@ -169,7 +199,7 @@ const StandardQuestions: React.FC<StandardQuestionsProps> = ({
         value={formData.improvements}
         onChange={(e) => handleInputChange('improvements', e.target.value)}
         required
-        error={hasError('improvements') ? 'Required' : undefined}
+        error={getErrorMessage('improvements')}
       />
     </div>
   );

@@ -20,11 +20,15 @@ const RatingQuestion: React.FC<RatingQuestionProps> = ({
   error
 }) => {
   const options = ['Strongly Disagree', 'Disagree', 'Agree', 'Strongly Agree'];
+  const hasError = !!error;
 
   return (
     <div className="mb-16">
-      <fieldset>
-        <legend className="text-lg font-medium mb-3 text-left">
+      <fieldset className={hasError ? 'has-error' : ''}>
+        <legend className={cn(
+          "text-lg font-medium mb-3 text-left",
+          hasError && "text-red-600"
+        )}>
           {label} {required && <span className="text-red-500">*</span>}
         </legend>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 text-center">
@@ -49,6 +53,7 @@ const RatingQuestion: React.FC<RatingQuestionProps> = ({
                 } as React.ChangeEvent<HTMLInputElement>;
                 onChange(event);
               }}
+              aria-invalid={hasError ? 'true' : 'false'}
             >
               <input
                 type="radio"
@@ -59,7 +64,7 @@ const RatingQuestion: React.FC<RatingQuestionProps> = ({
                 onChange={onChange}
                 className="h-4 w-4 text-brandPurple-600 focus:ring-brandPurple-500 border-gray-300 sr-only"
                 required={required}
-                aria-invalid={error ? 'true' : 'false'}
+                aria-invalid={hasError ? 'true' : 'false'}
               />
               <label htmlFor={`${name}-${option}`} className="text-sm text-gray-700 cursor-pointer whitespace-normal text-center">
                 {option}
