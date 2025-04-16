@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import PlanCard, { PlanType } from './PlanCard';
 import { useSubscription } from '../../hooks/useSubscription';
@@ -64,24 +63,52 @@ const PricingSection: React.FC = () => {
   
   const { toast } = useToast();
 
-  // Clean up dialog state when path changes or component unmounts
+  const cleanupDialogState = () => {
+    setShowInvoiceDialog(false);
+    setIsProcessing(false);
+    setCurrentPlan(null);
+    
+    const overlays = document.querySelectorAll('[data-radix-portal], .fixed.inset-0, [data-radix-focus-guard]');
+    overlays.forEach(overlay => {
+      if (overlay.parentElement) {
+        overlay.parentElement.removeChild(overlay);
+      }
+    });
+    
+    document.body.style.overflow = '';
+    document.body.style.pointerEvents = '';
+    document.body.removeAttribute('aria-hidden');
+  };
+
   useEffect(() => {
+    cleanupDialogState();
+    
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        cleanupDialogState();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
     return () => {
-      setShowInvoiceDialog(false);
-      setIsProcessing(false);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      cleanupDialogState();
     };
   }, [location.pathname]);
 
-  // Handle URL parameters for payment cancellation/success
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get('payment') === 'cancelled') {
+      cleanupDialogState();
       toast({
         title: 'Payment Cancelled',
         description: 'Your payment process was cancelled.',
         variant: 'default',
       });
-      // Clean the URL
+      navigate('/upgrade', { replace: true });
+    } else if (params.get('payment') === 'success' || params.get('payment') === 'invoice-requested') {
+      cleanupDialogState();
       navigate('/upgrade', { replace: true });
     }
   }, [location.search, toast, navigate]);
@@ -203,6 +230,7 @@ const PricingSection: React.FC = () => {
   };
 
   const openInvoiceDialog = (planType: 'foundation' | 'progress' | 'premium', purchaseType: 'subscription' | 'one-time') => {
+    cleanupDialogState();
     setCurrentPlan({ type: planType, purchaseType });
     setShowInvoiceDialog(true);
   };
@@ -258,14 +286,14 @@ const PricingSection: React.FC = () => {
     }
   };
 
-  // Handle dialog close - ensure proper state cleanup
   const handleDialogClose = (open: boolean) => {
     if (!open) {
-      setShowInvoiceDialog(false);
-      // Add a small delay to ensure any pending state is reset
+      cleanupDialogState();
+      
       setTimeout(() => {
+        setShowInvoiceDialog(false);
         setIsProcessing(false);
-      }, 100);
+      }, 150);
     }
   };
 
@@ -327,7 +355,6 @@ const PricingSection: React.FC = () => {
     onButtonClick();
   };
 
-  // Show loading state when plans are loading
   if (isPlansLoading || isSubscriptionLoading) {
     return (
       <div className="mt-12 text-center">
@@ -339,7 +366,6 @@ const PricingSection: React.FC = () => {
     );
   }
 
-  // Convert database plans to display format
   const displayPlans = plans.map(plan => {
     const planType = plan.name.toLowerCase() as PlanType;
     const price = formatPrice(plan.price);
@@ -347,7 +373,6 @@ const PricingSection: React.FC = () => {
       ? `+ VAT (${plan.purchase_type === 'subscription' ? `${plan.duration_months ? plan.duration_months/12 : 3}-year subscription` : 'one-off payment'})`
       : undefined;
     
-    // Handle the case when the plan is the free plan
     const isPaidPlan = planType !== 'free';
     const upgradePlanType = isPaidPlan ? planType as 'foundation' | 'progress' | 'premium' : 'foundation';
     
@@ -383,7 +408,6 @@ const PricingSection: React.FC = () => {
     };
   });
 
-  // Sort plans by sort_order
   displayPlans.sort((a, b) => {
     const aOrder = plans.find(p => p.name.toLowerCase() === a.planType)?.sort_order || 0;
     const bOrder = plans.find(p => p.name.toLowerCase() === b.planType)?.sort_order || 0;
@@ -411,106 +435,113 @@ const PricingSection: React.FC = () => {
         <p>Need help choosing the right plan? <a href="mailto:contact@humankindaward.com" className="text-brandPurple-600 underline">Contact our support team</a></p>
       </div>
 
-      <Dialog 
-        open={showInvoiceDialog} 
-        onOpenChange={handleDialogClose}
-      >
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>Request Invoice Payment</DialogTitle>
-            <DialogDescription>
-              Fill in your billing details below to request payment by invoice.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
-                <Label htmlFor="schoolName">School/Organisation Name</Label>
-                <Input
-                  id="schoolName"
-                  value={invoiceDetails.schoolName}
-                  onChange={(e) => setInvoiceDetails({...invoiceDetails, schoolName: e.target.value})}
-                  className="mt-1"
-                  required
-                />
-              </div>
-              
-              <div className="col-span-2">
-                <Label htmlFor="address">Billing Address</Label>
-                <Textarea
-                  id="address"
-                  value={invoiceDetails.address}
-                  onChange={(e) => setInvoiceDetails({...invoiceDetails, address: e.target.value})}
-                  className="mt-1"
-                  rows={3}
-                  required
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="contactName">Contact Name</Label>
-                <Input
-                  id="contactName"
-                  value={invoiceDetails.contactName}
-                  onChange={(e) => setInvoiceDetails({...invoiceDetails, contactName: e.target.value})}
-                  className="mt-1"
-                  required
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="contactEmail">Contact Email</Label>
-                <Input
-                  id="contactEmail"
-                  type="email"
-                  value={invoiceDetails.contactEmail}
-                  onChange={(e) => setInvoiceDetails({...invoiceDetails, contactEmail: e.target.value})}
-                  className="mt-1"
-                  required
-                />
-              </div>
-              
-              <div className="col-span-2">
-                <Label htmlFor="purchaseOrderNumber">Purchase Order Number (optional)</Label>
-                <Input
-                  id="purchaseOrderNumber"
-                  value={invoiceDetails.purchaseOrderNumber}
-                  onChange={(e) => setInvoiceDetails({...invoiceDetails, purchaseOrderNumber: e.target.value})}
-                  className="mt-1"
-                />
-              </div>
-              
-              <div className="col-span-2">
-                <Label htmlFor="additionalInformation">Additional Information (optional)</Label>
-                <Textarea
-                  id="additionalInformation"
-                  value={invoiceDetails.additionalInformation}
-                  onChange={(e) => setInvoiceDetails({...invoiceDetails, additionalInformation: e.target.value})}
-                  className="mt-1"
-                  rows={3}
-                />
+      {showInvoiceDialog && (
+        <Dialog 
+          open={showInvoiceDialog} 
+          onOpenChange={handleDialogClose}
+        >
+          <DialogContent 
+            className="sm:max-w-[600px]"
+            onEscapeKeyDown={() => handleDialogClose(false)}
+            onInteractOutside={() => handleDialogClose(false)}
+            onPointerDownOutside={() => handleDialogClose(false)}
+          >
+            <DialogHeader>
+              <DialogTitle>Request Invoice Payment</DialogTitle>
+              <DialogDescription>
+                Fill in your billing details below to request payment by invoice.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <Label htmlFor="schoolName">School/Organisation Name</Label>
+                  <Input
+                    id="schoolName"
+                    value={invoiceDetails.schoolName}
+                    onChange={(e) => setInvoiceDetails({...invoiceDetails, schoolName: e.target.value})}
+                    className="mt-1"
+                    required
+                  />
+                </div>
+                
+                <div className="col-span-2">
+                  <Label htmlFor="address">Billing Address</Label>
+                  <Textarea
+                    id="address"
+                    value={invoiceDetails.address}
+                    onChange={(e) => setInvoiceDetails({...invoiceDetails, address: e.target.value})}
+                    className="mt-1"
+                    rows={3}
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="contactName">Contact Name</Label>
+                  <Input
+                    id="contactName"
+                    value={invoiceDetails.contactName}
+                    onChange={(e) => setInvoiceDetails({...invoiceDetails, contactName: e.target.value})}
+                    className="mt-1"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="contactEmail">Contact Email</Label>
+                  <Input
+                    id="contactEmail"
+                    type="email"
+                    value={invoiceDetails.contactEmail}
+                    onChange={(e) => setInvoiceDetails({...invoiceDetails, contactEmail: e.target.value})}
+                    className="mt-1"
+                    required
+                  />
+                </div>
+                
+                <div className="col-span-2">
+                  <Label htmlFor="purchaseOrderNumber">Purchase Order Number (optional)</Label>
+                  <Input
+                    id="purchaseOrderNumber"
+                    value={invoiceDetails.purchaseOrderNumber}
+                    onChange={(e) => setInvoiceDetails({...invoiceDetails, purchaseOrderNumber: e.target.value})}
+                    className="mt-1"
+                  />
+                </div>
+                
+                <div className="col-span-2">
+                  <Label htmlFor="additionalInformation">Additional Information (optional)</Label>
+                  <Textarea
+                    id="additionalInformation"
+                    value={invoiceDetails.additionalInformation}
+                    onChange={(e) => setInvoiceDetails({...invoiceDetails, additionalInformation: e.target.value})}
+                    className="mt-1"
+                    rows={3}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-          
-          <div className="flex justify-end space-x-4">
-            <Button
-              variant="outline"
-              onClick={() => setShowInvoiceDialog(false)}
-              disabled={isProcessing}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleInvoiceRequest}
-              disabled={isProcessing || !invoiceDetails.schoolName || !invoiceDetails.address || !invoiceDetails.contactName || !invoiceDetails.contactEmail}
-            >
-              {isProcessing ? 'Processing...' : 'Request Invoice'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+            
+            <div className="flex justify-end space-x-4">
+              <Button
+                variant="outline"
+                onClick={() => handleDialogClose(false)}
+                disabled={isProcessing}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleInvoiceRequest}
+                disabled={isProcessing || !invoiceDetails.schoolName || !invoiceDetails.address || !invoiceDetails.contactName || !invoiceDetails.contactEmail}
+              >
+                {isProcessing ? 'Processing...' : 'Request Invoice'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };
