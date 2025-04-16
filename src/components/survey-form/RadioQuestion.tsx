@@ -43,7 +43,7 @@ const RadioQuestion: React.FC<RadioQuestionProps> = ({
     const maxValue = parseInt(options[options.length - 1]);
 
     return (
-      <div className="mb-10">
+      <div className="mb-16">
         <fieldset>
           <legend className="text-lg font-medium mb-3 text-left">
             {label} {required && <span className="text-red-500" aria-hidden="true">*</span>}
@@ -80,7 +80,7 @@ const RadioQuestion: React.FC<RadioQuestionProps> = ({
   }
 
   return (
-    <div className="mb-10">
+    <div className="mb-16">
       <fieldset>
         <legend className="text-lg font-medium mb-3 text-left">
           {label} {required && <span className="text-red-500" aria-hidden="true">*</span>}

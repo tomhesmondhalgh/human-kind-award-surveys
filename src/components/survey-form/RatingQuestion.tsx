@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { cn } from '../../lib/utils';
 
@@ -20,7 +19,7 @@ const RatingQuestion: React.FC<RatingQuestionProps> = ({
   const options = ['Strongly Disagree', 'Disagree', 'Agree', 'Strongly Agree'];
 
   return (
-    <div className="mb-10">
+    <div className="mb-16">
       <fieldset>
         <legend className="text-lg font-medium mb-3 text-left">
           {label} {required && <span className="text-red-500">*</span>}

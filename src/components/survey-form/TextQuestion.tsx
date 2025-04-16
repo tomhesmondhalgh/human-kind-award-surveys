@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { cn } from '../../lib/utils';
 
@@ -21,7 +20,7 @@ const TextQuestion: React.FC<TextQuestionProps> = ({
   error,
   required = true 
 }) => (
-  <div className="mb-10">
+  <div className="mb-16">
     <label htmlFor={name} className="block text-lg font-medium mb-2 text-left">
       {label} {required && <span className="text-red-500">*</span>}
     </label>
