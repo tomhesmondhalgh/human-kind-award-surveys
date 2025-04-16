@@ -6,6 +6,7 @@ import { PlusCircle } from 'lucide-react';
 import { useSubscription } from '../../hooks/useSubscription';
 import CustomQuestionsModal from './CustomQuestionsModal';
 import QuestionList from './QuestionList';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface CustomQuestionsSelectProps {
   selectedQuestionIds: string[];
@@ -18,6 +19,7 @@ const CustomQuestionsSelect: React.FC<CustomQuestionsSelectProps> = ({
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { isPremium, isProgress, isFoundation } = useSubscription();
+  const isMobile = useIsMobile();
   
   const hasAccess = isPremium || isProgress || isFoundation;
   
@@ -33,14 +35,18 @@ const CustomQuestionsSelect: React.FC<CustomQuestionsSelectProps> = ({
   if (!hasAccess) {
     return (
       <div className="mb-8 border border-gray-200 rounded-md p-4 bg-gray-50">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-medium">Custom Questions</h3>
-          <Badge variant="outline" className="bg-gray-100">Premium Feature</Badge>
+        <div className={`flex ${isMobile ? 'flex-col' : 'items-center justify-between'} mb-3`}>
+          <h3 className="text-lg font-medium mb-2">Custom Questions</h3>
+          <Badge variant="outline" className="bg-gray-100 self-start">Premium Feature</Badge>
         </div>
         <p className="text-gray-600 mb-4">
           Add your own custom questions to this survey. This feature requires a Foundation, Progress, or Premium plan.
         </p>
-        <Button onClick={() => window.location.href = '/upgrade'} variant="default">
+        <Button 
+          onClick={() => window.location.href = '/upgrade'} 
+          variant="default"
+          className="w-full sm:w-auto"
+        >
           Upgrade to Access
         </Button>
       </div>
@@ -49,7 +55,7 @@ const CustomQuestionsSelect: React.FC<CustomQuestionsSelectProps> = ({
   
   return (
     <div className="mb-8 border border-gray-200 rounded-md p-4">
-      <div className="flex items-center justify-between mb-4">
+      <div className={`flex ${isMobile ? 'flex-col gap-2' : 'items-center justify-between'} mb-4`}>
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-medium">Custom Questions</h3>
           {selectedQuestionIds.length > 0 && (
@@ -59,7 +65,7 @@ const CustomQuestionsSelect: React.FC<CustomQuestionsSelectProps> = ({
         
         <Button 
           onClick={openModal}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 w-full sm:w-auto"
           type="button" // Explicitly set button type to prevent form submission
         >
           <PlusCircle size={16} />
