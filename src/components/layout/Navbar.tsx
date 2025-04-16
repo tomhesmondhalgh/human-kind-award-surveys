@@ -67,7 +67,6 @@ const Navbar: React.FC = () => {
         isAuthenticated={isAuthenticated}
         hideAuthButtons={hideAuthButtons}
         isAdmin={isAdmin}
-        canManageTeam={isAdmin}
         handleSignOut={handleSignOut}
         setIsMenuOpen={setIsMenuOpen}
       />
