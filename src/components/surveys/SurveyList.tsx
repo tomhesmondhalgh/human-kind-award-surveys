@@ -24,9 +24,10 @@ interface Survey {
 interface SurveyListProps {
   surveys: Survey[];
   onSendReminder: (id: string) => void;
+  refreshList?: () => void; // Added this prop to the interface
 }
 
-const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder }) => {
+const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder, refreshList }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sendingReminder, setSendingReminder] = useState<string | null>(null);
   const [canEditSurveys, setCanEditSurveys] = useState(true);
@@ -58,10 +59,10 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder }) => {
           // Don't show error to user, but log it
         } else {
           console.log('Successfully updated survey status to Sent');
-          // Refresh the page to show updated status
-          setTimeout(() => {
-            window.location.reload();
-          }, 2000);
+          // Call refreshList to update the UI instead of reloading the page
+          if (refreshList) {
+            refreshList();
+          }
         }
       }
       

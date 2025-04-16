@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
@@ -21,7 +20,7 @@ const Surveys = () => {
   const [totalSurveys, setTotalSurveys] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [canCreateSurveys, setCanCreateSurveys] = useState(true);
-  const [refreshFlag, setRefreshFlag] = useState(0); // Add a refresh flag
+  const [refreshFlag, setRefreshFlag] = useState(0);
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -40,7 +39,6 @@ const Surveys = () => {
         console.log('Fetching surveys for user:', user.id);
         setLoading(true);
         
-        // First attempt to get the count of surveys
         console.log('Counting surveys excluding Archived ones');
         const { count, error: countError } = await supabase
           .from('survey_templates')
@@ -60,7 +58,6 @@ const Surveys = () => {
         const to = from + SURVEYS_PER_PAGE - 1;
         
         console.log(`Fetching surveys page ${currentPage} (range ${from}-${to})`);
-        // Try to fetch surveys directly without relying on RLS functions
         const { data: surveyTemplates, error } = await supabase
           .from('survey_templates')
           .select(`
@@ -135,7 +132,6 @@ const Surveys = () => {
       } catch (error: any) {
         console.error('Error fetching surveys:', error);
         
-        // Check for specific error types to provide better diagnostics
         if (error.code === '42883') {
           console.error('Database function error: The application is trying to use a database function that does not exist');
           toast.error("Failed to load surveys", {
@@ -157,7 +153,7 @@ const Surveys = () => {
     };
 
     fetchSurveys();
-  }, [user, currentPage, refreshFlag]); // Add refreshFlag to dependencies
+  }, [user, currentPage, refreshFlag]);
 
   const handleSendReminder = async (id: string) => {
     console.log(`Sending reminder for survey ${id}`);
@@ -176,7 +172,6 @@ const Surveys = () => {
     window.scrollTo(0, 0);
   };
   
-  // Add function to trigger refresh
   const refreshSurveys = () => {
     setRefreshFlag(prev => prev + 1);
   };
@@ -228,7 +223,7 @@ const Surveys = () => {
                   <SurveyList 
                     surveys={surveys} 
                     onSendReminder={handleSendReminder}
-                    refreshList={refreshSurveys} // Pass the refresh function
+                    refreshList={refreshSurveys}
                   />
                 </div>
                 
