@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { cn } from '../../lib/utils';
 
@@ -7,6 +8,7 @@ interface RatingQuestionProps {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   required?: boolean;
+  error?: string | undefined;
 }
 
 const RatingQuestion: React.FC<RatingQuestionProps> = ({
@@ -14,7 +16,8 @@ const RatingQuestion: React.FC<RatingQuestionProps> = ({
   name,
   value,
   onChange,
-  required = true
+  required = true,
+  error
 }) => {
   const options = ['Strongly Disagree', 'Disagree', 'Agree', 'Strongly Agree'];
 
@@ -32,7 +35,9 @@ const RatingQuestion: React.FC<RatingQuestionProps> = ({
                 "flex flex-col items-center justify-center p-2 rounded-md transition-all border cursor-pointer",
                 value === option
                   ? "bg-brandPurple-100 border-brandPurple-400 shadow-sm" 
-                  : "hover:bg-gray-50 border-gray-200",
+                  : error 
+                    ? "hover:bg-gray-50 border-red-500" 
+                    : "hover:bg-gray-50 border-gray-200",
                 "hover:shadow-sm"
               )}
               onClick={() => {
@@ -54,6 +59,7 @@ const RatingQuestion: React.FC<RatingQuestionProps> = ({
                 onChange={onChange}
                 className="h-4 w-4 text-brandPurple-600 focus:ring-brandPurple-500 border-gray-300 sr-only"
                 required={required}
+                aria-invalid={error ? 'true' : 'false'}
               />
               <label htmlFor={`${name}-${option}`} className="text-sm text-gray-700 cursor-pointer whitespace-normal text-center">
                 {option}
@@ -61,6 +67,9 @@ const RatingQuestion: React.FC<RatingQuestionProps> = ({
             </div>
           ))}
         </div>
+        {error && (
+          <p className="text-red-500 text-sm mt-1" role="alert">{error}</p>
+        )}
       </fieldset>
     </div>
   );
