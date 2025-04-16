@@ -12,6 +12,7 @@ interface CustomQuestionsSectionProps {
   onResponse: (questionId: string, value: string) => void;
   isLoading?: boolean;
   error?: string | null;
+  validationErrors?: string[];
 }
 
 const CustomQuestionsSection: React.FC<CustomQuestionsSectionProps> = ({
@@ -19,7 +20,8 @@ const CustomQuestionsSection: React.FC<CustomQuestionsSectionProps> = ({
   responses,
   onResponse,
   isLoading = false,
-  error = null
+  error = null,
+  validationErrors = []
 }) => {
   if (isLoading) {
     return (
@@ -57,6 +59,13 @@ const CustomQuestionsSection: React.FC<CustomQuestionsSectionProps> = ({
 
   console.log('Rendering questions in CustomQuestionsSection:', questions);
 
+  // Helper function to check if a custom question has validation error
+  const hasQuestionError = (questionId: string, questionText: string): boolean => {
+    return validationErrors.some(error => 
+      error.includes(questionId) || error.includes(questionText)
+    );
+  };
+
   return (
     <div className="mt-12 pt-6 border-t border-gray-200">
       <h3 className="text-lg font-medium mb-6">Additional Questions</h3>
@@ -76,6 +85,7 @@ const CustomQuestionsSection: React.FC<CustomQuestionsSectionProps> = ({
           }
           
           const currentValue = responses[question.id] || '';
+          const hasError = hasQuestionError(question.id, question.text);
           
           const isMultipleChoice = 
             question.type === 'multiple_choice' && 
@@ -92,6 +102,7 @@ const CustomQuestionsSection: React.FC<CustomQuestionsSectionProps> = ({
                 options={question.options || []}
                 value={currentValue}
                 onChange={(e) => onResponse(question.id, e.target.value)}
+                error={hasError ? 'This field is required' : undefined}
               />
             );
           }
@@ -103,6 +114,7 @@ const CustomQuestionsSection: React.FC<CustomQuestionsSectionProps> = ({
               name={`custom-${question.id}`}
               value={currentValue}
               onChange={(e) => onResponse(question.id, e.target.value)}
+              error={hasError ? 'This field is required' : undefined}
             />
           );
         })}

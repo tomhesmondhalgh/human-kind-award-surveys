@@ -7,7 +7,7 @@ import SubmitButton from './SubmitButton';
 import { useSurveyCustomQuestions } from '../../hooks/useSurveyCustomQuestions';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '../ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
 interface SurveyFormContentProps {
   formData: SurveyFormData;
@@ -106,9 +106,9 @@ const SurveyFormContent: React.FC<SurveyFormContentProps> = ({
     <>
       {validationErrors.length > 0 && (
         <Alert variant="destructive" className="mb-6">
-          <AlertCircle className="h-4 w-4" />
+          <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            <div className="font-medium">Please fix the following errors:</div>
+            <div className="font-medium">Please complete the following required fields:</div>
             <ul className="list-disc pl-5 mt-2">
               {validationErrors.map((error, index) => (
                 <li key={index}>{error}</li>
@@ -132,6 +132,7 @@ const SurveyFormContent: React.FC<SurveyFormContentProps> = ({
             <StandardQuestions 
               formData={formData} 
               handleInputChange={handleInputChange} 
+              validationErrors={validationErrors}
             />
             
             <CustomQuestionsSection 
@@ -140,6 +141,7 @@ const SurveyFormContent: React.FC<SurveyFormContentProps> = ({
               onResponse={handleQuestionResponse}
               isLoading={isLoading}
               error={error}
+              validationErrors={validationErrors}
             />
           </>
         )}
