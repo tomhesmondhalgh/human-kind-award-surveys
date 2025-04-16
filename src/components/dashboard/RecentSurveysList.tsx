@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -13,7 +12,11 @@ interface RecentSurveysListProps {
 const RecentSurveysList = ({ surveys, isLoading }: RecentSurveysListProps) => {
   const formatDate = (dateString: string) => {
     try {
-      return format(new Date(dateString), 'MMMM d, yyyy');
+      return new Date(dateString).toLocaleDateString('en-GB', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+      });
     } catch (error) {
       console.error('Error formatting date:', error);
       return dateString;
@@ -82,7 +85,6 @@ const RecentSurveysList = ({ surveys, isLoading }: RecentSurveysListProps) => {
         
         <div className="divide-y divide-gray-100">
           {surveys.map((survey) => {
-            // Calculate the correct status for each survey
             const status = getSurveyStatus(survey.date, survey.close_date);
             
             return (

@@ -104,7 +104,6 @@ const SurveyForm: React.FC<SurveyFormProps> = ({
           throw error;
         }
         
-        // Convert types properly
         setCustomQuestions(fixCustomQuestionTypes(data || []));
         
       } catch (error) {
@@ -201,7 +200,7 @@ const SurveyForm: React.FC<SurveyFormProps> = ({
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
               {form.getValues("date") ? (
-                new Date(form.getValues("date")).toLocaleDateString("en-US", {
+                new Date(form.getValues("date")).toLocaleDateString("en-GB", {
                   year: "numeric",
                   month: "long",
                   day: "numeric",
@@ -237,7 +236,7 @@ const SurveyForm: React.FC<SurveyFormProps> = ({
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
               {form.getValues("closeDate") ? (
-                new Date(form.getValues("closeDate")).toLocaleDateString("en-US", {
+                new Date(form.getValues("closeDate")).toLocaleDateString("en-GB", {
                   year: "numeric",
                   month: "long",
                   day: "numeric",
