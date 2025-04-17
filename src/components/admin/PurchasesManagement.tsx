@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { 
@@ -59,6 +60,7 @@ const PurchasesManagement = () => {
         .rpc('admin_get_all_payments');
 
       if (error) {
+        console.error('Error fetching purchases:', error);
         throw error;
       }
 
