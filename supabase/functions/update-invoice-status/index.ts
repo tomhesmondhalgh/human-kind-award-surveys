@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
@@ -261,6 +262,25 @@ async function handleUpdatePaymentStatus(
         }
         
         console.log("Subscription updated successfully");
+
+        // Also update any other pending subscriptions for this user with the same plan type to inactive
+        // This ensures only one subscription per plan type is active at a time
+        if (subscription && subscription.user_id) {
+          const { error: deactivateError } = await supabase
+            .from('subscriptions')
+            .update({
+              status: 'inactive'
+            })
+            .eq('user_id', subscription.user_id)
+            .eq('plan_type', subscription.plan_type)
+            .neq('id', payment.subscription_id)
+            .eq('status', 'pending');
+            
+          if (deactivateError) {
+            console.error("Error deactivating other pending subscriptions:", deactivateError);
+            // Don't return an error, as the main operation succeeded
+          }
+        }
       } catch (error) {
         console.error("Error in subscription update process:", error);
         return new Response(
