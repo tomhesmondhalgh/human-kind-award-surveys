@@ -36,7 +36,12 @@ const PurchasesManagement = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 10;
+  
+  // Log admin status check
   const { isAdmin, isLoading: adminCheckLoading } = useAdminRole();
+  console.log('PurchasesManagement - isAdmin:', isAdmin, 'isLoading:', adminCheckLoading);
+  
+  // Only fetch purchases when admin check is complete and user is admin
   const { purchases, loading, error, fetchPurchases } = usePurchases(isAdmin && !adminCheckLoading);
 
   const getStatusBadge = (status: string) => {
@@ -102,6 +107,7 @@ const PurchasesManagement = () => {
   };
 
   const handleRefresh = () => {
+    console.log('Refreshing purchases data...');
     fetchPurchases();
     toast.info('Refreshing purchase data...');
   };
@@ -121,6 +127,7 @@ const PurchasesManagement = () => {
   }
 
   if (!isAdmin) {
+    console.log('User is not an admin - showing access denied message');
     return (
       <Card>
         <CardHeader>
