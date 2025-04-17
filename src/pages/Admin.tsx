@@ -8,7 +8,7 @@ import CustomScriptsManagement from '../components/admin/CustomScriptsManagement
 import { useAdminRole } from '../hooks/useAdminRole';
 import { Navigate } from 'react-router-dom';
 import { useTestingMode } from '../contexts/TestingModeContext';
-import AdminPurchasesManagement from '../components/admin/AdminPurchasesManagement';
+import NewPurchasesManagement from '../components/admin/NewPurchasesManagement';
 
 const Admin = () => {
   const { isAdmin, isLoading } = useAdminRole();
@@ -48,7 +48,7 @@ const Admin = () => {
           </TabsList>
           
           <TabsContent value="purchases">
-            <AdminPurchasesManagement />
+            <NewPurchasesManagement />
           </TabsContent>
           
           <TabsContent value="plans">

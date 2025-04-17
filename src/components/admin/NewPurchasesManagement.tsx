@@ -5,7 +5,7 @@ import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { AlertCircle, Search, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
-import { useAdminPurchases, PurchaseRecord } from '../../hooks/useAdminPurchases';
+import { useAdminPurchaseRecords, PurchaseRecord } from '../../hooks/useAdminPurchaseRecords';
 import { NewPurchasesTable } from './NewPurchasesTable';
 import { NewUpdatePurchaseDialog } from './NewUpdatePurchaseDialog';
 import { NewPagination } from './NewPagination';
@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 
 const NewPurchasesManagement = () => {
   // States for managing purchases data
-  const { purchases, loading, error, isAdmin, adminCheckComplete, refreshPurchases } = useAdminPurchases();
+  const { purchases, loading, error, isAdmin, adminCheckComplete, refreshPurchases } = useAdminPurchaseRecords();
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 10;
@@ -161,7 +161,7 @@ const NewPurchasesManagement = () => {
               onPageChange={handlePageChange}
             />
             
-            {filteredPurchases.length === 0 && (
+            {filteredPurchases.length === 0 && searchQuery && (
               <div className="text-center py-8 text-muted-foreground">
                 No purchases match your search criteria
               </div>

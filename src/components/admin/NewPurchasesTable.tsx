@@ -11,7 +11,7 @@ import {
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Pencil, FileText, CreditCard } from "lucide-react";
-import { PurchaseRecord } from "../../hooks/useAdminPurchases";
+import { PurchaseRecord } from "../../hooks/useAdminPurchaseRecords";
 
 interface PurchasesTableProps {
   purchases: PurchaseRecord[];
