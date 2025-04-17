@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { 
@@ -20,7 +19,7 @@ import {
 import { Button } from "../ui/button";
 import { toast } from "sonner";
 import { Input } from "../ui/input";
-import { Pencil, CheckCircle, XCircle, CreditCard, FileText, Search } from "lucide-react";
+import { Pencil, CreditCard, FileText, Search } from "lucide-react";
 import { UpdateInvoiceDialog } from './UpdateInvoiceDialog';
 import { formatCurrency } from '../../lib/utils';
 import Pagination from '../surveys/Pagination';
@@ -71,6 +70,8 @@ const PurchasesManagement = () => {
         throw error;
       }
 
+      console.log('Total Payment Records:', payments?.length);
+
       // For each payment, if subscription data is missing, attempt to fetch it directly
       const enhancedPayments = await Promise.all(payments.map(async (payment) => {
         if (payment.subscription) {
@@ -107,6 +108,7 @@ const PurchasesManagement = () => {
       }));
 
       setPurchases(enhancedPayments);
+      console.log('Enhanced Payment Records:', enhancedPayments.length);
     } catch (error) {
       console.error('Error fetching purchases:', error);
       toast.error('Failed to load purchases data');
@@ -159,7 +161,6 @@ const PurchasesManagement = () => {
     }
   };
 
-  // Filter purchases based on search query
   const filteredPurchases = purchases.filter(purchase => {
     const searchLower = searchQuery.toLowerCase();
     return (
@@ -173,7 +174,6 @@ const PurchasesManagement = () => {
     );
   });
 
-  // Pagination calculation
   const totalPages = Math.ceil(filteredPurchases.length / recordsPerPage);
   const indexOfLastRecord = currentPage * recordsPerPage;
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
