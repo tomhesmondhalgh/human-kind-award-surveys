@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   Table, 
   TableBody, 
@@ -53,51 +53,92 @@ const PurchasesManagement = () => {
   const fetchPurchases = async () => {
     setLoading(true);
     try {
-      console.log('Fetching purchases data using admin_get_all_payments RPC function...');
+      console.log('Fetching purchases data...');
       
-      // Using the admin_get_all_payments RPC function to fetch all payment records
-      // This function now has fixed the column ambiguity by specifying table aliases
-      const { data: payments, error } = await supabase
-        .rpc('admin_get_all_payments');
+      // Try a different approach - fetch the tables separately and join them in JS
+      // This avoids the column ambiguity in SQL
+      
+      // First, fetch the payment history
+      const { data: paymentData, error: paymentError } = await supabase
+        .from('payment_history')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching purchases:', error);
-        throw error;
+      if (paymentError) {
+        console.error('Error fetching payment history:', paymentError);
+        toast.error('Failed to load purchases data');
+        setLoading(false);
+        return;
       }
 
-      console.log('Total Payment Records:', payments?.length || 0);
-      console.log('First payment record:', payments?.[0] || 'No records found');
-
-      if (!payments || payments.length === 0) {
-        console.log('No payment records found or empty array returned');
+      console.log('Payment history records found:', paymentData?.length || 0);
+      
+      if (!paymentData || paymentData.length === 0) {
+        console.log('No payment records found');
         setPurchases([]);
         setLoading(false);
         return;
       }
 
-      // Convert to Purchase type (the RPC already includes plan_type and purchase_type)
-      const enhancedPayments = payments.map(payment => ({
-        ...payment,
-        id: payment.id,
-        subscription_id: payment.subscription_id,
-        payment_method: payment.payment_method,
-        amount: payment.amount,
-        currency: payment.currency || 'GBP',
-        payment_status: payment.payment_status || 'pending',
-        invoice_number: payment.invoice_number,
-        billing_school_name: payment.billing_school_name,
-        billing_contact_name: payment.billing_contact_name,
-        billing_contact_email: payment.billing_contact_email,
-        billing_address: payment.billing_address,
-        created_at: payment.created_at,
-        plan_type: payment.plan_type || 'unknown',
-        purchase_type: payment.purchase_type || 'unknown'
-      }));
+      // Next, fetch subscription data for all the payments
+      const subscriptionIds = paymentData
+        .map(payment => payment.subscription_id)
+        .filter(Boolean); // Remove any nulls
+      
+      console.log('Fetching subscriptions for IDs:', subscriptionIds);
+      
+      // If there are no subscription IDs, we can skip this step
+      let subscriptionData: any[] = [];
+      if (subscriptionIds.length > 0) {
+        const { data: subData, error: subError } = await supabase
+          .from('subscriptions')
+          .select('id, plan_type, purchase_type')
+          .in('id', subscriptionIds);
+
+        if (subError) {
+          console.error('Error fetching subscriptions:', subError);
+          // Continue anyway, we'll just have missing data
+        } else {
+          subscriptionData = subData || [];
+          console.log('Subscription records found:', subscriptionData.length);
+        }
+      }
+
+      // Create a map for quick lookup
+      const subscriptionMap = new Map();
+      subscriptionData.forEach(sub => {
+        subscriptionMap.set(sub.id, {
+          plan_type: sub.plan_type,
+          purchase_type: sub.purchase_type
+        });
+      });
+
+      // Combine the data
+      const enhancedPayments = paymentData.map(payment => {
+        const subInfo = subscriptionMap.get(payment.subscription_id) || {};
+        
+        return {
+          id: payment.id,
+          subscription_id: payment.subscription_id,
+          payment_method: payment.payment_method,
+          amount: payment.amount,
+          currency: payment.currency || 'GBP',
+          payment_status: payment.payment_status || 'pending',
+          invoice_number: payment.invoice_number,
+          billing_school_name: payment.billing_school_name,
+          billing_contact_name: payment.billing_contact_name,
+          billing_contact_email: payment.billing_contact_email,
+          billing_address: payment.billing_address,
+          created_at: payment.created_at,
+          plan_type: subInfo.plan_type || 'unknown',
+          purchase_type: subInfo.purchase_type || 'unknown'
+        };
+      });
 
       setPurchases(enhancedPayments);
       console.log('Enhanced Payment Records:', enhancedPayments.length);
     } catch (error) {
-      console.error('Error fetching purchases:', error);
+      console.error('Error in fetchPurchases:', error);
       toast.error('Failed to load purchases data');
     } finally {
       setLoading(false);
