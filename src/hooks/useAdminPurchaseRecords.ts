@@ -74,7 +74,7 @@ export const useAdminPurchaseRecords = () => {
     fetchPayments();
   }, [adminCheckComplete, isAdmin]);
 
-  // Use a RPC function call to get all payments
+  // Direct query to get all payments
   const fetchPayments = async () => {
     setLoading(true);
     setError(null);
@@ -82,7 +82,7 @@ export const useAdminPurchaseRecords = () => {
     try {
       console.log('Fetching all payment records as admin...');
       
-      // Try a direct query first
+      // Direct query to the payment_history table
       const { data, error } = await supabase
         .from('payment_history')
         .select(`
@@ -100,7 +100,7 @@ export const useAdminPurchaseRecords = () => {
         return;
       }
       
-      console.log(`Successfully fetched ${data?.length || 0} payment records`);
+      console.log(`Successfully fetched ${data?.length || 0} payment records:`, data);
       
       if (!data || data.length === 0) {
         setPurchases([]);
@@ -126,6 +126,7 @@ export const useAdminPurchaseRecords = () => {
         purchase_type: item.subscriptions?.purchase_type || 'unknown'
       }));
       
+      console.log('Formatted purchase data:', formattedData);
       setPurchases(formattedData);
     } catch (err: any) {
       console.error('Critical error in fetchPayments:', err);

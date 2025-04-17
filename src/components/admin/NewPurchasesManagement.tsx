@@ -22,6 +22,11 @@ const NewPurchasesManagement = () => {
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
   const [selectedPurchase, setSelectedPurchase] = useState<PurchaseRecord | null>(null);
 
+  // Added debug log to track data
+  useEffect(() => {
+    console.log('Current purchases data:', purchases);
+  }, [purchases]);
+
   // Reset to first page when search query changes
   useEffect(() => {
     setCurrentPage(1);
