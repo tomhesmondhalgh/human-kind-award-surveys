@@ -38,8 +38,8 @@ export const usePurchases = (isAdmin: boolean) => {
         return;
       }
       
-      // Using the direct query approach that's proven to work
-      const { data: directData, error: directError } = await supabase
+      // Fetch payment history directly
+      const { data: paymentData, error: paymentError } = await supabase
         .from('payment_history')
         .select(`
           *,
@@ -50,24 +50,24 @@ export const usePurchases = (isAdmin: boolean) => {
         `)
         .order('created_at', { ascending: false });
       
-      console.log('Query result:', directData?.length || 0, 'records found');
-      
-      if (directError) {
-        console.error('Error with query:', directError);
-        setError(`Database query error: ${directError.message}`);
+      if (paymentError) {
+        console.error('Error fetching payment history:', paymentError);
+        setError(`Failed to load payment data: ${paymentError.message}`);
         setLoading(false);
         return;
       }
       
-      if (!directData || directData.length === 0) {
-        console.log('No payment records were found');
-        setError('No payment records were found in the database.');
+      console.log('Payment data retrieved:', paymentData?.length || 0, 'records');
+      
+      if (!paymentData || paymentData.length === 0) {
+        console.log('No payment records found');
+        setPurchases([]);
         setLoading(false);
         return;
       }
       
       // Format the data for display
-      const formattedData = directData.map(item => ({
+      const formattedData = paymentData.map(item => ({
         id: item.id,
         subscription_id: item.subscription_id,
         amount: item.amount,
