@@ -14,21 +14,39 @@ export const usePurchases = (isAdmin: boolean) => {
     
     try {
       console.log('Fetching ALL purchases data as admin...', { isAdmin });
-      console.log('Current user admin status:', isAdmin);
+      console.log('Current user ID:', await supabase.auth.getUser());
+      console.log('Is admin parameter:', isAdmin);
+      
+      // Fetch the current user's profile to verify admin status
+      const { data: userProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', (await supabase.auth.getUser()).data.user?.id)
+        .single();
+      
+      console.log('User Profile:', userProfile);
+      console.log('Profile Error:', profileError);
+
+      // Verify admin status before attempting to fetch purchases
+      if (!userProfile?.is_admin) {
+        console.error('User is not an admin');
+        setError('User does not have admin privileges');
+        setLoading(false);
+        return;
+      }
       
       // Try the RPC function first
       const { data: functionData, error: functionError } = await supabase
         .rpc('admin_get_all_payments');
       
+      console.log('RPC Function Data:', functionData);
+      console.log('RPC Function Error:', functionError);
+
       if (functionError) {
         console.error('Error with admin_get_all_payments function:', functionError);
         setError(`Database function error: ${functionError.message}`);
         
         // If the RPC function fails, try a direct query as a fallback
-        console.log('RPC function returned no data');
-        console.log('RPC approach failed or returned no data, trying comprehensive direct query...');
-        
-        // Direct query fallback - this should have the same logic as the RPC function
         const { data: directData, error: directError } = await supabase
           .from('payment_history')
           .select(`
@@ -40,6 +58,9 @@ export const usePurchases = (isAdmin: boolean) => {
           `)
           .order('created_at', { ascending: false });
         
+        console.log('Direct Query Data:', directData);
+        console.log('Direct Query Error:', directError);
+
         if (directError) {
           console.error('Error with direct query fallback:', directError);
           setError(`Database query error: ${directError.message}`);
@@ -47,10 +68,6 @@ export const usePurchases = (isAdmin: boolean) => {
         }
         
         if (directData && directData.length > 0) {
-          console.log(`Total payments retrieved from direct query: ${directData.length}`);
-          console.log('First payment in direct query:', directData[0]);
-          
-          // Transform the data to match the expected format
           const formattedData = directData.map(item => ({
             id: item.id,
             subscription_id: item.subscription_id,
@@ -69,19 +86,17 @@ export const usePurchases = (isAdmin: boolean) => {
             purchase_type: item.subscriptions?.purchase_type || 'unknown'
           }));
           
+          console.log('Formatted Purchases:', formattedData);
           setPurchases(formattedData);
           return;
-        } else {
-          console.log('No payments found in direct query fallback');
         }
       }
       
       if (functionData && functionData.length > 0) {
         console.log(`Total payments retrieved from RPC: ${functionData.length}`);
-        console.log('First payment in RPC result:', functionData[0]);
         setPurchases(functionData);
       } else {
-        console.log('No payment records were found via RPC');
+        console.log('No payment records were found');
         setError('No payment records were found in the database.');
       }
     } catch (error) {
