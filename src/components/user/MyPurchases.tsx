@@ -1,29 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "../ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { Badge } from "../ui/badge";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from "../ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
 import { CreditCard, FileText, AlertCircle, ListTodo } from "lucide-react";
 import { formatCurrency } from '../../lib/utils';
 import PageTitle from '../ui/PageTitle';
 import { useSubscription } from '../../hooks/useSubscription';
-
 export type Purchase = {
   id: string;
   subscription_id: string;
@@ -40,7 +26,6 @@ export type Purchase = {
   plan_type: string;
   purchase_type: string;
 };
-
 export type Subscription = {
   id: string;
   plan_type: string;
@@ -49,35 +34,30 @@ export type Subscription = {
   end_date: string;
   purchase_type: string;
 };
-
 const MyPurchases = () => {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [activeSubscription, setActiveSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [cancellingSubscription, setCancellingSubscription] = useState(false);
-  const { user } = useAuth();
-  const { subscription, isLoading: isSubscriptionLoading } = useSubscription();
-
+  const {
+    user
+  } = useAuth();
+  const {
+    subscription,
+    isLoading: isSubscriptionLoading
+  } = useSubscription();
   const fetchPurchases = async () => {
     if (!user) return;
-
     setLoading(true);
     try {
-      const { data: subscriptions, error: subError } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', user.id);
-
+      const {
+        data: subscriptions,
+        error: subError
+      } = await supabase.from('subscriptions').select('*').eq('user_id', user.id);
       if (subError) {
         throw subError;
       }
-
-      const active = subscriptions?.find(sub => 
-        sub.status === 'active' && 
-        sub.purchase_type === 'subscription' &&
-        (sub.end_date === null || new Date(sub.end_date) > new Date())
-      );
-      
+      const active = subscriptions?.find(sub => sub.status === 'active' && sub.purchase_type === 'subscription' && (sub.end_date === null || new Date(sub.end_date) > new Date()));
       if (active) {
         setActiveSubscription({
           id: active.id,
@@ -88,38 +68,33 @@ const MyPurchases = () => {
           purchase_type: active.purchase_type
         });
       }
-
       if (!subscriptions || subscriptions.length === 0) {
         setPurchases([]);
         setLoading(false);
         return;
       }
-
       const subscriptionIds = subscriptions.map(sub => sub.id);
-
-      const { data: payments, error: paymentError } = await supabase
-        .from('payment_history')
-        .select(`
+      const {
+        data: payments,
+        error: paymentError
+      } = await supabase.from('payment_history').select(`
           *,
           subscription:subscriptions (
             id,
             plan_type,
             purchase_type
           )
-        `)
-        .in('subscription_id', subscriptionIds)
-        .order('created_at', { ascending: false });
-
+        `).in('subscription_id', subscriptionIds).order('created_at', {
+        ascending: false
+      });
       if (paymentError) {
         throw paymentError;
       }
-
       const formattedPurchases = payments.map(item => ({
         ...item,
         plan_type: item.subscription?.plan_type || 'unknown',
         purchase_type: item.subscription?.purchase_type || 'unknown'
       }));
-
       setPurchases(formattedPurchases);
     } catch (error) {
       console.error('Error fetching purchases:', error);
@@ -128,29 +103,27 @@ const MyPurchases = () => {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     if (user) {
       fetchPurchases();
     }
   }, [user]);
-
   const handleCancelSubscription = async () => {
     if (!user || !activeSubscription) return;
-    
     setCancellingSubscription(true);
     try {
-      const { data, error } = await supabase.functions.invoke('cancel-subscription', {
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('cancel-subscription', {
         body: {
           subscriptionId: activeSubscription.id,
           userId: user.id
         }
       });
-
       if (error) {
         throw error;
       }
-
       toast.success('Your subscription has been scheduled to cancel at the end of the current billing period');
       fetchPurchases();
     } catch (error) {
@@ -160,7 +133,6 @@ const MyPurchases = () => {
       setCancellingSubscription(false);
     }
   };
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'payment_made':
@@ -177,7 +149,6 @@ const MyPurchases = () => {
         return <Badge className="bg-gray-500">{status}</Badge>;
     }
   };
-
   const getPaymentMethodIcon = (method: string) => {
     switch (method) {
       case 'stripe':
@@ -188,30 +159,21 @@ const MyPurchases = () => {
         return null;
     }
   };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-GB');
   };
-
   const formatPlanName = (planType: string | undefined) => {
     if (!planType) return 'Free';
     return planType.charAt(0).toUpperCase() + planType.slice(1);
   };
-
   const formatRoleName = (role: string | null) => {
     if (!role) return 'No Role';
-    return role
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
+    return role.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
-
-  return (
-    <div className="container py-8">
+  return <div className="container py-8">
       <PageTitle title="My Purchases" subtitle="View your purchases including credit card payments and invoices" />
       
-      {activeSubscription && (
-        <Card className="mb-8">
+      {activeSubscription && <Card className="mb-8">
           <CardHeader>
             <CardTitle>Active Subscription</CardTitle>
             <CardDescription>
@@ -238,18 +200,11 @@ const MyPurchases = () => {
               </div>
               
               <div className="flex justify-end">
-                <Button 
-                  variant="destructive" 
-                  onClick={handleCancelSubscription}
-                  disabled={cancellingSubscription}
-                >
-                  {cancellingSubscription ? 'Cancelling...' : 'Cancel at Next Renewal'}
-                </Button>
+                
               </div>
             </div>
           </CardContent>
-        </Card>
-      )}
+        </Card>}
 
       <Card className="mb-12">
         <CardHeader>
@@ -259,17 +214,11 @@ const MyPurchases = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="text-center py-4">Loading purchases data...</div>
-          ) : (
-            <div className="overflow-x-auto">
-              {purchases.length === 0 ? (
-                <div className="text-center py-8 flex flex-col items-center">
+          {loading ? <div className="text-center py-4">Loading purchases data...</div> : <div className="overflow-x-auto">
+              {purchases.length === 0 ? <div className="text-center py-8 flex flex-col items-center">
                   <AlertCircle className="h-8 w-8 text-muted-foreground mb-2" />
                   <p className="text-lg text-muted-foreground">No purchases found</p>
-                </div>
-              ) : (
-                <Table>
+                </div> : <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Date</TableHead>
@@ -282,8 +231,7 @@ const MyPurchases = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {purchases.map((purchase) => (
-                      <TableRow key={purchase.id}>
+                    {purchases.map(purchase => <TableRow key={purchase.id}>
                         <TableCell>
                           {formatDate(purchase.created_at)}
                         </TableCell>
@@ -314,48 +262,14 @@ const MyPurchases = () => {
                         <TableCell>
                           {getStatusBadge(purchase.payment_status)}
                         </TableCell>
-                      </TableRow>
-                    ))}
+                      </TableRow>)}
                   </TableBody>
-                </Table>
-              )}
-            </div>
-          )}
+                </Table>}
+            </div>}
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Current Plan</CardTitle>
-          <CardDescription>
-            Your current plan details
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isSubscriptionLoading ? (
-            <div className="text-center py-4">Loading account information...</div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5 text-primary" />
-                  <h3 className="font-medium text-lg">Subscription Plan</h3>
-                </div>
-                <div className="pl-7">
-                  <span className="text-xl font-semibold capitalize">
-                    {subscription?.plan ? subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1) : 'Free'}
-                  </span>
-                  <Badge className={`ml-2 ${subscription?.isActive ? 'bg-green-500' : 'bg-red-500'}`}>
-                    {subscription?.isActive ? 'Active' : 'Inactive'}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
+      
+    </div>;
 };
-
 export default MyPurchases;
