@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { 
@@ -54,8 +53,10 @@ const PurchasesManagement = () => {
   const fetchPurchases = async () => {
     setLoading(true);
     try {
+      console.log('Fetching purchases data using admin_get_all_payments RPC function...');
+      
       // Using the admin_get_all_payments RPC function to fetch all payment records
-      // This bypasses Row Level Security for admin users
+      // This function now has fixed the column ambiguity by specifying table aliases
       const { data: payments, error } = await supabase
         .rpc('admin_get_all_payments');
 
@@ -64,7 +65,15 @@ const PurchasesManagement = () => {
         throw error;
       }
 
-      console.log('Total Payment Records:', payments?.length);
+      console.log('Total Payment Records:', payments?.length || 0);
+      console.log('First payment record:', payments?.[0] || 'No records found');
+
+      if (!payments || payments.length === 0) {
+        console.log('No payment records found or empty array returned');
+        setPurchases([]);
+        setLoading(false);
+        return;
+      }
 
       // Convert to Purchase type (the RPC already includes plan_type and purchase_type)
       const enhancedPayments = payments.map(payment => ({
