@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -299,7 +300,10 @@ const MyPurchases = () => {
                             {purchase.purchase_type}
                           </div>
                         </TableCell>
-                        <TableCell>{formatCurrency(purchase.amount, purchase.currency)}</TableCell>
+                        <TableCell>
+                          {/* Use the improved formatCurrency function with automatic detection */}
+                          {formatCurrency(purchase.amount, purchase.currency, purchase.amount > 10000)}
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center">
                             {getPaymentMethodIcon(purchase.payment_method)}
