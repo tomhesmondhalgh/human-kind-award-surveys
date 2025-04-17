@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { 
@@ -54,109 +53,59 @@ const PurchasesManagement = () => {
   const fetchPurchases = async () => {
     setLoading(true);
     try {
-      console.log('Fetching all purchases data as admin...');
+      console.log('Fetching ALL purchases data as admin...');
       
-      // Approach 1: Try using the admin_get_all_payments function first
+      // First, try RPC function for admin payments
       const { data: functionData, error: functionError } = await supabase
         .rpc('admin_get_all_payments');
       
       if (functionError) {
         console.error('Error with admin_get_all_payments function:', functionError);
-        // Don't throw error yet, try backup approach
       }
       
       if (functionData && functionData.length > 0) {
         console.log('Successfully retrieved payments via RPC function, count:', functionData.length);
+        console.log('First payment details:', functionData[0]);
         setPurchases(functionData);
         setLoading(false);
         return;
       }
       
-      console.log('RPC approach failed or returned no data, trying direct query approach...');
+      console.log('RPC approach failed or returned no data, trying comprehensive direct query...');
       
-      // Approach 2: Direct query as a backup
-      // First, fetch the payment history
+      // Comprehensive direct query across tables
       const { data: paymentData, error: paymentError } = await supabase
         .from('payment_history')
-        .select('*')
+        .select(`
+          *,
+          subscriptions (
+            plan_type,
+            purchase_type
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (paymentError) {
-        console.error('Error fetching payment history:', paymentError);
-        toast.error('Failed to load purchases data');
-        setLoading(false);
-        return;
+        console.error('Error fetching comprehensive payment data:', paymentError);
+        throw paymentError;
       }
 
-      console.log('Payment history records found:', paymentData?.length || 0);
-      
-      if (!paymentData || paymentData.length === 0) {
-        console.log('No payment records found');
-        setPurchases([]);
-        setLoading(false);
-        return;
+      console.log('Total payments retrieved:', paymentData?.length || 0);
+      if (paymentData && paymentData.length > 0) {
+        console.log('First payment in direct query:', paymentData[0]);
       }
 
-      // Next, fetch subscription data for all the payments
-      const subscriptionIds = paymentData
-        .map(payment => payment.subscription_id)
-        .filter(Boolean); // Remove any nulls
-      
-      console.log('Fetching subscriptions for IDs:', subscriptionIds);
-      
-      // If there are no subscription IDs, we can skip this step
-      let subscriptionData: any[] = [];
-      if (subscriptionIds.length > 0) {
-        const { data: subData, error: subError } = await supabase
-          .from('subscriptions')
-          .select('id, plan_type, purchase_type')
-          .in('id', subscriptionIds);
-
-        if (subError) {
-          console.error('Error fetching subscriptions:', subError);
-          // Continue anyway, we'll just have missing data
-        } else {
-          subscriptionData = subData || [];
-          console.log('Subscription records found:', subscriptionData.length);
-        }
-      }
-
-      // Create a map for quick lookup
-      const subscriptionMap = new Map();
-      subscriptionData.forEach(sub => {
-        subscriptionMap.set(sub.id, {
-          plan_type: sub.plan_type,
-          purchase_type: sub.purchase_type
-        });
-      });
-
-      // Combine the data
-      const enhancedPayments = paymentData.map(payment => {
-        const subInfo = subscriptionMap.get(payment.subscription_id) || {};
-        
-        return {
-          id: payment.id,
-          subscription_id: payment.subscription_id,
-          payment_method: payment.payment_method,
-          amount: payment.amount,
-          currency: payment.currency || 'GBP',
-          payment_status: payment.payment_status || 'pending',
-          invoice_number: payment.invoice_number,
-          billing_school_name: payment.billing_school_name,
-          billing_contact_name: payment.billing_contact_name,
-          billing_contact_email: payment.billing_contact_email,
-          billing_address: payment.billing_address,
-          created_at: payment.created_at,
-          plan_type: subInfo.plan_type || 'unknown',
-          purchase_type: subInfo.purchase_type || 'unknown'
-        };
-      });
+      // Enhanced mapping of payment data
+      const enhancedPayments = paymentData.map(payment => ({
+        ...payment,
+        plan_type: payment.subscriptions?.plan_type || 'unknown',
+        purchase_type: payment.subscriptions?.purchase_type || 'unknown'
+      }));
 
       setPurchases(enhancedPayments);
-      console.log('Enhanced Payment Records:', enhancedPayments.length);
     } catch (error) {
-      console.error('Error in fetchPurchases:', error);
-      toast.error('Failed to load purchases data');
+      console.error('Critical error in fetchPurchases:', error);
+      toast.error('Failed to load ALL purchases data');
     } finally {
       setLoading(false);
     }
