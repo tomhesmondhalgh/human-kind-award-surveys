@@ -66,7 +66,7 @@ export const PurchasesTable: React.FC<PurchasesTableProps> = ({
                   {purchase.purchase_type}
                 </div>
               </TableCell>
-              <TableCell>{formatCurrency(purchase.amount, purchase.currency)}</TableCell>
+              <TableCell>{formatCurrency(purchase.amount, purchase.currency, purchase.amount > 10000)}</TableCell>
               <TableCell>
                 <div className="flex items-center">
                   {getPaymentMethodIcon(purchase.payment_method)}

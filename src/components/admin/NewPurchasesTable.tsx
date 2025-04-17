@@ -12,6 +12,7 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Pencil, FileText, CreditCard } from "lucide-react";
 import { PurchaseRecord } from "../../hooks/useAdminPurchaseRecords";
+import { formatCurrency } from "../../lib/utils";
 
 interface PurchasesTableProps {
   purchases: PurchaseRecord[];
@@ -22,15 +23,6 @@ export const NewPurchasesTable: React.FC<PurchasesTableProps> = ({
   purchases,
   onUpdatePurchase
 }) => {
-  // Format currency with appropriate symbol
-  const formatCurrency = (amount: number, currency: string = 'GBP') => {
-    let symbol = '£';
-    if (currency === 'USD') symbol = '$';
-    else if (currency === 'EUR') symbol = '€';
-    
-    return `${symbol}${amount.toFixed(2)}`;
-  };
-
   // Get appropriate badge for each status
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -103,7 +95,10 @@ export const NewPurchasesTable: React.FC<PurchasesTableProps> = ({
                     {purchase.purchase_type}
                   </div>
                 </TableCell>
-                <TableCell>{formatCurrency(purchase.amount, purchase.currency)}</TableCell>
+                <TableCell>
+                  {/* Format currency with auto-detection of amount scale */}
+                  {formatCurrency(purchase.amount, purchase.currency, purchase.amount > 10000)}
+                </TableCell>
                 <TableCell>
                   <div className="flex items-center">
                     {getPaymentMethodIcon(purchase.payment_method)}
