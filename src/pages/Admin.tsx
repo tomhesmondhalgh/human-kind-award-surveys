@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import MainLayout from '../components/layout/MainLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import PurchasesManagement from '../components/admin/PurchasesManagement';
+import NewPurchasesManagement from '../components/admin/NewPurchasesManagement';
 import PlansManagement from '../components/admin/PlansManagement';
 import TestingMode from '../components/admin/TestingMode';
 import CustomScriptsManagement from '../components/admin/CustomScriptsManagement';
@@ -48,7 +48,7 @@ const Admin = () => {
           </TabsList>
           
           <TabsContent value="purchases">
-            <PurchasesManagement />
+            <NewPurchasesManagement />
           </TabsContent>
           
           <TabsContent value="plans">
