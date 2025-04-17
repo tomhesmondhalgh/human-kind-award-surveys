@@ -62,7 +62,7 @@ export function UpdateInvoiceDialog({
       const { data, error } = await supabase.functions.invoke('update-invoice-status', {
         body: {
           paymentId: purchase.id,
-          status: status === 'payment_made' ? 'completed' : status,
+          status: status,
           invoiceNumber: invoiceNumber,
           adminUserId: user?.id || 'unknown'
         }

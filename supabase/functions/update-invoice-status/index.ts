@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
@@ -13,7 +12,7 @@ const corsHeaders = {
 
 interface UpdatePaymentRequest {
   paymentId: string;
-  status: 'pending' | 'completed' | 'cancelled' | 'refunded'; // Frontend status values
+  status: 'pending' | 'invoice_raised' | 'payment_made' | 'cancelled' | 'refunded'; // Updated to match database enum values directly
   invoiceNumber?: string;
   adminUserId: string;
 }
@@ -166,30 +165,12 @@ async function handleUpdatePaymentStatus(
     );
   }
 
-  // Map frontend status values to database enum values
-  let dbStatus;
-  switch (status) {
-    case 'completed':
-      dbStatus = 'payment_made'; // Updated to use the correct enum value
-      break;
-    case 'pending':
-      dbStatus = 'pending';
-      break;
-    case 'cancelled':
-      dbStatus = 'cancelled';
-      break;
-    case 'refunded':
-      dbStatus = 'refunded';
-      break;
-    default:
-      dbStatus = 'pending';
-  }
-
-  console.log(`Mapping status from "${status}" to database value "${dbStatus}"`);
+  // No need to map status values - use the database values directly
+  console.log(`Using payment status value: "${status}" directly from request`);
 
   // Prepare update data
   const updateData: any = {
-    payment_status: dbStatus
+    payment_status: status // Use the status directly from the request
   };
   
   // Only add invoice_number to the update if it was provided
@@ -200,7 +181,7 @@ async function handleUpdatePaymentStatus(
   try {
     console.log("Updating payment record:", paymentId, "with data:", JSON.stringify(updateData));
     
-    // Update payment history record - removed the payment_method filter to allow updating any payment type
+    // Update payment history record
     const { data: payment, error: paymentError } = await supabase
       .from('payment_history')
       .update(updateData)
@@ -219,7 +200,7 @@ async function handleUpdatePaymentStatus(
     console.log("Payment updated successfully:", JSON.stringify(payment));
 
     // If payment is marked as completed, update the subscription status
-    if (dbStatus === 'payment_made' && payment?.subscription_id) {
+    if (status === 'payment_made' && payment?.subscription_id) {
       console.log("Payment completed, updating subscription:", payment.subscription_id);
       
       try {
