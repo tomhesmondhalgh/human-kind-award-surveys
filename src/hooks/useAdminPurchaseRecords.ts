@@ -26,6 +26,9 @@ export const useAdminPurchaseRecords = () => {
   const [error, setError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [adminCheckComplete, setAdminCheckComplete] = useState<boolean>(false);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
 
   // First verify admin status
   useEffect(() => {
@@ -72,17 +75,35 @@ export const useAdminPurchaseRecords = () => {
     if (!isAdmin) return;
     
     fetchPayments();
-  }, [adminCheckComplete, isAdmin]);
+  }, [adminCheckComplete, isAdmin, currentPage, pageSize]);
 
-  // Direct query to get all payments
+  // Direct query to get all payments with pagination
   const fetchPayments = async () => {
     setLoading(true);
     setError(null);
     
     try {
-      console.log('Fetching all payment records as admin...');
+      console.log(`Fetching payment records for page ${currentPage} with pageSize ${pageSize}...`);
       
-      // Direct query to the payment_history table
+      // First, get the total count
+      const { count, error: countError } = await supabase
+        .from('payment_history')
+        .select('*', { count: 'exact', head: true });
+      
+      if (countError) {
+        console.error('Error fetching payment count:', countError);
+        setError(`Failed to fetch payment count: ${countError.message}`);
+        return;
+      }
+      
+      setTotalCount(count || 0);
+      console.log(`Total payment records: ${count}`);
+      
+      // Calculate pagination ranges
+      const from = (currentPage - 1) * pageSize;
+      const to = from + pageSize - 1;
+      
+      // Direct query to the payment_history table with pagination
       const { data, error } = await supabase
         .from('payment_history')
         .select(`
@@ -92,7 +113,8 @@ export const useAdminPurchaseRecords = () => {
             purchase_type
           )
         `)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(from, to);
       
       if (error) {
         console.error('Error fetching payment records:', error);
@@ -100,7 +122,7 @@ export const useAdminPurchaseRecords = () => {
         return;
       }
       
-      console.log(`Successfully fetched ${data?.length || 0} payment records:`, data);
+      console.log(`Successfully fetched ${data?.length || 0} payment records for page ${currentPage}`);
       
       if (!data || data.length === 0) {
         setPurchases([]);
@@ -142,6 +164,11 @@ export const useAdminPurchaseRecords = () => {
     error, 
     isAdmin, 
     adminCheckComplete, 
-    refreshPurchases: fetchPayments 
+    refreshPurchases: fetchPayments,
+    totalCount,
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize 
   };
 };
