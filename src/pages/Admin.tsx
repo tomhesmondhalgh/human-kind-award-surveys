@@ -1,14 +1,14 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import MainLayout from '../components/layout/MainLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import NewPurchasesManagement from '../components/admin/NewPurchasesManagement';
 import PlansManagement from '../components/admin/PlansManagement';
 import TestingMode from '../components/admin/TestingMode';
 import CustomScriptsManagement from '../components/admin/CustomScriptsManagement';
 import { useAdminRole } from '../hooks/useAdminRole';
 import { Navigate } from 'react-router-dom';
 import { useTestingMode } from '../contexts/TestingModeContext';
+import AdminPurchasesManagement from '../components/admin/AdminPurchasesManagement';
 
 const Admin = () => {
   const { isAdmin, isLoading } = useAdminRole();
@@ -48,7 +48,7 @@ const Admin = () => {
           </TabsList>
           
           <TabsContent value="purchases">
-            <NewPurchasesManagement />
+            <AdminPurchasesManagement />
           </TabsContent>
           
           <TabsContent value="plans">
