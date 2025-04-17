@@ -173,7 +173,7 @@ const MyPurchases = () => {
   return <div className="container py-8">
       <PageTitle title="My Purchases" subtitle="View your purchases including credit card payments and invoices" />
       
-      {activeSubscription && <Card className="mb-8">
+      {activeSubscription && <Card className="mb-8 mx-0 my-[30px]">
           <CardHeader>
             <CardTitle>Active Subscription</CardTitle>
             <CardDescription>
