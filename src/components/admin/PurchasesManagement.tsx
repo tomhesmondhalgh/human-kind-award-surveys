@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { 
@@ -53,7 +54,8 @@ const PurchasesManagement = () => {
   const fetchPurchases = async () => {
     setLoading(true);
     try {
-      // First, fetch all payment history records
+      // Note: Using `.from('payment_history').select('*')` without a filter will return all records
+      // If there's a Row Level Security policy on this table, we need to use a service role or RPC
       const { data: payments, error } = await supabase
         .from('payment_history')
         .select(`
