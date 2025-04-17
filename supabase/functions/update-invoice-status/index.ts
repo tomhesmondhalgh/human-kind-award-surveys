@@ -307,13 +307,14 @@ async function handleCreateInvoiceRequest(
       console.error('Error retrieving plan from database:', planError);
       
       // Fallback to hardcoded values if plan not found
+      // IMPORTANT: Store actual prices (in pounds), not pence values
       const planPricing = {
-        foundation: 29900,
-        progress: 149900,
-        premium: 249900
+        foundation: 299,
+        progress: 1499,
+        premium: 2499
       };
       
-      const amount = planPricing[planType] || 29900;
+      const amount = planPricing[planType] || 299;
       
       console.log("Using fallback pricing:", amount);
       
@@ -343,12 +344,13 @@ async function handleCreateInvoiceRequest(
       console.log("Subscription created:", subscription.id);
 
       // Add billing details to payment_history without an invoice number
+      // Store the amount in pounds, not pence
       const { data: payment, error: paymentError } = await supabase
         .from('payment_history')
         .insert({
           subscription_id: subscription.id,
           payment_method: 'invoice',
-          amount: amount,
+          amount: amount, // Stored as actual pounds amount
           currency: 'GBP',
           payment_status: 'pending',
           billing_school_name: billingDetails.schoolName,
@@ -413,12 +415,13 @@ async function handleCreateInvoiceRequest(
     console.log("Subscription created:", subscription.id);
 
     // Add billing details to payment_history without an invoice number
+    // The database already stores the price in the correct units from the plans table
     const { data: payment, error: paymentError } = await supabase
       .from('payment_history')
       .insert({
         subscription_id: subscription.id,
         payment_method: 'invoice',
-        amount: planData.price,
+        amount: planData.price, // Use the price directly from the plan table
         currency: planData.currency || 'GBP',
         payment_status: 'pending',
         billing_school_name: billingDetails.schoolName,
