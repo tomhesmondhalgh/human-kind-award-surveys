@@ -9,6 +9,7 @@ import { PurchaseRecord } from "../../hooks/useAdminPurchaseRecords";
 import { supabase } from "../../integrations/supabase/client";
 import { Alert, AlertDescription } from "../ui/alert";
 import { AlertCircle } from "lucide-react";
+import { useAuth } from '../../contexts/AuthContext';
 
 interface UpdatePurchaseDialogProps {
   open: boolean;
@@ -33,6 +34,7 @@ export const NewUpdatePurchaseDialog: React.FC<UpdatePurchaseDialogProps> = ({
   const [billingContactEmail, setBillingContactEmail] = useState(purchase.billing_contact_email || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
   // Create a type-safe handler for the payment status change
   const handlePaymentStatusChange = (value: string) => {
@@ -45,24 +47,45 @@ export const NewUpdatePurchaseDialog: React.FC<UpdatePurchaseDialogProps> = ({
     setError(null);
 
     try {
-      // Update payment record in the database
-      const { error } = await supabase
+      console.log('Submitting purchase update:', {
+        paymentId: purchase.id,
+        status: paymentStatus,
+        invoiceNumber,
+        adminUserId: user?.id
+      });
+
+      // First, update the billing information directly (this isn't handled by the edge function)
+      const { error: billingError } = await supabase
         .from('payment_history')
         .update({
-          invoice_number: invoiceNumber,
-          payment_status: paymentStatus,
           billing_school_name: billingSchoolName,
           billing_contact_name: billingContactName,
           billing_contact_email: billingContactEmail
         })
         .eq('id', purchase.id);
 
-      if (error) {
-        console.error('Error updating payment:', error);
-        setError(`Failed to update payment: ${error.message}`);
-        return;
+      if (billingError) {
+        console.error('Error updating billing information:', billingError);
+        throw new Error(`Failed to update billing information: ${billingError.message}`);
       }
 
+      // Then call the edge function to update status and handle subscription logic
+      const { data, error: functionError } = await supabase.functions.invoke('update-invoice-status', {
+        body: {
+          paymentId: purchase.id,
+          status: paymentStatus,
+          invoiceNumber: invoiceNumber,
+          adminUserId: user?.id || 'unknown'
+        }
+      });
+
+      if (functionError) {
+        console.error('Edge function error:', functionError);
+        throw new Error(`Failed to update payment status: ${functionError.message}`);
+      }
+
+      console.log('Update response:', data);
+      
       // Call onUpdated callback to refresh the parent component
       onUpdated();
     } catch (err: any) {
@@ -149,7 +172,12 @@ export const NewUpdatePurchaseDialog: React.FC<UpdatePurchaseDialogProps> = ({
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button 
+              type="submit" 
+              disabled={isSubmitting}
+              className={paymentStatus === 'payment_made' ? 'bg-green-600 hover:bg-green-700' : 
+                         paymentStatus === 'cancelled' ? 'bg-red-600 hover:bg-red-700' : ''}
+            >
               {isSubmitting ? 'Updating...' : 'Update Record'}
             </Button>
           </DialogFooter>
