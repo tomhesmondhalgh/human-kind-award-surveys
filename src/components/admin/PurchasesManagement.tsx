@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { 
@@ -54,19 +53,10 @@ const PurchasesManagement = () => {
   const fetchPurchases = async () => {
     setLoading(true);
     try {
-      // Note: Using `.from('payment_history').select('*')` without a filter will return all records
-      // If there's a Row Level Security policy on this table, we need to use a service role or RPC
+      // Using the admin_get_all_payments RPC function to fetch all payment records
+      // This bypasses Row Level Security for admin users
       const { data: payments, error } = await supabase
-        .from('payment_history')
-        .select(`
-          *,
-          subscription:subscriptions (
-            id,
-            plan_type,
-            purchase_type
-          )
-        `)
-        .order('created_at', { ascending: false });
+        .rpc('admin_get_all_payments');
 
       if (error) {
         throw error;
@@ -74,39 +64,23 @@ const PurchasesManagement = () => {
 
       console.log('Total Payment Records:', payments?.length);
 
-      // For each payment, if subscription data is missing, attempt to fetch it directly
-      const enhancedPayments = await Promise.all(payments.map(async (payment) => {
-        if (payment.subscription) {
-          return {
-            ...payment,
-            plan_type: payment.subscription.plan_type,
-            purchase_type: payment.subscription.purchase_type
-          };
-        }
-        
-        // If subscription reference is missing but we have the subscription_id, try to fetch it directly
-        if (payment.subscription_id) {
-          const { data: subData } = await supabase
-            .from('subscriptions')
-            .select('plan_type, purchase_type')
-            .eq('id', payment.subscription_id)
-            .maybeSingle();
-            
-          if (subData) {
-            return {
-              ...payment,
-              plan_type: subData.plan_type,
-              purchase_type: subData.purchase_type
-            };
-          }
-        }
-        
-        // Fall back to intelligent defaults based on payment method
-        return {
-          ...payment,
-          plan_type: payment.payment_method === 'stripe' ? 'foundation' : 'unknown',
-          purchase_type: payment.payment_method === 'stripe' ? 'subscription' : 'unknown'
-        };
+      // Convert to Purchase type (the RPC already includes plan_type and purchase_type)
+      const enhancedPayments = payments.map(payment => ({
+        ...payment,
+        id: payment.id,
+        subscription_id: payment.subscription_id,
+        payment_method: payment.payment_method,
+        amount: payment.amount,
+        currency: payment.currency || 'GBP',
+        payment_status: payment.payment_status || 'pending',
+        invoice_number: payment.invoice_number,
+        billing_school_name: payment.billing_school_name,
+        billing_contact_name: payment.billing_contact_name,
+        billing_contact_email: payment.billing_contact_email,
+        billing_address: payment.billing_address,
+        created_at: payment.created_at,
+        plan_type: payment.plan_type || 'unknown',
+        purchase_type: payment.purchase_type || 'unknown'
       }));
 
       setPurchases(enhancedPayments);

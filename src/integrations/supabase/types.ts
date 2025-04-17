@@ -967,6 +967,29 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_get_all_payments: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          subscription_id: string
+          amount: number
+          payment_date: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          created_at: string
+          payment_status: Database["public"]["Enums"]["payment_status"]
+          invoice_number: string
+          invoice_id: string
+          billing_postcode: string
+          billing_address: string
+          billing_school_name: string
+          billing_contact_email: string
+          billing_contact_name: string
+          stripe_payment_id: string
+          currency: string
+          plan_type: string
+          purchase_type: string
+        }[]
+      }
       count_email_responses: {
         Args: { survey_id: string }
         Returns: number
