@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { 
@@ -53,11 +54,27 @@ const PurchasesManagement = () => {
   const fetchPurchases = async () => {
     setLoading(true);
     try {
-      console.log('Fetching purchases data...');
+      console.log('Fetching all purchases data as admin...');
       
-      // Try a different approach - fetch the tables separately and join them in JS
-      // This avoids the column ambiguity in SQL
+      // Approach 1: Try using the admin_get_all_payments function first
+      const { data: functionData, error: functionError } = await supabase
+        .rpc('admin_get_all_payments');
       
+      if (functionError) {
+        console.error('Error with admin_get_all_payments function:', functionError);
+        // Don't throw error yet, try backup approach
+      }
+      
+      if (functionData && functionData.length > 0) {
+        console.log('Successfully retrieved payments via RPC function, count:', functionData.length);
+        setPurchases(functionData);
+        setLoading(false);
+        return;
+      }
+      
+      console.log('RPC approach failed or returned no data, trying direct query approach...');
+      
+      // Approach 2: Direct query as a backup
       // First, fetch the payment history
       const { data: paymentData, error: paymentError } = await supabase
         .from('payment_history')
