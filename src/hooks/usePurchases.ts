@@ -13,11 +13,9 @@ export const usePurchases = (isAdmin: boolean) => {
     setError(null);
     
     try {
-      console.log('Fetching ALL purchases data as admin...', { isAdmin });
-      console.log('Current user ID:', await supabase.auth.getUser());
-      console.log('Is admin parameter:', isAdmin);
+      console.log('Fetching purchases data as admin...', { isAdmin });
       
-      // Fetch the current user's profile to verify admin status
+      // Verify admin status before proceeding
       const { data: userProfile, error: profileError } = await supabase
         .from('profiles')
         .select('is_admin')
@@ -25,9 +23,14 @@ export const usePurchases = (isAdmin: boolean) => {
         .single();
       
       console.log('User Profile:', userProfile);
-      console.log('Profile Error:', profileError);
+      
+      if (profileError) {
+        console.error('Error fetching user profile:', profileError);
+        setError('Failed to verify admin permissions');
+        setLoading(false);
+        return;
+      }
 
-      // Verify admin status before attempting to fetch purchases
       if (!userProfile?.is_admin) {
         console.error('User is not an admin');
         setError('User does not have admin privileges');
@@ -35,73 +38,59 @@ export const usePurchases = (isAdmin: boolean) => {
         return;
       }
       
-      // Try the RPC function first
-      const { data: functionData, error: functionError } = await supabase
-        .rpc('admin_get_all_payments');
+      // Using the direct query approach that's proven to work
+      const { data: directData, error: directError } = await supabase
+        .from('payment_history')
+        .select(`
+          *,
+          subscriptions:subscription_id (
+            plan_type,
+            purchase_type
+          )
+        `)
+        .order('created_at', { ascending: false });
       
-      console.log('RPC Function Data:', functionData);
-      console.log('RPC Function Error:', functionError);
-
-      if (functionError) {
-        console.error('Error with admin_get_all_payments function:', functionError);
-        setError(`Database function error: ${functionError.message}`);
-        
-        // If the RPC function fails, try a direct query as a fallback
-        const { data: directData, error: directError } = await supabase
-          .from('payment_history')
-          .select(`
-            *,
-            subscriptions:subscription_id (
-              plan_type,
-              purchase_type
-            )
-          `)
-          .order('created_at', { ascending: false });
-        
-        console.log('Direct Query Data:', directData);
-        console.log('Direct Query Error:', directError);
-
-        if (directError) {
-          console.error('Error with direct query fallback:', directError);
-          setError(`Database query error: ${directError.message}`);
-          return;
-        }
-        
-        if (directData && directData.length > 0) {
-          const formattedData = directData.map(item => ({
-            id: item.id,
-            subscription_id: item.subscription_id,
-            amount: item.amount,
-            currency: item.currency,
-            payment_date: item.payment_date,
-            payment_method: item.payment_method,
-            payment_status: item.payment_status,
-            invoice_number: item.invoice_number,
-            billing_school_name: item.billing_school_name,
-            billing_contact_name: item.billing_contact_name,
-            billing_contact_email: item.billing_contact_email,
-            billing_address: item.billing_address,
-            created_at: item.created_at,
-            plan_type: item.subscriptions?.plan_type || 'unknown',
-            purchase_type: item.subscriptions?.purchase_type || 'unknown'
-          }));
-          
-          console.log('Formatted Purchases:', formattedData);
-          setPurchases(formattedData);
-          return;
-        }
+      console.log('Query result:', directData?.length || 0, 'records found');
+      
+      if (directError) {
+        console.error('Error with query:', directError);
+        setError(`Database query error: ${directError.message}`);
+        setLoading(false);
+        return;
       }
       
-      if (functionData && functionData.length > 0) {
-        console.log(`Total payments retrieved from RPC: ${functionData.length}`);
-        setPurchases(functionData);
-      } else {
+      if (!directData || directData.length === 0) {
         console.log('No payment records were found');
         setError('No payment records were found in the database.');
+        setLoading(false);
+        return;
       }
+      
+      // Format the data for display
+      const formattedData = directData.map(item => ({
+        id: item.id,
+        subscription_id: item.subscription_id,
+        amount: item.amount,
+        currency: item.currency,
+        payment_date: item.payment_date,
+        payment_method: item.payment_method,
+        payment_status: item.payment_status,
+        invoice_number: item.invoice_number,
+        billing_school_name: item.billing_school_name,
+        billing_contact_name: item.billing_contact_name,
+        billing_contact_email: item.billing_contact_email,
+        billing_address: item.billing_address,
+        created_at: item.created_at,
+        plan_type: item.subscriptions?.plan_type || 'unknown',
+        purchase_type: item.subscriptions?.purchase_type || 'unknown'
+      }));
+      
+      console.log('Formatted purchases data:', formattedData);
+      setPurchases(formattedData);
+      
     } catch (error) {
       console.error('Critical error in fetchPurchases:', error);
-      setError(`Failed to load ALL purchases data: ${error.message}`);
+      setError(`Failed to load purchases data: ${error.message}`);
     } finally {
       setLoading(false);
     }
