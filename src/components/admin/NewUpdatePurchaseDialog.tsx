@@ -17,6 +17,9 @@ interface UpdatePurchaseDialogProps {
   onUpdated: () => void;
 }
 
+// Define the payment status type to match the database enum
+type PaymentStatus = 'pending' | 'invoice_raised' | 'payment_made' | 'cancelled' | 'refunded';
+
 export const NewUpdatePurchaseDialog: React.FC<UpdatePurchaseDialogProps> = ({
   open,
   onClose,
@@ -24,12 +27,17 @@ export const NewUpdatePurchaseDialog: React.FC<UpdatePurchaseDialogProps> = ({
   onUpdated,
 }) => {
   const [invoiceNumber, setInvoiceNumber] = useState(purchase.invoice_number || '');
-  const [paymentStatus, setPaymentStatus] = useState(purchase.payment_status);
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(purchase.payment_status as PaymentStatus);
   const [billingSchoolName, setBillingSchoolName] = useState(purchase.billing_school_name || '');
   const [billingContactName, setBillingContactName] = useState(purchase.billing_contact_name || '');
   const [billingContactEmail, setBillingContactEmail] = useState(purchase.billing_contact_email || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Create a type-safe handler for the payment status change
+  const handlePaymentStatusChange = (value: string) => {
+    setPaymentStatus(value as PaymentStatus);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,7 +131,7 @@ export const NewUpdatePurchaseDialog: React.FC<UpdatePurchaseDialogProps> = ({
 
           <div className="space-y-2">
             <Label htmlFor="paymentStatus">Payment Status</Label>
-            <Select value={paymentStatus} onValueChange={setPaymentStatus}>
+            <Select value={paymentStatus} onValueChange={handlePaymentStatusChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
