@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
@@ -12,7 +13,7 @@ const corsHeaders = {
 
 interface UpdatePaymentRequest {
   paymentId: string;
-  status: 'pending' | 'invoice_raised' | 'payment_made' | 'cancelled' | 'refunded'; // Updated to match database enum values directly
+  status: 'pending' | 'invoice_raised' | 'payment_made' | 'cancelled' | 'refunded';
   invoiceNumber?: string;
   adminUserId: string;
 }
@@ -120,25 +121,24 @@ async function handleUpdatePaymentStatus(
 ) {
   console.log("Starting handleUpdatePaymentStatus with data:", JSON.stringify(data));
   
-  // Check if user is an admin
+  // Check if user is an admin - using the profiles table instead of user_roles
   try {
     console.log("Checking admin role for user:", user.id);
-    const { data: adminRole, error: roleError } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .eq('role', 'administrator')
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', user.id)
       .maybeSingle();
       
-    if (roleError) {
-      console.error("Error checking admin role:", roleError);
+    if (profileError) {
+      console.error("Error checking admin status:", profileError);
       return new Response(
-        JSON.stringify({ error: 'Error checking admin role', details: roleError }),
+        JSON.stringify({ error: 'Error checking admin status', details: profileError }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
       
-    if (!adminRole) {
+    if (!profileData || !profileData.is_admin) {
       console.error("Unauthorized: User is not an admin:", user.id);
       return new Response(
         JSON.stringify({ error: 'Unauthorized. Admin access required.' }),
