@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
@@ -114,7 +113,6 @@ serve(async (req: Request) => {
   }
 });
 
-// Handle admin updating a payment status
 async function handleUpdatePaymentStatus(
   data: UpdatePaymentRequest, 
   user: any,
@@ -285,7 +283,6 @@ async function handleUpdatePaymentStatus(
   }
 }
 
-// Handle user creating a new invoice request
 async function handleCreateInvoiceRequest(
   data: CreateInvoiceRequest,
   user: any,
@@ -303,86 +300,22 @@ async function handleCreateInvoiceRequest(
       .eq('is_active', true)
       .maybeSingle();
 
-    if (planError || !planData) {
+    if (planError) {
       console.error('Error retrieving plan from database:', planError);
-      
-      // Fallback to hardcoded values if plan not found
-      // IMPORTANT: Store actual prices (in pounds), not pence values
-      const planPricing = {
-        foundation: 299,
-        progress: 1499,
-        premium: 2499
-      };
-      
-      const amount = planPricing[planType] || 299;
-      
-      console.log("Using fallback pricing:", amount);
-      
-      console.log("Creating subscription record for user:", user.id);
-      
-      // Create a subscription record with payment_method 'invoice'
-      const { data: subscription, error: subscriptionError } = await supabase
-        .from('subscriptions')
-        .insert({
-          user_id: user.id,
-          plan_type: planType,
-          status: 'pending',
-          payment_method: 'invoice',
-          purchase_type: purchaseType,
-        })
-        .select()
-        .single();
-
-      if (subscriptionError) {
-        console.error('Error creating subscription:', subscriptionError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to create subscription record', details: subscriptionError }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      console.log("Subscription created:", subscription.id);
-
-      // Add billing details to payment_history without an invoice number
-      // Store the amount in pounds, not pence
-      const { data: payment, error: paymentError } = await supabase
-        .from('payment_history')
-        .insert({
-          subscription_id: subscription.id,
-          payment_method: 'invoice',
-          amount: amount, // Stored as actual pounds amount
-          currency: 'GBP',
-          payment_status: 'pending',
-          billing_school_name: billingDetails.schoolName,
-          billing_address: billingDetails.address,
-          billing_contact_name: billingDetails.contactName,
-          billing_contact_email: billingDetails.contactEmail,
-        })
-        .select()
-        .single();
-
-      if (paymentError) {
-        console.error('Error creating payment record:', paymentError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to create payment record', details: paymentError }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      console.log("Payment record created:", payment.id);
-
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: 'Invoice request submitted successfully',
-          subscription: subscription.id,
-          payment: payment.id
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Failed to retrieve plan details', details: planError }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!planData) {
+      console.error('Plan not found:', planType);
+      return new Response(
+        JSON.stringify({ error: 'Selected plan not found or is not active' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    // Use plan data from database
     console.log("Retrieved plan data:", {
       id: planData.id,
       name: planData.name,
@@ -414,14 +347,13 @@ async function handleCreateInvoiceRequest(
 
     console.log("Subscription created:", subscription.id);
 
-    // Add billing details to payment_history without an invoice number
-    // The database already stores the price in the correct units from the plans table
+    // Add billing details to payment_history
     const { data: payment, error: paymentError } = await supabase
       .from('payment_history')
       .insert({
         subscription_id: subscription.id,
         payment_method: 'invoice',
-        amount: planData.price, // Use the price directly from the plan table
+        amount: planData.price,
         currency: planData.currency || 'GBP',
         payment_status: 'pending',
         billing_school_name: billingDetails.schoolName,
