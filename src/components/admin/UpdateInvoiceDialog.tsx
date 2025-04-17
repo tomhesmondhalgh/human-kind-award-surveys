@@ -10,7 +10,7 @@ import {
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from "sonner";
 import { 
   Select,
@@ -21,6 +21,7 @@ import {
 } from "../ui/select";
 import { Purchase } from './PurchasesManagement';
 import { formatCurrency } from '../../lib/utils';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface UpdateInvoiceDialogProps {
   open: boolean;
@@ -39,6 +40,7 @@ export function UpdateInvoiceDialog({
   const [status, setStatus] = useState<Purchase['payment_status']>(purchase.payment_status);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { user } = useAuth();
 
   const handleStatusChange = (value: string) => {
     setStatus(value as Purchase['payment_status']);
@@ -53,7 +55,8 @@ export function UpdateInvoiceDialog({
       console.log('Submitting payment update:', {
         paymentId: purchase.id,
         status,
-        invoiceNumber
+        invoiceNumber,
+        userId: user?.id
       });
 
       const { data, error } = await supabase.functions.invoke('update-invoice-status', {
@@ -61,7 +64,7 @@ export function UpdateInvoiceDialog({
           paymentId: purchase.id,
           status: status === 'payment_made' ? 'completed' : status,
           invoiceNumber: invoiceNumber,
-          adminUserId: 'admin'
+          adminUserId: user?.id || 'unknown'
         }
       });
 

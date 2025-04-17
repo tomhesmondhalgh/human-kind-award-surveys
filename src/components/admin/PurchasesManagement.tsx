@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { 
@@ -19,10 +20,12 @@ import {
 import { Button } from "../ui/button";
 import { toast } from "sonner";
 import { Input } from "../ui/input";
-import { Pencil, CreditCard, FileText, Search } from "lucide-react";
+import { Pencil, CreditCard, FileText, Search, AlertCircle } from "lucide-react";
 import { UpdateInvoiceDialog } from './UpdateInvoiceDialog';
 import { formatCurrency } from '../../lib/utils';
 import Pagination from '../surveys/Pagination';
+import { useAdminRole } from '../../hooks/useAdminRole';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
 export type Purchase = {
   id: string;
@@ -48,12 +51,17 @@ const PurchasesManagement = () => {
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [error, setError] = useState<string | null>(null);
   const recordsPerPage = 10;
+  const { isAdmin, isLoading: adminCheckLoading } = useAdminRole();
 
   const fetchPurchases = async () => {
     setLoading(true);
+    setError(null);
+    
     try {
       console.log('Fetching ALL purchases data as admin...');
+      console.log('Current user admin status:', isAdmin);
       
       // First, try RPC function for admin payments
       const { data: functionData, error: functionError } = await supabase
@@ -61,6 +69,13 @@ const PurchasesManagement = () => {
       
       if (functionError) {
         console.error('Error with admin_get_all_payments function:', functionError);
+        setError(`Database function error: ${functionError.message}`);
+        
+        // If the function error is related to permissions, show a specific message
+        if (functionError.message.includes('permission denied') || 
+            functionError.message.includes('not authorized')) {
+          setError('You do not have permission to access payment data. Please check your admin status.');
+        }
       }
       
       if (functionData && functionData.length > 0) {
@@ -69,6 +84,11 @@ const PurchasesManagement = () => {
         setPurchases(functionData);
         setLoading(false);
         return;
+      } else {
+        console.log('RPC function returned no data');
+        if (!functionError) {
+          setError('The payment retrieval function returned no results. This might indicate a permission issue or empty payment records.');
+        }
       }
       
       console.log('RPC approach failed or returned no data, trying comprehensive direct query...');
@@ -87,12 +107,18 @@ const PurchasesManagement = () => {
 
       if (paymentError) {
         console.error('Error fetching comprehensive payment data:', paymentError);
+        setError(`Direct query error: ${paymentError.message}`);
         throw paymentError;
       }
 
-      console.log('Total payments retrieved:', paymentData?.length || 0);
+      console.log('Total payments retrieved from direct query:', paymentData?.length || 0);
       if (paymentData && paymentData.length > 0) {
         console.log('First payment in direct query:', paymentData[0]);
+      } else {
+        console.log('Direct query returned no data');
+        if (!error) {
+          setError('No payment records were found in the database.');
+        }
       }
 
       // Enhanced mapping of payment data
@@ -105,6 +131,9 @@ const PurchasesManagement = () => {
       setPurchases(enhancedPayments);
     } catch (error) {
       console.error('Critical error in fetchPurchases:', error);
+      if (!error) {
+        setError(`Failed to load ALL purchases data: ${error.message}`);
+      }
       toast.error('Failed to load ALL purchases data');
     } finally {
       setLoading(false);
@@ -112,8 +141,17 @@ const PurchasesManagement = () => {
   };
 
   useEffect(() => {
-    fetchPurchases();
-  }, []);
+    if (!adminCheckLoading) {
+      fetchPurchases();
+    }
+  }, [adminCheckLoading]);
+
+  // Refresh when admin status is confirmed
+  useEffect(() => {
+    if (isAdmin && !adminCheckLoading) {
+      fetchPurchases();
+    }
+  }, [isAdmin, adminCheckLoading]);
 
   const handleUpdateInvoice = (purchase: Purchase) => {
     setSelectedPurchase(purchase);
@@ -177,6 +215,46 @@ const PurchasesManagement = () => {
     setCurrentPage(pageNumber);
   };
 
+  // Function to refresh data
+  const handleRefresh = () => {
+    fetchPurchases();
+    toast.info('Refreshing purchase data...');
+  };
+
+  if (adminCheckLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Purchases Management</CardTitle>
+          <CardDescription>Checking admin permissions...</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-4">Verifying admin status...</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Purchases Management</CardTitle>
+          <CardDescription>Admin access required</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Access Denied</AlertTitle>
+            <AlertDescription>
+              You do not have admin privileges to view purchase data.
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -186,24 +264,36 @@ const PurchasesManagement = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <div className="mb-4 flex justify-between items-center">
+          <div className="relative flex-grow mr-2">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by school, contact, invoice number, plan, or status..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1); // Reset to first page when searching
+              }}
+              className="pl-10 w-full"
+            />
+          </div>
+          <Button variant="outline" onClick={handleRefresh}>
+            Refresh
+          </Button>
+        </div>
+
         {loading ? (
           <div className="text-center py-4">Loading purchases data...</div>
         ) : (
           <>
-            <div className="mb-4 relative">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by school, contact, invoice number, plan, or status..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setCurrentPage(1); // Reset to first page when searching
-                  }}
-                  className="pl-10 w-full"
-                />
-              </div>
-            </div>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>

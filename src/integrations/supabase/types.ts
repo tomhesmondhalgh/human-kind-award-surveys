@@ -335,6 +335,7 @@ export type Database = {
           created_at: string
           first_name: string | null
           id: string
+          is_admin: boolean | null
           job_title: string | null
           last_name: string | null
           school_address: string | null
@@ -345,6 +346,7 @@ export type Database = {
           created_at?: string
           first_name?: string | null
           id: string
+          is_admin?: boolean | null
           job_title?: string | null
           last_name?: string | null
           school_address?: string | null
@@ -355,6 +357,7 @@ export type Database = {
           created_at?: string
           first_name?: string | null
           id?: string
+          is_admin?: boolean | null
           job_title?: string | null
           last_name?: string | null
           school_address?: string | null

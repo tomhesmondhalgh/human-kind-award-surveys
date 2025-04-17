@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 // Create a simple in-memory cache to store admin status
 // This is shared across all instances of the hook
@@ -48,21 +49,28 @@ export function useAdminRole() {
       console.log('Fetching fresh admin status for user:', user.id);
       setIsLoading(true);
       
-      // In the simplified model, we can check for specific admin users by email domain or hardcoded list
-      // This is just a placeholder implementation - in a real app you would implement a proper check
+      // Query the profiles table to check if the user has admin status
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', user.id)
+        .single();
       
-      // For example, you could use a list of admin emails
-      const adminEmails = ['admin@example.com', 'admin@yourdomain.com', 'tomhesmondhalghce@gmail.com'];
-      const isUserAdmin = user.email ? adminEmails.includes(user.email) : false;
-      
-      setIsAdmin(isUserAdmin);
-      
-      // Update cache
-      adminStatusCache[user.id] = {
-        isAdmin: isUserAdmin,
-        timestamp: now,
-        expiresAt: now + CACHE_EXPIRY
-      };
+      if (error) {
+        console.error('Error checking admin status:', error);
+        setIsAdmin(false);
+      } else {
+        const isUserAdmin = data?.is_admin === true;
+        console.log('Admin status from database:', isUserAdmin);
+        setIsAdmin(isUserAdmin);
+        
+        // Update cache
+        adminStatusCache[user.id] = {
+          isAdmin: isUserAdmin,
+          timestamp: now,
+          expiresAt: now + CACHE_EXPIRY
+        };
+      }
       
     } catch (error) {
       console.error('Error in admin role check:', error);
