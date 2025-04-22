@@ -1,8 +1,8 @@
-
 import React from 'react';
 import Navbar from './Navbar';
 import TestingModeIndicator from './TestingModeIndicator';
 import CustomScriptsLoader from './CustomScriptsLoader';
+import FeedbackButton from '../common/FeedbackButton';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -20,6 +20,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           <p>© {new Date().getFullYear()} National Staff Wellbeing Survey. All rights reserved.</p>
         </div>
       </footer>
+      <FeedbackButton />
       <TestingModeIndicator />
       <CustomScriptsLoader />
       {/* Toaster is now in App.tsx */}
