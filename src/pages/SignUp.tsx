@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { supabase } from '../lib/supabase/client';
 import { SignUpFormData } from '../types/auth';
 
-const SIGNUP_VERSION = 'main_signup_component_v1';
+const SIGNUP_VERSION = 'main_signup_component_v1.1';
 
 const SignUp = () => {
   console.log(`Rendering SignUp component (${SIGNUP_VERSION})`);
@@ -65,6 +65,9 @@ const SignUp = () => {
       const { error: signUpError, success: signUpSuccess, user } = await signUp(data.email, data.password, {
         firstName: data.firstName,
         lastName: data.lastName,
+        jobTitle: data.jobTitle,
+        schoolName: data.schoolName,
+        schoolAddress: data.schoolAddress || compileCustomAddress(data),
       });
       
       if (!signUpSuccess) {

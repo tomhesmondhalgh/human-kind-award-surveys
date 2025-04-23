@@ -1,5 +1,7 @@
+
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { sendUserToHubspot } from './hubspot';
 import { toast } from 'sonner';
 
 type SignUpResult = 
@@ -58,7 +60,7 @@ export async function signUpWithEmail(email: string, password: string, userData?
       }
     }
     
-    if (userData && data.user && typeof sendUserToHubspot === 'function') {
+    if (userData && data.user) {
       try {
         await sendUserToHubspot({
           email,
@@ -74,6 +76,7 @@ export async function signUpWithEmail(email: string, password: string, userData?
     // Send admin notification if userData exists
     if (userData && data.user) {
       try {
+        console.log('Sending admin notification for new signup');
         const response = await fetch("https://bagaaqkmewkuwtudwnqw.functions.supabase.co/send-admin-notification", {
           method: "POST",
           headers: {
@@ -88,12 +91,14 @@ export async function signUpWithEmail(email: string, password: string, userData?
             schoolAddress: userData.schoolAddress || ""
           }),
         });
+        
         if (!response.ok) {
-          console.error("Failed to send admin signup notification email:", await response.text());
+          const errorText = await response.text();
+          console.error("Failed to send admin signup notification email:", errorText);
         } else {
           console.log("Admin notified successfully of new signup");
         }
-      } catch (notifyError) {
+      } catch (notifyError: any) {
         console.error("Failed to notify admin of signup:", notifyError);
       }
     }
@@ -103,9 +108,4 @@ export async function signUpWithEmail(email: string, password: string, userData?
     console.error('Error signing up:', error);
     return { error: error as Error, success: false };
   }
-}
-
-function sendUserToHubspot(userData: { email: string, firstName: string, lastName: string }) {
-  console.log('Sending user data to Hubspot:', userData);
-  return Promise.resolve();
 }

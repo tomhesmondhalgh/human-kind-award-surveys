@@ -20,21 +20,43 @@ interface AdminNotificationData {
 }
 
 const handler = async (req: Request): Promise<Response> => {
+  console.log("Admin notification function called");
+  
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { email, firstName, lastName, jobTitle, schoolName, schoolAddress }: AdminNotificationData = await req.json();
+    console.log("Parsing request body");
+    const body = await req.text();
+    console.log("Request body:", body);
+    
+    let parsedBody;
+    try {
+      parsedBody = JSON.parse(body);
+    } catch (jsonError) {
+      console.error("JSON parse error:", jsonError);
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON", details: jsonError.message }),
+        { 
+          status: 400, 
+          headers: { "Content-Type": "application/json", ...corsHeaders } 
+        }
+      );
+    }
+
+    const { email, firstName, lastName, jobTitle, schoolName, schoolAddress }: AdminNotificationData = parsedBody;
 
     if (!email || !firstName) {
+      console.error("Missing required fields:", { email, firstName });
       throw new Error("Missing required fields for admin notification");
     }
 
     console.log(`Preparing to send admin notification about new user: ${email}`);
 
     // Updated: Use the new sender format
+    console.log("Sending email via Resend");
     const emailResponse = await resend.emails.send({
       from: "Human Kind <contact@humankindaward.com>",
       to: ["tom.hesmondhalgh@creativeeducation.co.uk"],
