@@ -1,3 +1,4 @@
+
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { sendUserToHubspot } from './hubspot';
@@ -77,7 +78,20 @@ export async function signUpWithEmail(email: string, password: string, userData?
     }
 
     try {
+      console.log('Step 3: Sending admin notification email');
+      console.log('Notification data:', {
+        email,
+        firstName: userData?.firstName,
+        lastName: userData?.lastName,
+        jobTitle: userData?.jobTitle || "",
+        schoolName: userData?.schoolName || "",
+        schoolAddress: userData?.schoolAddress || ""
+      });
+      
       if (userData && data.user) {
+        console.log('Sending admin notification for new signup - FETCH START');
+        
+        // Use full URL with explicit Content-Type header
         const response = await fetch("https://bagaaqkmewkuwtudwnqw.functions.supabase.co/send-admin-notification", {
           method: "POST",
           headers: {
@@ -92,14 +106,23 @@ export async function signUpWithEmail(email: string, password: string, userData?
             schoolAddress: userData.schoolAddress || ""
           }),
         });
+        
+        console.log('Admin notification fetch response status:', response.status);
+        
         if (!response.ok) {
-          console.error("Failed to send admin signup notification email:", await response.text());
+          const errorText = await response.text();
+          console.error("Failed to send admin signup notification email:", errorText);
         } else {
-          console.log("Admin notified successfully of new signup");
+          const responseData = await response.text();
+          console.log("Admin notified successfully of new signup:", responseData);
         }
+      } else {
+        console.warn('Skipping admin notification - missing user data or user object');
       }
     } catch (notifyError: any) {
       console.error("Failed to notify admin of signup:", notifyError);
+      console.error("Error details:", notifyError.message);
+      console.error("Error stack:", notifyError.stack);
     }
 
     return { error: null, success: true, user: data.user };

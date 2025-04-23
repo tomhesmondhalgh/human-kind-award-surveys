@@ -76,7 +76,16 @@ export async function signUpWithEmail(email: string, password: string, userData?
     // Send admin notification if userData exists
     if (userData && data.user) {
       try {
-        console.log('Sending admin notification for new signup');
+        console.log('Sending admin notification for new signup - SIMPLE SIGNUP');
+        console.log('Notification data being sent:', {
+          email,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          jobTitle: userData.jobTitle || "",
+          schoolName: userData.schoolName || "",
+          schoolAddress: userData.schoolAddress || ""
+        });
+        
         const response = await fetch("https://bagaaqkmewkuwtudwnqw.functions.supabase.co/send-admin-notification", {
           method: "POST",
           headers: {
@@ -92,14 +101,20 @@ export async function signUpWithEmail(email: string, password: string, userData?
           }),
         });
         
+        console.log('Admin notification response status:', response.status);
+        
         if (!response.ok) {
           const errorText = await response.text();
           console.error("Failed to send admin signup notification email:", errorText);
         } else {
-          console.log("Admin notified successfully of new signup");
+          const responseData = await response.text();
+          console.log("Admin notified successfully of new signup:", responseData);
         }
       } catch (notifyError: any) {
         console.error("Failed to notify admin of signup:", notifyError);
+        console.error("Error details:", notifyError.message);
+        // Log more details about the error
+        if (notifyError.stack) console.error("Error stack:", notifyError.stack);
       }
     }
 

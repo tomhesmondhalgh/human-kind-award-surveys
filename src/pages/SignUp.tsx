@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { supabase } from '../lib/supabase/client';
 import { SignUpFormData } from '../types/auth';
 
-const SIGNUP_VERSION = 'main_signup_component_v1.1';
+const SIGNUP_VERSION = 'main_signup_component_v1.2';
 
 const SignUp = () => {
   console.log(`Rendering SignUp component (${SIGNUP_VERSION})`);
@@ -62,13 +62,19 @@ const SignUp = () => {
     console.log('Form submitted with data:', data);
     
     try {
-      const { error: signUpError, success: signUpSuccess, user } = await signUp(data.email, data.password, {
+      // Ensure all necessary data is included
+      const userData = {
         firstName: data.firstName,
         lastName: data.lastName,
-        jobTitle: data.jobTitle,
-        schoolName: data.schoolName,
+        email: data.email,
+        jobTitle: data.jobTitle || '',
+        schoolName: data.schoolName || '',
         schoolAddress: data.schoolAddress || compileCustomAddress(data),
-      });
+      };
+      
+      console.log('Signup data being sent:', userData);
+      
+      const { error: signUpError, success: signUpSuccess, user } = await signUp(data.email, data.password, userData);
       
       if (!signUpSuccess) {
         throw signUpError || new Error('Failed to create account');
@@ -82,8 +88,8 @@ const SignUp = () => {
             profile_id: user.id,
             profile_first_name: data.firstName,
             profile_last_name: data.lastName,
-            profile_job_title: data.jobTitle,
-            profile_school_name: data.schoolName,
+            profile_job_title: data.jobTitle || '',
+            profile_school_name: data.schoolName || '',
             profile_school_address: data.schoolAddress || compileCustomAddress(data),
           });
           
