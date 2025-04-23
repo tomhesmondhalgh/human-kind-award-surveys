@@ -91,26 +91,29 @@ export async function signUpWithEmail(email: string, password: string, userData?
       if (userData && data.user) {
         console.log('Sending admin notification for new signup');
         
-        // Update to use the Edge Function directly with URL path
-        // This bypasses CORS issues that might occur with functions.invoke
-        const { data: notificationData, error: notificationError } = await supabase.functions.invoke(
-          'send-admin-notification',
-          {
-            body: {
-              email,
-              firstName: userData.firstName,
-              lastName: userData.lastName,
-              jobTitle: userData.jobTitle || "",
-              schoolName: userData.schoolName || "",
-              schoolAddress: userData.schoolAddress || ""
-            },
-          }
-        );
-
-        if (notificationError) {
-          console.error("Failed to send admin signup notification:", notificationError);
+        // Call the edge function with explicit URL to ensure it's called correctly
+        const response = await fetch('https://bagaaqkmewkuwtudwnqw.supabase.co/functions/v1/send-admin-notification', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabase.auth.session()?.access_token || ''}`,
+          },
+          body: JSON.stringify({
+            email,
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            jobTitle: userData.jobTitle || "",
+            schoolName: userData.schoolName || "",
+            schoolAddress: userData.schoolAddress || ""
+          })
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.text();
+          console.error("Failed to send admin signup notification:", response.status, errorData);
         } else {
-          console.log("Admin notified successfully of new signup:", notificationData);
+          const responseData = await response.json();
+          console.log("Admin notified successfully of new signup:", responseData);
         }
       } else {
         console.warn('Skipping admin notification - missing user data or user object');
