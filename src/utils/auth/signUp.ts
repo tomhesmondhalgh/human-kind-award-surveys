@@ -1,20 +1,16 @@
-
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { sendUserToHubspot } from './hubspot';
 import { toast } from 'sonner';
 
-// Updated return type to include user in success case
 type SignUpResult = 
   | { error: null; success: true; user: User }
   | { error: Error; success: false; user?: undefined };
 
-// Handle sign up with email and password
 export async function signUpWithEmail(email: string, password: string, userData?: any): Promise<SignUpResult> {
   try {
     console.log('Starting signUpWithEmail process for:', email);
     
-    // If userData is provided, it means we're completing the final signup step
     const options = userData ? {
       data: {
         first_name: userData.firstName,
@@ -22,7 +18,6 @@ export async function signUpWithEmail(email: string, password: string, userData?
       },
     } : {};
 
-    // Step 1: Create the user account
     console.log('Step 1: Creating user account with Supabase auth.signUp');
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -35,7 +30,6 @@ export async function signUpWithEmail(email: string, password: string, userData?
       throw error;
     }
     
-    // Ensure we have a user before proceeding
     if (!data.user) {
       console.error('User creation failed: No user returned from auth.signUp');
       throw new Error('Failed to create user account');
@@ -43,10 +37,8 @@ export async function signUpWithEmail(email: string, password: string, userData?
     
     console.log('User created successfully:', data.user.id);
     
-    // Set up the user profile
     try {
       console.log('Setting up user profile');
-      // Fix: Ensure profile_id is the first parameter and all parameters are present in the correct order
       const { error: profileError } = await supabase.rpc(
         'create_or_update_profile',
         {
@@ -61,18 +53,15 @@ export async function signUpWithEmail(email: string, password: string, userData?
       
       if (profileError) {
         console.error('Error creating profile:', profileError);
-        // Don't block signup on profile creation failure
         console.warn('Profile creation failed but continuing with signup');
       } else {
         console.log('Created user profile successfully');
       }
     } catch (profileError) {
       console.error('Exception during profile creation:', profileError);
-      // Don't block signup on profile creation failure
       console.warn('Profile creation failed but continuing with signup');
     }
     
-    // If we have user data, send it to Hubspot
     if (userData && data.user) {
       try {
         await sendUserToHubspot({
@@ -83,8 +72,34 @@ export async function signUpWithEmail(email: string, password: string, userData?
         console.log('User data sent to Hubspot');
       } catch (hubspotError: any) {
         console.error('Failed to send user data to Hubspot:', hubspotError);
-        // Don't block signup if Hubspot integration fails
+        console.warn('Hubspot integration failed but continuing with signup');
       }
+    }
+
+    try {
+      if (userData && data.user) {
+        const response = await fetch("https://bagaaqkmewkuwtudwnqw.functions.supabase.co/send-admin-notification", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            email,
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            jobTitle: userData.jobTitle || "",
+            schoolName: userData.schoolName || "",
+            schoolAddress: userData.schoolAddress || ""
+          }),
+        });
+        if (!response.ok) {
+          console.error("Failed to send admin signup notification email:", await response.text());
+        } else {
+          console.log("Admin notified successfully of new signup");
+        }
+      }
+    } catch (notifyError: any) {
+      console.error("Failed to notify admin of signup:", notifyError);
     }
 
     return { error: null, success: true, user: data.user };

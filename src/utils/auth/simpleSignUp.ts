@@ -1,19 +1,15 @@
-
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-// Updated return type to include user in success case
 type SignUpResult = 
   | { error: null; success: true; user: User }
   | { error: Error; success: false; user?: undefined };
 
-// Handle sign up with email and password - simplified version
 export async function signUpWithEmail(email: string, password: string, userData?: any): Promise<SignUpResult> {
   try {
     console.log('Starting simplified signUpWithEmail process for:', email);
     
-    // If userData is provided, it means we're completing the final signup step
     const options = userData ? {
       data: {
         first_name: userData.firstName,
@@ -21,7 +17,6 @@ export async function signUpWithEmail(email: string, password: string, userData?
       },
     } : {};
 
-    // Create the user account
     console.log('Creating user account with Supabase auth.signUp');
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -34,7 +29,6 @@ export async function signUpWithEmail(email: string, password: string, userData?
       throw error;
     }
     
-    // Ensure we have a user before proceeding
     if (!data.user) {
       console.error('User creation failed: No user returned from auth.signUp');
       throw new Error('Failed to create user account');
@@ -42,10 +36,8 @@ export async function signUpWithEmail(email: string, password: string, userData?
     
     console.log('User created successfully:', data.user.id);
     
-    // If we have user data, update the profile
     if (userData && data.user) {
       try {
-        // Fix: Ensure profile_id is the first parameter and all parameters are present in the correct order
         const { error: profileError } = await supabase.rpc(
           'create_or_update_profile',
           {
@@ -60,15 +52,12 @@ export async function signUpWithEmail(email: string, password: string, userData?
 
         if (profileError) {
           console.error('Error creating profile:', profileError);
-          // Don't block signup if profile creation fails
         }
       } catch (profileError: any) {
         console.error('Exception creating profile:', profileError);
-        // Don't block signup if profile creation fails
       }
     }
     
-    // If we have user data and HubSpot integration is needed, send it there
     if (userData && data.user && typeof sendUserToHubspot === 'function') {
       try {
         await sendUserToHubspot({
@@ -79,7 +68,33 @@ export async function signUpWithEmail(email: string, password: string, userData?
         console.log('User data sent to Hubspot');
       } catch (hubspotError: any) {
         console.error('Failed to send user data to Hubspot:', hubspotError);
-        // Don't block signup if Hubspot integration fails
+      }
+    }
+
+    // Send admin notification if userData exists
+    if (userData && data.user) {
+      try {
+        const response = await fetch("https://bagaaqkmewkuwtudwnqw.functions.supabase.co/send-admin-notification", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            email,
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            jobTitle: userData.jobTitle || "",
+            schoolName: userData.schoolName || "",
+            schoolAddress: userData.schoolAddress || ""
+          }),
+        });
+        if (!response.ok) {
+          console.error("Failed to send admin signup notification email:", await response.text());
+        } else {
+          console.log("Admin notified successfully of new signup");
+        }
+      } catch (notifyError) {
+        console.error("Failed to notify admin of signup:", notifyError);
       }
     }
 
@@ -90,10 +105,7 @@ export async function signUpWithEmail(email: string, password: string, userData?
   }
 }
 
-// Optional: keep the Hubspot function if it's needed elsewhere
 function sendUserToHubspot(userData: { email: string, firstName: string, lastName: string }) {
-  // This function is simplified and would be replaced with your actual Hubspot integration
   console.log('Sending user data to Hubspot:', userData);
-  // Implementation would go here
   return Promise.resolve();
 }
