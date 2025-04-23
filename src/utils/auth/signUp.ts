@@ -1,4 +1,3 @@
-
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { sendUserToHubspot } from './hubspot';
@@ -89,32 +88,26 @@ export async function signUpWithEmail(email: string, password: string, userData?
       });
       
       if (userData && data.user) {
-        console.log('Sending admin notification for new signup - FETCH START');
+        console.log('Sending admin notification for new signup');
         
-        // Use full URL with explicit Content-Type header
-        const response = await fetch("https://bagaaqkmewkuwtudwnqw.functions.supabase.co/send-admin-notification", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            email,
-            firstName: userData.firstName,
-            lastName: userData.lastName,
-            jobTitle: userData.jobTitle || "",
-            schoolName: userData.schoolName || "",
-            schoolAddress: userData.schoolAddress || ""
-          }),
-        });
-        
-        console.log('Admin notification fetch response status:', response.status);
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error("Failed to send admin signup notification email:", errorText);
+        const { data: notificationData, error: notificationError } = await supabase.functions.invoke(
+          'send-admin-notification',
+          {
+            body: {
+              email,
+              firstName: userData.firstName,
+              lastName: userData.lastName,
+              jobTitle: userData.jobTitle || "",
+              schoolName: userData.schoolName || "",
+              schoolAddress: userData.schoolAddress || ""
+            },
+          }
+        );
+
+        if (notificationError) {
+          console.error("Failed to send admin signup notification:", notificationError);
         } else {
-          const responseData = await response.text();
-          console.log("Admin notified successfully of new signup:", responseData);
+          console.log("Admin notified successfully of new signup:", notificationData);
         }
       } else {
         console.warn('Skipping admin notification - missing user data or user object');
