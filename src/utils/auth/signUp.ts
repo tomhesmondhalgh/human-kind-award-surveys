@@ -91,12 +91,16 @@ export async function signUpWithEmail(email: string, password: string, userData?
       if (userData && data.user) {
         console.log('Sending admin notification for new signup');
         
-        // Call the edge function with explicit URL to ensure it's called correctly
+        // Get current session first
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData?.session?.access_token || '';
+        
+        // Call the edge function with explicit URL and proper access token
         const response = await fetch('https://bagaaqkmewkuwtudwnqw.supabase.co/functions/v1/send-admin-notification', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabase.auth.session()?.access_token || ''}`,
+            'Authorization': `Bearer ${accessToken}`,
           },
           body: JSON.stringify({
             email,
