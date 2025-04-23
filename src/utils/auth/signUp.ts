@@ -1,3 +1,4 @@
+
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { sendUserToHubspot } from './hubspot';
@@ -90,6 +91,8 @@ export async function signUpWithEmail(email: string, password: string, userData?
       if (userData && data.user) {
         console.log('Sending admin notification for new signup');
         
+        // Update to use the Edge Function directly with URL path
+        // This bypasses CORS issues that might occur with functions.invoke
         const { data: notificationData, error: notificationError } = await supabase.functions.invoke(
           'send-admin-notification',
           {
