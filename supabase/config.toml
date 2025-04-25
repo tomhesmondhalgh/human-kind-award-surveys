@@ -82,3 +82,4 @@ verify_jwt = false
 
 [functions.generate-survey-summary]
 verify_jwt = false
+

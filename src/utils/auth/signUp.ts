@@ -91,33 +91,21 @@ export async function signUpWithEmail(email: string, password: string, userData?
       if (userData && data.user) {
         console.log('Sending admin notification for new signup');
         
-        // Get current session first
-        const { data: sessionData } = await supabase.auth.getSession();
-        const accessToken = sessionData?.session?.access_token || '';
-        
-        // Call the edge function with explicit URL and proper access token
-        const response = await fetch('https://bagaaqkmewkuwtudwnqw.supabase.co/functions/v1/send-admin-notification', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
+        const { error: notifyError } = await supabase.functions.invoke('send-admin-notification', {
+          body: {
             email,
             firstName: userData.firstName,
             lastName: userData.lastName,
             jobTitle: userData.jobTitle || "",
             schoolName: userData.schoolName || "",
             schoolAddress: userData.schoolAddress || ""
-          })
+          }
         });
         
-        if (!response.ok) {
-          const errorData = await response.text();
-          console.error("Failed to send admin signup notification:", response.status, errorData);
+        if (notifyError) {
+          console.error('Failed to send admin notification:', notifyError);
         } else {
-          const responseData = await response.json();
-          console.log("Admin notified successfully of new signup:", responseData);
+          console.log('Admin notification sent successfully');
         }
       } else {
         console.warn('Skipping admin notification - missing user data or user object');
@@ -134,3 +122,4 @@ export async function signUpWithEmail(email: string, password: string, userData?
     return { error: error as Error, success: false };
   }
 }
+
