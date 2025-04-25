@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
@@ -80,41 +79,24 @@ const SignUp = () => {
         throw signUpError || new Error('Failed to create account');
       }
       
-      // Store user data for profile completion
-      if (user) {
-        try {
-          // Fix: Call the RPC function directly with correct parameter order
-          const { error: profileError } = await supabase.rpc('create_or_update_profile', {
-            profile_id: user.id,
-            profile_first_name: data.firstName,
-            profile_last_name: data.lastName,
-            profile_job_title: data.jobTitle || '',
-            profile_school_name: data.schoolName || '',
-            profile_school_address: data.schoolAddress || compileCustomAddress(data),
-          });
-          
-          if (profileError) {
-            console.error('Error updating profile directly:', profileError);
-            // Continue with the flow even if profile update fails
-          }
-        } catch (directProfileError) {
-          console.error('Exception during direct profile update:', directProfileError);
-          // Continue with the flow even if profile update fails
-        }
-      }
-      
-      // Redirect to email confirmation page instead of automatically logging in
       if (invitationToken) {
-        // For invitations, we'll still redirect to the invitation flow
-        // but let the user know they need to confirm their email first
         toast.info('Please check your email to confirm your account before accessing your invitation', {
           duration: 6000
         });
-        navigate(`/email-confirmation`, { state: { email: data.email } });
+        navigate(`/email-confirmation`, { 
+          state: { 
+            email: data.email,
+            userData: userData 
+          } 
+        });
       } else {
-        // For regular sign ups, redirect to the email confirmation page
         console.log('Signup successful, redirecting to email confirmation page');
-        navigate('/email-confirmation', { state: { email: data.email } });
+        navigate('/email-confirmation', { 
+          state: { 
+            email: data.email,
+            userData: userData
+          } 
+        });
       }
       
       toast.success('Account created successfully!', {

@@ -77,49 +77,9 @@ export async function signUpWithEmail(email: string, password: string, userData?
       }
     }
 
-    try {
-      console.log('Step 3: Sending admin notification email');
-      console.log('Notification data:', {
-        email,
-        firstName: userData?.firstName,
-        lastName: userData?.lastName,
-        jobTitle: userData?.jobTitle || "",
-        schoolName: userData?.schoolName || "",
-        schoolAddress: userData?.schoolAddress || ""
-      });
-      
-      if (userData && data.user) {
-        console.log('Sending admin notification for new signup');
-        
-        const { error: notifyError } = await supabase.functions.invoke('send-admin-notification', {
-          body: {
-            email,
-            firstName: userData.firstName,
-            lastName: userData.lastName,
-            jobTitle: userData.jobTitle || "",
-            schoolName: userData.schoolName || "",
-            schoolAddress: userData.schoolAddress || ""
-          }
-        });
-        
-        if (notifyError) {
-          console.error('Failed to send admin notification:', notifyError);
-        } else {
-          console.log('Admin notification sent successfully');
-        }
-      } else {
-        console.warn('Skipping admin notification - missing user data or user object');
-      }
-    } catch (notifyError: any) {
-      console.error("Failed to notify admin of signup:", notifyError);
-      console.error("Error details:", notifyError.message);
-      console.error("Error stack:", notifyError.stack);
-    }
-
     return { error: null, success: true, user: data.user };
   } catch (error: any) {
     console.error('Error signing up:', error);
     return { error: error as Error, success: false };
   }
 }
-

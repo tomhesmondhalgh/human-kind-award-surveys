@@ -1,15 +1,51 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
 import PageTitle from '../components/ui/PageTitle';
 import { Button } from '../components/ui/button';
 import { Loader2, Mail, ArrowLeft } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const EmailConfirmation = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const email = location.state?.email || 'your email';
+  const userData = location.state?.userData;
+
+  useEffect(() => {
+    const sendAdminNotification = async () => {
+      if (userData) {
+        console.log('Attempting to send admin notification with user data:', userData);
+        
+        try {
+          const { error: notifyError } = await supabase.functions.invoke('send-admin-notification', {
+            body: {
+              email: userData.email,
+              firstName: userData.firstName,
+              lastName: userData.lastName,
+              jobTitle: userData.jobTitle || "",
+              schoolName: userData.schoolName || "",
+              schoolAddress: userData.schoolAddress || ""
+            }
+          });
+
+          if (notifyError) {
+            console.error('Failed to send admin notification:', notifyError);
+            throw notifyError;
+          }
+
+          console.log('Admin notification sent successfully');
+        } catch (error) {
+          console.error('Error in send-admin-notification:', error);
+          toast.error('There was an issue notifying administrators');
+        }
+      }
+    };
+
+    sendAdminNotification();
+  }, [userData]);
 
   return (
     <MainLayout>
