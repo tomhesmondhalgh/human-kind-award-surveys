@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { SurveyFormData } from '../types/surveyForm';
 import { toast } from 'sonner';
@@ -55,81 +54,57 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
       
       console.log('Submitting survey response for survey ID:', surveyId);
       console.log('Form data:', formData);
-      console.log('Custom responses being submitted:', formData.custom_responses);
       
-      // Debug info for client
-      console.log('Using Supabase client from integrations/supabase/client');
-      console.log('Submission URL:', `${window.location.origin}/survey?id=${surveyId}`);
-      
-      // Construct response payload
-      const responsePayload = {
-        survey_template_id: surveyId,
-        role: formData.role,
-        leadership_prioritize: formData.leadership_prioritize,
-        manageable_workload: formData.manageable_workload,
-        work_life_balance: formData.work_life_balance,
-        health_state: formData.health_state,
-        valued_member: formData.valued_member,
-        support_access: formData.support_access,
-        confidence_in_role: formData.confidence_in_role,
-        org_pride: formData.org_pride,
-        recommendation_score: formData.recommendation_score,
-        leaving_contemplation: formData.leaving_contemplation,
-        doing_well: formData.doing_well,
-        improvements: formData.improvements
-      };
-      
-      // Add additional debug information
-      console.log('Detailed response payload:', JSON.stringify(responsePayload));
-      console.log('Now attempting to insert survey response');
-      
-      // Use an explicit public insert with no auth
+      // First, insert the main survey response
       const { data: responseData, error: responseError } = await supabase
         .from('survey_responses')
-        .insert(responsePayload)
+        .insert({
+          survey_template_id: surveyId,
+          role: formData.role,
+          leadership_prioritize: formData.leadership_prioritize,
+          manageable_workload: formData.manageable_workload,
+          work_life_balance: formData.work_life_balance,
+          health_state: formData.health_state,
+          valued_member: formData.valued_member,
+          support_access: formData.support_access,
+          confidence_in_role: formData.confidence_in_role,
+          org_pride: formData.org_pride,
+          recommendation_score: formData.recommendation_score,
+          leaving_contemplation: formData.leaving_contemplation,
+          doing_well: formData.doing_well,
+          improvements: formData.improvements
+        })
         .select('id')
         .single();
       
       if (responseError) {
         console.error('Error submitting survey response:', responseError);
-        console.error('Error code:', responseError.code);
-        console.error('Error message:', responseError.message);
-        console.error('Error details:', responseError.details);
-        
-        toast.error(`Submission error: ${responseError.message}`);
+        toast.error('Failed to submit survey');
         return false;
       }
       
-      console.log('Survey response created with ID:', responseData?.id);
+      console.log('Survey response created with ID:', responseData.id);
       
       // Handle custom questions responses if any
       const customResponses = Object.entries(formData.custom_responses);
       if (customResponses.length > 0 && responseData?.id) {
-        try {
-          const customResponsesPayload = customResponses.map(([questionId, answer]) => ({
-            response_id: responseData.id,
-            question_id: questionId,
-            answer
-          }));
-          
-          console.log('Saving custom responses:', customResponsesPayload);
-          
-          if (customResponsesPayload.length > 0) {
-            const { error: customError } = await supabase
-              .from('custom_question_responses')
-              .insert(customResponsesPayload);
-            
-            if (customError) {
-              console.error('Error saving custom responses:', customError);
-              console.error('Custom error details:', customError.details);
-              toast.error('Some responses may not have been fully saved');
-            } else {
-              console.log('Custom responses saved successfully');
-            }
-          }
-        } catch (customErr) {
-          console.error('Exception handling custom responses:', customErr);
+        const customResponsesPayload = customResponses.map(([questionId, answer]) => ({
+          response_id: responseData.id,
+          question_id: questionId,
+          answer
+        }));
+        
+        console.log('Saving custom responses:', customResponsesPayload);
+        
+        const { error: customError } = await supabase
+          .from('custom_question_responses')
+          .insert(customResponsesPayload);
+        
+        if (customError) {
+          console.error('Error saving custom responses:', customError);
           // Continue with navigation even if custom responses fail
+          // but notify the user that some data might not have been saved
+          toast.error('Some responses may not have been fully saved');
         }
       }
       
@@ -143,7 +118,7 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
       }
     } catch (error: any) {
       console.error('Error submitting survey:', error);
-      toast.error(`Failed to submit survey: ${error.message || 'Unknown error'}`);
+      toast.error('Failed to submit survey. Please try again.');
       return false;
     } finally {
       setIsSubmitting(false);
