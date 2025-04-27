@@ -28,107 +28,66 @@ const DescriptorTable: React.FC<DescriptorTableProps> = ({ userId, section, onRe
   // Create a cache key for this section
   const cacheKey = `descriptors_${userId}_${section}`;
 
-  // Load any cached data immediately to avoid flicker
-  useEffect(() => {
-    const cachedData = getLocalStorageCache<ActionPlanDescriptor[]>(cacheKey);
-    if (cachedData) {
-      console.log(`Loading cached descriptors for section ${section} from localStorage cache`);
-      setDescriptors(cachedData);
-      setIsLoading(false);
-    }
-  }, [cacheKey, section]);
-
-  // Memoize fetchDescriptors to prevent unnecessary recreations
   const fetchDescriptors = useCallback(async () => {
     setIsLoading(true);
     try {
-      console.log('Fetching descriptors for user:', userId, 'section:', section);
       const result = await getActionPlanDescriptors(userId, section);
-      
       if (result.success && result.data) {
-        console.log('Fetched descriptors successfully, count:', result.data.length);
-        
-        const sortedDescriptors = result.data.sort((a, b) => {
-          if (!a.index_number) return 1;
-          if (!b.index_number) return -1;
-          return a.index_number.localeCompare(b.index_number, undefined, { numeric: true });
-        });
-        
-        const uniqueDescriptors = Array.from(
-          new Map(sortedDescriptors.map(descriptor => 
-            [descriptor.index_number + descriptor.reference, descriptor]
-          )).values()
+        const sortedDescriptors = result.data.sort((a, b) => 
+          a.index_number.localeCompare(b.index_number, undefined, { numeric: true })
         );
-        
-        console.log('Processed descriptors count:', uniqueDescriptors.length);
-        setDescriptors(uniqueDescriptors as ActionPlanDescriptor[]);
-        
-        // Cache the descriptors for this section
-        setLocalStorageCache(cacheKey, uniqueDescriptors, 30 * 60); // Cache for 30 minutes
+        setDescriptors(sortedDescriptors);
+        setLocalStorageCache(cacheKey, sortedDescriptors, 30 * 60);
       } else {
-        console.error('Failed to load descriptors:', result.error);
         toast.error('Failed to load data');
       }
     } catch (error) {
-      console.error('Exception fetching descriptors:', error);
+      console.error('Error fetching descriptors:', error);
       toast.error('An error occurred while loading data');
     } finally {
       setIsLoading(false);
     }
   }, [userId, section, cacheKey]);
 
-  // Fetch descriptors when component mounts and when userId/section changes
   useEffect(() => {
-    if (userId && section) {
-      console.log(`Fetching descriptors for section: ${section}`);
-      fetchDescriptors();
+    const cachedData = getLocalStorageCache<ActionPlanDescriptor[]>(cacheKey);
+    if (cachedData) {
+      setDescriptors(cachedData);
+      setIsLoading(false);
     }
-  }, [userId, section, fetchDescriptors]);
-
-  const filteredDescriptors = descriptors.filter(
-    descriptor => 
-      descriptor.descriptor_text.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      descriptor.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      descriptor.index_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (descriptor.assigned_to && descriptor.assigned_to.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (descriptor.key_actions && descriptor.key_actions.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+    fetchDescriptors();
+  }, [cacheKey, fetchDescriptors]);
 
   const handleStatusChange = async (id: string, status: DescriptorStatus) => {
     try {
-      console.log(`Updating status for descriptor ${id} to ${status}`);
       const result = await updateDescriptor(id, { status });
       if (result.success) {
-        const updatedDescriptors = descriptors.map(d => d.id === id ? { ...d, status } : d);
+        const updatedDescriptors = descriptors.map(d => 
+          d.id === id ? { ...d, status } : d
+        );
         setDescriptors(updatedDescriptors);
-        
-        // Update cache
         setLocalStorageCache(cacheKey, updatedDescriptors, 30 * 60);
-        
         onRefreshSummary();
-      } else {
-        console.error('Failed to update status:', result.error);
       }
     } catch (error) {
-      console.error('Exception updating status:', error);
+      console.error('Error updating status:', error);
+      toast.error('Failed to update status');
     }
   };
 
   const handleDateChange = async (id: string, date: string) => {
     try {
-      console.log(`Updating deadline for descriptor ${id} to ${date}`);
       const result = await updateDescriptor(id, { deadline: date || null });
       if (result.success) {
-        const updatedDescriptors = descriptors.map(d => d.id === id ? { ...d, deadline: date } : d);
+        const updatedDescriptors = descriptors.map(d => 
+          d.id === id ? { ...d, deadline: date } : d
+        );
         setDescriptors(updatedDescriptors);
-        
-        // Update cache
         setLocalStorageCache(cacheKey, updatedDescriptors, 30 * 60);
-      } else {
-        console.error('Failed to update date:', result.error);
       }
     } catch (error) {
-      console.error('Exception updating date:', error);
+      console.error('Error updating date:', error);
+      toast.error('Failed to update deadline');
     }
   };
 
@@ -136,36 +95,33 @@ const DescriptorTable: React.FC<DescriptorTableProps> = ({ userId, section, onRe
     if (!editingCell) return;
 
     const { id, field } = editingCell;
-    const updates: Partial<ActionPlanDescriptor> = { [field]: editValue };
-    
     try {
-      console.log(`Saving edit for descriptor ${id}, field ${field}`);
-      const result = await updateDescriptor(id, updates);
+      const result = await updateDescriptor(id, { [field]: editValue });
       if (result.success) {
-        const updatedDescriptors = descriptors.map(d => d.id === id ? { ...d, [field]: editValue } : d);
+        const updatedDescriptors = descriptors.map(d => 
+          d.id === id ? { ...d, [field]: editValue } : d
+        );
         setDescriptors(updatedDescriptors);
-        
-        // Update cache
         setLocalStorageCache(cacheKey, updatedDescriptors, 30 * 60);
-        
         setEditingCell(null);
-      } else {
-        console.error('Failed to save edit:', result.error);
       }
     } catch (error) {
-      console.error('Exception saving edit:', error);
+      console.error('Error saving edit:', error);
+      toast.error('Failed to save changes');
     }
   };
 
+  const filteredDescriptors = descriptors.filter(descriptor => 
+    descriptor.descriptor_text.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    descriptor.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    descriptor.index_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (descriptor.assigned_to && descriptor.assigned_to.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (descriptor.key_actions && descriptor.key_actions.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
   const handleProgressNoteAdded = async () => {
-    console.log('Progress note added, refreshing data');
     await fetchDescriptors();
     onRefreshSummary();
-  };
-
-  const handleViewNotes = (id: string) => {
-    console.log('Viewing notes for descriptor:', id);
-    setViewNotesId(id);
   };
 
   return (
@@ -175,7 +131,7 @@ const DescriptorTable: React.FC<DescriptorTableProps> = ({ userId, section, onRe
         onSearchChange={setSearchTerm} 
       />
 
-      {isLoading ? (
+      {isLoading && descriptors.length === 0 ? (
         <div className="space-y-4">
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-64 w-full" />
@@ -194,7 +150,7 @@ const DescriptorTable: React.FC<DescriptorTableProps> = ({ userId, section, onRe
           onEditSave={handleEditSave}
           onStatusChange={handleStatusChange}
           onDateChange={handleDateChange}
-          onViewNotes={handleViewNotes}
+          onViewNotes={setViewNotesId}
           onAddNote={setProgressNoteId}
         />
       )}
