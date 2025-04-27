@@ -3,19 +3,22 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { supabase } from '../integrations/supabase/client';
 import { toast } from 'sonner';
 import { CustomQuestionType } from '../types/surveyForm';
+import { getCacheItem, setCacheItem, clearCacheItem } from '@/utils/cache/cacheUtils';
 
 interface CustomQuestionsContextType {
   questions: CustomQuestionType[];
   isLoading: boolean;
   error: string | null;
   loadQuestions: (surveyId: string) => Promise<void>;
+  refreshQuestions: (surveyId: string) => Promise<void>;
 }
 
 const CustomQuestionsContext = createContext<CustomQuestionsContextType>({
   questions: [],
   isLoading: false,
   error: null,
-  loadQuestions: async () => {}
+  loadQuestions: async () => {},
+  refreshQuestions: async () => {}
 });
 
 export const useCustomQuestions = () => useContext(CustomQuestionsContext);
@@ -34,6 +37,17 @@ export const CustomQuestionsProvider: React.FC<CustomQuestionsProviderProps> = (
       setIsLoading(true);
       setError(null);
       console.log('Loading custom questions for survey:', surveyId);
+      
+      // Check cache first
+      const cacheKey = `survey_custom_questions_${surveyId}`;
+      const cachedQuestions = getCacheItem<CustomQuestionType[]>(cacheKey);
+      
+      if (cachedQuestions) {
+        console.log('Using cached custom questions for survey:', surveyId);
+        setQuestions(cachedQuestions);
+        setIsLoading(false);
+        return;
+      }
       
       // First get the question IDs linked to this survey
       const { data: linkedQuestions, error: linkError } = await supabase
@@ -103,6 +117,9 @@ export const CustomQuestionsProvider: React.FC<CustomQuestionsProviderProps> = (
       console.log('Formatted questions:', formattedQuestions);
       setQuestions(formattedQuestions);
       
+      // Cache the results
+      setCacheItem(cacheKey, formattedQuestions, 600); // Cache for 10 minutes
+      
     } catch (err: any) {
       const errorMessage = err?.message || 'Failed to load custom questions';
       console.error('Error in loadQuestions:', errorMessage);
@@ -113,8 +130,19 @@ export const CustomQuestionsProvider: React.FC<CustomQuestionsProviderProps> = (
     }
   };
 
+  const refreshQuestions = async (surveyId: string) => {
+    clearCacheItem(`survey_custom_questions_${surveyId}`);
+    await loadQuestions(surveyId);
+  };
+
   return (
-    <CustomQuestionsContext.Provider value={{ questions, isLoading, error, loadQuestions }}>
+    <CustomQuestionsContext.Provider value={{ 
+      questions, 
+      isLoading, 
+      error, 
+      loadQuestions, 
+      refreshQuestions 
+    }}>
       {children}
     </CustomQuestionsContext.Provider>
   );

@@ -1,13 +1,23 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { SurveyStatus } from '../types/survey';
+import { getCacheItem, setCacheItem } from '../cache/cacheUtils';
 
 /**
  * Optimized survey responses query that uses our new indexes
- * and selects only necessary fields
+ * and selects only necessary fields with caching
  */
 export const getSurveyResponsesOptimized = async (surveyId: string) => {
   console.log('Fetching optimized survey responses for:', surveyId);
+  
+  // Check cache first
+  const cacheKey = `survey_responses_${surveyId}`;
+  const cachedData = getCacheItem<{data: any[], count: number}>(cacheKey);
+  
+  if (cachedData) {
+    console.log('Using cached survey responses');
+    return cachedData;
+  }
   
   const { data, error, count } = await supabase
     .from('survey_responses')
@@ -36,15 +46,29 @@ export const getSurveyResponsesOptimized = async (surveyId: string) => {
     throw error;
   }
 
-  return { data, count };
+  const result = { data, count };
+  
+  // Cache the result for 5 minutes
+  setCacheItem(cacheKey, result, 300);
+  
+  return result;
 };
 
 /**
  * Optimized payment history query that leverages our new indexes
- * and includes subscription details in a single query
+ * and includes subscription details in a single query with caching
  */
 export const getPaymentHistoryOptimized = async (userId: string, limit = 10, page = 1) => {
   console.log('Fetching optimized payment history for:', userId);
+  
+  // Check cache first
+  const cacheKey = `payment_history_${userId}_${limit}_${page}`;
+  const cachedData = getCacheItem<any[]>(cacheKey);
+  
+  if (cachedData) {
+    console.log('Using cached payment history');
+    return cachedData;
+  }
   
   const from = (page - 1) * limit;
   const to = from + limit - 1;
@@ -74,16 +98,28 @@ export const getPaymentHistoryOptimized = async (userId: string, limit = 10, pag
     throw error;
   }
 
+  // Cache the result for 5 minutes
+  setCacheItem(cacheKey, payments, 300);
+  
   return payments;
 };
 
 /**
  * Optimized custom questions query that combines related data
- * in a single efficient query
+ * in a single efficient query with caching
  */
 export const getCustomQuestionsOptimized = async (surveyId: string) => {
   console.log('Fetching optimized custom questions for:', surveyId);
 
+  // Check cache first
+  const cacheKey = `custom_questions_${surveyId}`;
+  const cachedData = getCacheItem<any[]>(cacheKey);
+  
+  if (cachedData) {
+    console.log('Using cached custom questions');
+    return cachedData;
+  }
+  
   const { data, error } = await supabase
     .from('survey_questions')
     .select(`
@@ -102,15 +138,29 @@ export const getCustomQuestionsOptimized = async (surveyId: string) => {
     throw error;
   }
 
-  return data?.map(item => item.custom_questions) || [];
+  const questions = data?.map(item => item.custom_questions) || [];
+  
+  // Cache the result for 10 minutes
+  setCacheItem(cacheKey, questions, 600);
+  
+  return questions;
 };
 
 /**
  * Optimized survey templates query that uses our new compound index
- * on status and date
+ * on status and date with caching
  */
 export const getSurveyTemplatesOptimized = async (userId: string, status?: SurveyStatus) => {
   console.log('Fetching optimized survey templates for:', userId);
+  
+  // Check cache first
+  const cacheKey = `survey_templates_${userId}_${status || 'all'}`;
+  const cachedData = getCacheItem<any[]>(cacheKey);
+  
+  if (cachedData) {
+    console.log('Using cached survey templates');
+    return cachedData;
+  }
   
   let query = supabase
     .from('survey_templates')
@@ -137,7 +187,9 @@ export const getSurveyTemplatesOptimized = async (userId: string, status?: Surve
     console.error('Error fetching survey templates:', error);
     throw error;
   }
-
+  
+  // Cache the result for 2 minutes
+  setCacheItem(cacheKey, data, 120);
+  
   return data;
 };
-

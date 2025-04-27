@@ -2,17 +2,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { getCacheItem, setCacheItem, clearCacheItem } from '@/utils/cache/cacheUtils';
 
-// Create a simple in-memory cache to store admin status
-// This is shared across all instances of the hook
-const adminStatusCache: Record<string, {
-  isAdmin: boolean,
-  timestamp: number,
-  expiresAt: number
-}> = {};
-
-// Cache expiry time in milliseconds (5 minutes)
-const CACHE_EXPIRY = 5 * 60 * 1000;
+// Cache expiry time in seconds (5 minutes)
+const CACHE_EXPIRY = 5 * 60;
 
 export function useAdminRole() {
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
@@ -21,9 +14,7 @@ export function useAdminRole() {
 
   // Clear cache for a specific user
   const clearCache = useCallback((userId: string) => {
-    if (adminStatusCache[userId]) {
-      delete adminStatusCache[userId];
-    }
+    clearCacheItem(`admin_status_${userId}`);
   }, []);
 
   // Function to check if user has admin role with caching
@@ -35,13 +26,13 @@ export function useAdminRole() {
     }
 
     try {
-      // Check cache if not in testing mode
-      const now = Date.now();
-      const cachedData = adminStatusCache[user.id];
+      // Check cache first
+      const cacheKey = `admin_status_${user.id}`;
+      const cachedStatus = getCacheItem<boolean>(cacheKey);
       
-      if (cachedData && now < cachedData.expiresAt) {
+      if (cachedStatus !== null) {
         console.log('Using cached admin status for user:', user.id);
-        setIsAdmin(cachedData.isAdmin);
+        setIsAdmin(cachedStatus);
         setIsLoading(false);
         return;
       }
@@ -65,11 +56,7 @@ export function useAdminRole() {
         setIsAdmin(isUserAdmin);
         
         // Update cache
-        adminStatusCache[user.id] = {
-          isAdmin: isUserAdmin,
-          timestamp: now,
-          expiresAt: now + CACHE_EXPIRY
-        };
+        setCacheItem(cacheKey, isUserAdmin, CACHE_EXPIRY);
       }
       
     } catch (error) {

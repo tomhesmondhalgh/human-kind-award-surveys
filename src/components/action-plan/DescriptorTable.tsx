@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { ActionPlanDescriptor, DescriptorStatus } from '@/types/actionPlan';
@@ -8,6 +9,7 @@ import SearchBar from './SearchBar';
 import DescriptorsTable from './DescriptorsTable';
 import { useEditableCell } from '@/hooks/useEditableCell';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getLocalStorageCache, setLocalStorageCache } from '@/utils/cache/cacheUtils';
 
 interface DescriptorTableProps {
   userId: string;
@@ -28,16 +30,11 @@ const DescriptorTable: React.FC<DescriptorTableProps> = ({ userId, section, onRe
 
   // Load any cached data immediately to avoid flicker
   useEffect(() => {
-    const cachedData = sessionStorage.getItem(cacheKey);
+    const cachedData = getLocalStorageCache<ActionPlanDescriptor[]>(cacheKey);
     if (cachedData) {
-      try {
-        console.log(`Loading cached descriptors for section ${section} from sessionStorage`);
-        const parsedData = JSON.parse(cachedData);
-        setDescriptors(parsedData);
-        setIsLoading(false);
-      } catch (e) {
-        console.error('Error parsing cached descriptors:', e);
-      }
+      console.log(`Loading cached descriptors for section ${section} from localStorage cache`);
+      setDescriptors(cachedData);
+      setIsLoading(false);
     }
   }, [cacheKey, section]);
 
@@ -67,7 +64,7 @@ const DescriptorTable: React.FC<DescriptorTableProps> = ({ userId, section, onRe
         setDescriptors(uniqueDescriptors as ActionPlanDescriptor[]);
         
         // Cache the descriptors for this section
-        sessionStorage.setItem(cacheKey, JSON.stringify(uniqueDescriptors));
+        setLocalStorageCache(cacheKey, uniqueDescriptors, 30 * 60); // Cache for 30 minutes
       } else {
         console.error('Failed to load descriptors:', result.error);
         toast.error('Failed to load data');
@@ -102,11 +99,11 @@ const DescriptorTable: React.FC<DescriptorTableProps> = ({ userId, section, onRe
       console.log(`Updating status for descriptor ${id} to ${status}`);
       const result = await updateDescriptor(id, { status });
       if (result.success) {
-        setDescriptors(descriptors.map(d => d.id === id ? { ...d, status } : d));
+        const updatedDescriptors = descriptors.map(d => d.id === id ? { ...d, status } : d);
+        setDescriptors(updatedDescriptors);
         
         // Update cache
-        const updatedDescriptors = descriptors.map(d => d.id === id ? { ...d, status } : d);
-        sessionStorage.setItem(cacheKey, JSON.stringify(updatedDescriptors));
+        setLocalStorageCache(cacheKey, updatedDescriptors, 30 * 60);
         
         onRefreshSummary();
       } else {
@@ -126,7 +123,7 @@ const DescriptorTable: React.FC<DescriptorTableProps> = ({ userId, section, onRe
         setDescriptors(updatedDescriptors);
         
         // Update cache
-        sessionStorage.setItem(cacheKey, JSON.stringify(updatedDescriptors));
+        setLocalStorageCache(cacheKey, updatedDescriptors, 30 * 60);
       } else {
         console.error('Failed to update date:', result.error);
       }
@@ -149,7 +146,7 @@ const DescriptorTable: React.FC<DescriptorTableProps> = ({ userId, section, onRe
         setDescriptors(updatedDescriptors);
         
         // Update cache
-        sessionStorage.setItem(cacheKey, JSON.stringify(updatedDescriptors));
+        setLocalStorageCache(cacheKey, updatedDescriptors, 30 * 60);
         
         setEditingCell(null);
       } else {

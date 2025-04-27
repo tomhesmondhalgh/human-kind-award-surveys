@@ -1,33 +1,24 @@
 
 import { supabase } from '../lib/supabase';
-
-// Simple cache for authentication
-const authCache: {
-  isAuthenticated: boolean;
-  timestamp: number;
-  expiresAt: number;
-} = {
-  isAuthenticated: false,
-  timestamp: 0,
-  expiresAt: 0
-};
+import { getCacheItem, setCacheItem, clearCacheItem } from '@/utils/cache/cacheUtils';
 
 // Cache expiry time (5 minutes)
-const CACHE_EXPIRY = 5 * 60 * 1000;
+const CACHE_EXPIRY = 5 * 60;
 
 /**
  * Check if a user is authenticated
  * Uses caching to minimize API requests
  */
 export async function checkAuthentication(): Promise<boolean> {
-  const now = Date.now();
-  
   // Check cache first
-  if (now < authCache.expiresAt) {
-    return authCache.isAuthenticated;
+  const cacheKey = 'auth_status';
+  const cachedStatus = getCacheItem<boolean>(cacheKey);
+  
+  if (cachedStatus !== null) {
+    return cachedStatus;
   }
   
-  // Cache miss or expired cache, fetch from Supabase
+  // Cache miss, check authentication status
   try {
     const { data: { user }, error } = await supabase.auth.getUser();
     
@@ -39,9 +30,7 @@ export async function checkAuthentication(): Promise<boolean> {
     const isAuthenticated = !!user;
     
     // Update cache
-    authCache.isAuthenticated = isAuthenticated;
-    authCache.timestamp = now;
-    authCache.expiresAt = now + CACHE_EXPIRY;
+    setCacheItem(cacheKey, isAuthenticated, CACHE_EXPIRY);
     
     return isAuthenticated;
   } catch (error) {
@@ -54,9 +43,7 @@ export async function checkAuthentication(): Promise<boolean> {
  * Clear authentication cache
  */
 export function clearAuthCache() {
-  authCache.isAuthenticated = false;
-  authCache.timestamp = 0;
-  authCache.expiresAt = 0;
+  clearCacheItem('auth_status');
 }
 
 /**
@@ -71,6 +58,13 @@ export async function isResourceOwner(resourceId: string): Promise<boolean> {
       return false;
     }
     
+    const cacheKey = `resource_owner_${user.id}_${resourceId}`;
+    const cachedResult = getCacheItem<boolean>(cacheKey);
+    
+    if (cachedResult !== null) {
+      return cachedResult;
+    }
+    
     // Query for the resource
     const { data, error: resourceError } = await supabase
       .from('survey_templates')
@@ -83,7 +77,12 @@ export async function isResourceOwner(resourceId: string): Promise<boolean> {
     }
     
     // Check if the user is the owner
-    return data.creator_id === user.id;
+    const isOwner = data.creator_id === user.id;
+    
+    // Cache the result
+    setCacheItem(cacheKey, isOwner, CACHE_EXPIRY);
+    
+    return isOwner;
   } catch (error) {
     console.error('Error checking resource ownership:', error);
     return false;

@@ -1,17 +1,10 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { PlanType, SubscriptionAccess } from '@/lib/supabase/subscription';
-
-// In-memory cache for subscription data
-// This reduces the need for repeated API calls
-const subscriptionCache: Record<string, {
-  subscription: SubscriptionAccess | null,
-  timestamp: number,
-  expiresAt: number
-}> = {};
+import { getCacheItem, setCacheItem, clearCacheItem } from '@/utils/cache/cacheUtils';
 
 // Cache expiry time (5 minutes)
-const CACHE_EXPIRY = 5 * 60 * 1000;
+const CACHE_EXPIRY = 5 * 60;
 
 /**
  * Get user subscription data with caching
@@ -19,14 +12,15 @@ const CACHE_EXPIRY = 5 * 60 * 1000;
 export async function getUserSubscription(userId: string): Promise<SubscriptionAccess | null> {
   if (!userId) return null;
   
-  const now = Date.now();
-  
   // Check cache first
-  if (subscriptionCache[userId] && now < subscriptionCache[userId].expiresAt) {
-    return subscriptionCache[userId].subscription;
+  const cacheKey = `subscription_${userId}`;
+  const cachedData = getCacheItem<SubscriptionAccess>(cacheKey);
+  
+  if (cachedData) {
+    return cachedData;
   }
   
-  // Cache miss or expired cache, fetch from database
+  // Cache miss, fetch from database
   try {
     const { data, error } = await supabase
       .rpc('get_user_subscription', { user_uuid: userId });
@@ -44,11 +38,7 @@ export async function getUserSubscription(userId: string): Promise<SubscriptionA
         };
     
     // Update cache
-    subscriptionCache[userId] = {
-      subscription,
-      timestamp: now,
-      expiresAt: now + CACHE_EXPIRY
-    };
+    setCacheItem(cacheKey, subscription, CACHE_EXPIRY);
     
     return subscription;
   } catch (error) {
@@ -64,14 +54,16 @@ export async function getUserSubscription(userId: string): Promise<SubscriptionA
 export async function batchGetUserSubscriptions(userIds: string[]): Promise<Record<string, SubscriptionAccess | null>> {
   if (!userIds.length) return {};
   
-  const now = Date.now();
   const result: Record<string, SubscriptionAccess | null> = {};
   const idsToFetch: string[] = [];
   
   // First check cache for each user ID
   userIds.forEach(userId => {
-    if (subscriptionCache[userId] && now < subscriptionCache[userId].expiresAt) {
-      result[userId] = subscriptionCache[userId].subscription;
+    const cacheKey = `subscription_${userId}`;
+    const cachedData = getCacheItem<SubscriptionAccess>(cacheKey);
+    
+    if (cachedData) {
+      result[userId] = cachedData;
     } else {
       idsToFetch.push(userId);
     }
@@ -114,11 +106,8 @@ export async function batchGetUserSubscriptions(userIds: string[]): Promise<Reco
       };
       
       // Update cache
-      subscriptionCache[userId] = {
-        subscription,
-        timestamp: now,
-        expiresAt: now + CACHE_EXPIRY
-      };
+      const cacheKey = `subscription_${userId}`;
+      setCacheItem(cacheKey, subscription, CACHE_EXPIRY);
       
       result[userId] = subscription;
     }
@@ -130,11 +119,8 @@ export async function batchGetUserSubscriptions(userIds: string[]): Promise<Reco
         result[id] = defaultSub;
         
         // Cache this result too
-        subscriptionCache[id] = {
-          subscription: defaultSub,
-          timestamp: now,
-          expiresAt: now + CACHE_EXPIRY
-        };
+        const cacheKey = `subscription_${id}`;
+        setCacheItem(cacheKey, defaultSub, CACHE_EXPIRY);
       }
     });
     
@@ -187,10 +173,10 @@ export async function checkPlanAccess(userId: string, requiredPlan: PlanType): P
  */
 export function clearSubscriptionCache(userId?: string) {
   if (userId) {
-    delete subscriptionCache[userId];
+    clearCacheItem(`subscription_${userId}`);
   } else {
-    // Clear entire cache
-    Object.keys(subscriptionCache).forEach(key => delete subscriptionCache[key]);
+    // Clear all subscription items from cache
+    clearCacheItem('subscription_');
   }
 }
 
@@ -200,7 +186,7 @@ export function clearSubscriptionCache(userId?: string) {
 export async function refreshUserSubscription(userId: string): Promise<SubscriptionAccess | null> {
   if (userId) {
     // Remove from cache to force a refresh
-    delete subscriptionCache[userId];
+    clearCacheItem(`subscription_${userId}`);
     // Fetch fresh data
     return getUserSubscription(userId);
   }
