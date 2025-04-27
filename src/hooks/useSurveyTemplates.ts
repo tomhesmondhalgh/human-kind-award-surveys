@@ -3,8 +3,9 @@ import { useState, useEffect } from 'react';
 import { getSurveyTemplatesOptimized } from '@/utils/db/queryOptimizer';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { SurveyStatus } from '@/utils/types/survey';
 
-export const useSurveyTemplates = (status?: string) => {
+export const useSurveyTemplates = (status?: SurveyStatus) => {
   const [templates, setTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
