@@ -1,15 +1,11 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { toast } from 'sonner';
-import { ActionPlanDescriptor, DescriptorStatus } from '@/types/actionPlan';
-import { updateDescriptor, getActionPlanDescriptors } from '@/utils/actionPlanUtils';
+import React from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
+import SearchBar from './SearchBar';
+import DescriptorsTable from './table/DescriptorsTable';
 import ProgressNoteDialog from './ProgressNoteDialog';
 import ProgressNotesList from './ProgressNotesList';
-import SearchBar from './SearchBar';
-import DescriptorsTable from './DescriptorsTable';
-import { useEditableCell } from '@/hooks/useEditableCell';
-import { Skeleton } from '@/components/ui/skeleton';
-import { getLocalStorageCache, setLocalStorageCache } from '@/utils/cache/cacheUtils';
+import { useDescriptorTableData } from '@/hooks/useDescriptorTableData';
 
 interface DescriptorTableProps {
   userId: string;
@@ -18,111 +14,40 @@ interface DescriptorTableProps {
 }
 
 const DescriptorTable: React.FC<DescriptorTableProps> = ({ userId, section, onRefreshSummary }) => {
-  const [descriptors, setDescriptors] = useState<ActionPlanDescriptor[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [progressNoteId, setProgressNoteId] = useState<string | null>(null);
-  const [viewNotesId, setViewNotesId] = useState<string | null>(null);
-  const { editingCell, editValue, setEditValue, handleEditStart, setEditingCell } = useEditableCell();
+  const {
+    descriptors,
+    isLoading,
+    editingCell,
+    editValue,
+    progressNoteId,
+    viewNotesId,
+    searchTerm,
+    setSearchTerm,
+    setProgressNoteId,
+    setViewNotesId,
+    handleStatusChange,
+    handleDateChange,
+    handleEditStart,
+    handleEditSave,
+    setEditValue
+  } = useDescriptorTableData(userId, section, onRefreshSummary);
 
-  // Create a cache key for this section
-  const cacheKey = `descriptors_${userId}_${section}`;
+  if (isLoading && descriptors.length === 0) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
 
-  const fetchDescriptors = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const result = await getActionPlanDescriptors(userId, section);
-      if (result.success && result.data) {
-        const sortedDescriptors = result.data.sort((a, b) => 
-          a.index_number.localeCompare(b.index_number, undefined, { numeric: true })
-        );
-        setDescriptors(sortedDescriptors);
-        setLocalStorageCache(cacheKey, sortedDescriptors, 30 * 60);
-      } else {
-        toast.error('Failed to load data');
-      }
-    } catch (error) {
-      console.error('Error fetching descriptors:', error);
-      toast.error('An error occurred while loading data');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [userId, section, cacheKey]);
-
-  useEffect(() => {
-    const cachedData = getLocalStorageCache<ActionPlanDescriptor[]>(cacheKey);
-    if (cachedData) {
-      setDescriptors(cachedData);
-      setIsLoading(false);
-    }
-    fetchDescriptors();
-  }, [cacheKey, fetchDescriptors]);
-
-  const handleStatusChange = async (id: string, status: DescriptorStatus) => {
-    try {
-      const result = await updateDescriptor(id, { status });
-      if (result.success) {
-        const updatedDescriptors = descriptors.map(d => 
-          d.id === id ? { ...d, status } : d
-        );
-        setDescriptors(updatedDescriptors);
-        setLocalStorageCache(cacheKey, updatedDescriptors, 30 * 60);
-        onRefreshSummary();
-      }
-    } catch (error) {
-      console.error('Error updating status:', error);
-      toast.error('Failed to update status');
-    }
-  };
-
-  const handleDateChange = async (id: string, date: string) => {
-    try {
-      const result = await updateDescriptor(id, { deadline: date || null });
-      if (result.success) {
-        const updatedDescriptors = descriptors.map(d => 
-          d.id === id ? { ...d, deadline: date } : d
-        );
-        setDescriptors(updatedDescriptors);
-        setLocalStorageCache(cacheKey, updatedDescriptors, 30 * 60);
-      }
-    } catch (error) {
-      console.error('Error updating date:', error);
-      toast.error('Failed to update deadline');
-    }
-  };
-
-  const handleEditSave = async () => {
-    if (!editingCell) return;
-
-    const { id, field } = editingCell;
-    try {
-      const result = await updateDescriptor(id, { [field]: editValue });
-      if (result.success) {
-        const updatedDescriptors = descriptors.map(d => 
-          d.id === id ? { ...d, [field]: editValue } : d
-        );
-        setDescriptors(updatedDescriptors);
-        setLocalStorageCache(cacheKey, updatedDescriptors, 30 * 60);
-        setEditingCell(null);
-      }
-    } catch (error) {
-      console.error('Error saving edit:', error);
-      toast.error('Failed to save changes');
-    }
-  };
-
-  const filteredDescriptors = descriptors.filter(descriptor => 
-    descriptor.descriptor_text.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    descriptor.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    descriptor.index_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (descriptor.assigned_to && descriptor.assigned_to.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (descriptor.key_actions && descriptor.key_actions.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
-  const handleProgressNoteAdded = async () => {
-    await fetchDescriptors();
-    onRefreshSummary();
-  };
+  if (descriptors.length === 0) {
+    return (
+      <div className="text-center py-12 text-gray-500">
+        {searchTerm ? 'No descriptors match your search' : 'No descriptors available for this section'}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -131,36 +56,25 @@ const DescriptorTable: React.FC<DescriptorTableProps> = ({ userId, section, onRe
         onSearchChange={setSearchTerm} 
       />
 
-      {isLoading && descriptors.length === 0 ? (
-        <div className="space-y-4">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-64 w-full" />
-        </div>
-      ) : filteredDescriptors.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          {searchTerm ? 'No descriptors match your search' : 'No descriptors available for this section'}
-        </div>
-      ) : (
-        <DescriptorsTable
-          descriptors={filteredDescriptors}
-          editingCell={editingCell}
-          editValue={editValue}
-          onEditStart={handleEditStart}
-          onEditValueChange={setEditValue}
-          onEditSave={handleEditSave}
-          onStatusChange={handleStatusChange}
-          onDateChange={handleDateChange}
-          onViewNotes={setViewNotesId}
-          onAddNote={setProgressNoteId}
-        />
-      )}
+      <DescriptorsTable
+        descriptors={descriptors}
+        editingCell={editingCell}
+        editValue={editValue}
+        onEditStart={handleEditStart}
+        onEditValueChange={setEditValue}
+        onEditSave={handleEditSave}
+        onStatusChange={handleStatusChange}
+        onDateChange={handleDateChange}
+        onViewNotes={setViewNotesId}
+        onAddNote={setProgressNoteId}
+      />
 
       {progressNoteId && (
         <ProgressNoteDialog
           descriptorId={progressNoteId}
           isOpen={!!progressNoteId}
           onClose={() => setProgressNoteId(null)}
-          onSuccess={handleProgressNoteAdded}
+          onSuccess={onRefreshSummary}
         />
       )}
 
