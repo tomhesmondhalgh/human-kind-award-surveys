@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { SurveyStatus } from '../types/survey';
 
 /**
  * Optimized survey responses query that uses our new indexes
@@ -108,7 +109,7 @@ export const getCustomQuestionsOptimized = async (surveyId: string) => {
  * Optimized survey templates query that uses our new compound index
  * on status and date
  */
-export const getSurveyTemplatesOptimized = async (userId: string, status?: string) => {
+export const getSurveyTemplatesOptimized = async (userId: string, status?: SurveyStatus) => {
   console.log('Fetching optimized survey templates for:', userId);
   
   let query = supabase
@@ -139,3 +140,4 @@ export const getSurveyTemplatesOptimized = async (userId: string, status?: strin
 
   return data;
 };
+
