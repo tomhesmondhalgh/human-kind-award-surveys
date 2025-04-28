@@ -1,7 +1,11 @@
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuthState } from '@/utils/auth/useAuthState';
+import { signInWithEmail } from '@/utils/auth/signIn';
+import { signUpWithEmail } from '@/utils/auth/signUp';
+import { signOutUser } from '@/utils/auth/signOut';
+import { completeUserProfile } from '@/utils/auth/profileManagement';
 
 interface AuthContextType {
   user: User | null;
@@ -30,124 +34,32 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [authCheckComplete, setAuthCheckComplete] = useState(false);
+  // Use the central auth state hook for state management
+  const { user, session, isLoading, isAuthenticated, authCheckComplete } = useAuthState();
 
-  useEffect(() => {
-    const getInitialSession = async () => {
-      try {
-        setIsLoading(true);
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Error getting session:', error);
-        }
-        
-        setSession(session);
-        setUser(session?.user || null);
-      } catch (error) {
-        console.error('Unexpected error during session check:', error);
-      } finally {
-        setIsLoading(false);
-        setAuthCheckComplete(true);
-      }
-    };
-
-    getInitialSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user || null);
-      setAuthCheckComplete(true);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
+  // Sign in handler
   const signIn = async (email: string, password: string) => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      
-      if (error) throw error;
-      
-      return { error: null, success: true };
-    } catch (error) {
-      console.error('Error signing in:', error);
-      return { error, success: false };
-    } finally {
-      setIsLoading(false);
-    }
+    return signInWithEmail(email, password);
   };
 
+  // Sign up handler
   const signUp = async (email: string, password: string, userData?: any) => {
-    setIsLoading(true);
-    try {
-      const options = userData ? {
-        data: {
-          first_name: userData.firstName,
-          last_name: userData.lastName,
-        },
-        emailRedirectTo: `${window.location.origin}/dashboard`,
-      } : {
-        emailRedirectTo: `${window.location.origin}/dashboard`,
-      };
-
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options,
-      });
-      
-      if (error) throw error;
-      
-      if (!data.user) {
-        throw new Error('Failed to create user account');
-      }
-      
-      return { error: null, success: true, user: data.user };
-    } catch (error: any) {
-      console.error('Error signing up:', error);
-      return { error, success: false };
-    } finally {
-      setIsLoading(false);
-    }
+    const response = await signUpWithEmail(email, password, userData);
+    return response;
   };
 
+  // Sign out handler
   const signOut = async () => {
-    setIsLoading(true);
-    try {
-      await supabase.auth.signOut();
-    } catch (error) {
-      console.error('Error signing out:', error);
-    } finally {
-      setIsLoading(false);
-    }
+    await signOutUser();
   };
 
-  const completeUserProfile = async (userData: any) => {
-    try {
-      // Fix: Ensure the profile_id parameter is first and all parameters are in the correct order
-      const { error } = await supabase.rpc('create_or_update_profile', {
-        profile_id: user?.id,
-        profile_first_name: userData.firstName,
-        profile_last_name: userData.lastName,
-        profile_job_title: userData.jobTitle,
-        profile_school_name: userData.schoolName,
-        profile_school_address: userData.schoolAddress,
-      });
-      
-      if (error) throw error;
-      
-      return { error: null, success: true };
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      return { error, success: false };
+  // Profile completion handler
+  const handleCompleteUserProfile = async (userData: any) => {
+    if (!user) {
+      return { error: new Error('User not authenticated'), success: false };
     }
+    
+    return completeUserProfile(user.id, userData);
   };
 
   return (
@@ -156,12 +68,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         user,
         session,
         isLoading,
-        isAuthenticated: !!user,
+        isAuthenticated,
         authCheckComplete,
         signIn,
         signUp,
         signOut,
-        completeUserProfile,
+        completeUserProfile: handleCompleteUserProfile,
       }}
     >
       {children}

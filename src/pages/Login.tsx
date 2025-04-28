@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
@@ -52,7 +53,6 @@ const Login = () => {
   }, [isAuthenticated, isLoading, navigate, location.search]);
 
   // Check for email confirmation success and auto-login the user
-  // We don't need this anymore since we're redirecting directly to the dashboard
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     

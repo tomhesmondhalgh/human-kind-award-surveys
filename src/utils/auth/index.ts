@@ -5,3 +5,6 @@ export * from './signUp';
 export * from './signOut';
 export * from './profileManagement';
 export * from './hubspot';
+
+// Add authentication state hook export
+export * from './useAuthState';
