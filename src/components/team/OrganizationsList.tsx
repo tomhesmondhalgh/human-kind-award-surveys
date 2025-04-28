@@ -4,18 +4,17 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from '../ui/button';
 import { Building, Plus, Search, MoreVertical } from 'lucide-react';
 import { Input } from '../ui/input';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import Pagination from '../surveys/Pagination';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../ui/dialog';
 import { Button as UIButton } from '../ui/button';
-import { Label } from '../ui/label';
-import { Input as UIInput } from '../ui/input';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
+import { Organization } from '@/types/organizations';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -69,20 +68,6 @@ const CreateOrganizationDialog = ({
         throw orgError;
       }
       
-      // Add the user as an admin of the organization
-      const { error: memberError } = await supabase
-        .from('organization_members')
-        .insert({
-          user_id: userId,
-          organization_id: orgData.id,
-          role: 'organization_admin',
-          is_primary: true
-        });
-        
-      if (memberError) {
-        throw memberError;
-      }
-      
       toast.success('Organisation created successfully');
       form.reset();
       onComplete();
@@ -113,7 +98,7 @@ const CreateOrganizationDialog = ({
                 <FormItem>
                   <FormLabel>Organisation Name</FormLabel>
                   <FormControl>
-                    <UIInput 
+                    <Input
                       placeholder="Enter organisation name" 
                       {...field} 
                     />
@@ -163,34 +148,27 @@ const OrganizationsList = () => {
         return { organizations: [], total: 0 };
       }
       
-      // Get organizations where user is an admin
-      const { data: members, error: membersError } = await supabase
-        .from('organization_members')
-        .select('organization_id')
-        .eq('user_id', userId)
-        .eq('role', 'organization_admin');
-        
-      if (membersError) {
-        toast.error('Failed to load user organizations');
-        throw membersError;
-      }
-      
-      if (!members.length) {
-        return { organizations: [], total: 0 };
-      }
-      
-      const orgIds = members.map(m => m.organization_id);
-      
-      // Get organization profiles
-      const { data: organizations, error: profilesError } = await supabase
+      // Get the user's profile which serves as their organization
+      const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
-        .in('id', orgIds);
+        .eq('id', userId)
+        .single();
         
-      if (profilesError) {
-        toast.error('Failed to load organization profiles');
-        throw profilesError;
+      if (error) {
+        toast.error('Failed to load user organizations');
+        throw error;
       }
+      
+      // Create an organization object from the profile
+      const organizations: Organization[] = profile ? [
+        {
+          id: profile.id,
+          name: profile.school_name || 'My Organisation',
+          created_at: profile.created_at || new Date().toISOString(),
+          updated_at: profile.updated_at || new Date().toISOString()
+        }
+      ] : [];
       
       return {
         organizations,
@@ -201,7 +179,7 @@ const OrganizationsList = () => {
 
   // Filter organizations based on search term
   const filteredOrganizations = organizationsData?.organizations.filter(org => {
-    const orgName = org.school_name || '';
+    const orgName = org.name || '';
     return searchTerm === '' || orgName.toLowerCase().includes(searchTerm.toLowerCase());
   }) || [];
   
@@ -221,14 +199,14 @@ const OrganizationsList = () => {
     if (!confirm("Are you sure you want to remove this organization? This will remove all members and data.")) return;
     
     try {
-      // Remove organization members first
-      const { error: membersError } = await supabase
-        .from('organization_members')
+      // Remove the organization profile
+      const { error } = await supabase
+        .from('profiles')
         .delete()
-        .eq('organization_id', orgId);
+        .eq('id', orgId);
         
-      if (membersError) {
-        throw membersError;
+      if (error) {
+        throw error;
       }
       
       toast.success('Organization removed successfully');
@@ -295,7 +273,7 @@ const OrganizationsList = () => {
                           <Building size={16} className="text-blue-600" />
                         </div>
                         <div className="ml-4 text-sm font-medium text-gray-900">
-                          {organization.school_name}
+                          {organization.name}
                         </div>
                       </div>
                     </td>

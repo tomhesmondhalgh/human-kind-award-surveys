@@ -1,7 +1,7 @@
 
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../../../lib/supabase';
-import { OrganizationMember } from '../../../lib/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
+import type { OrganizationMember } from '@/types/organizations';
 
 export function useProfiles(members: OrganizationMember[] | undefined) {
   const { 

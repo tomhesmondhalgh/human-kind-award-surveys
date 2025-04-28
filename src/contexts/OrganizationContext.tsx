@@ -1,8 +1,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
-import { Organization } from '../lib/supabase/client';
+import { Organization } from '../types/organizations';
 
 export interface OrganizationContextType {
   currentOrganization: Organization | null;
@@ -33,41 +33,29 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const fetchOrganizations = async () => {
     if (!user) return [];
     try {
-      const { data: orgMembers, error: orgError } = await supabase
-        .from('organization_members')
-        .select('organization_id, role')
-        .eq('user_id', user.id);
+      // Since organization_members table doesn't exist in the DB schema,
+      // we'll use a simplified approach
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('id, school_name, created_at, updated_at')
+        .eq('id', user.id)
+        .single();
         
-      if (orgError) {
-        console.error('Error fetching organization members:', orgError);
+      if (error) {
+        console.error('Error fetching organization data:', error);
         return [];
       }
       
-      const orgs: Organization[] = [];
-      
-      for (const org of orgMembers || []) {
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, school_name, created_at, updated_at')
-          .eq('id', org.organization_id)
-          .single();
-          
-        if (profileError) {
-          console.error('Error fetching org profile:', profileError);
-          continue;
-        }
-        
-        if (profile) {
-          orgs.push({
-            id: profile.id,
-            name: profile.school_name,
-            created_at: profile.created_at || new Date().toISOString(),
-            updated_at: profile.updated_at || new Date().toISOString()
-          });
-        }
+      if (profile) {
+        return [{
+          id: profile.id,
+          name: profile.school_name || 'My Organisation',
+          created_at: profile.created_at || new Date().toISOString(),
+          updated_at: profile.updated_at || new Date().toISOString()
+        }];
       }
       
-      return orgs;
+      return [];
     } catch (error) {
       console.error('Error fetching organizations:', error);
       return [];
@@ -85,40 +73,26 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setIsLoading(true);
       try {
         if (user) {
-          const { data: orgMembers, error: orgError } = await supabase
-            .from('organization_members')
-            .select('organization_id')
-            .eq('user_id', user.id)
-            .limit(1)
+          // Use the user's profile as the organization
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('id, school_name, created_at, updated_at')
+            .eq('id', user.id)
             .single();
 
-          if (orgError) {
-            console.error('Error fetching organization:', orgError);
+          if (error) {
+            console.error('Error fetching organization profile:', error);
             setIsLoading(false);
             return;
           }
 
-          if (orgMembers) {
-            const { data: organization, error: profileError } = await supabase
-              .from('profiles')
-              .select('id, school_name, created_at, updated_at')
-              .eq('id', orgMembers.organization_id)
-              .single();
-
-            if (profileError) {
-              console.error('Error fetching organization profile:', profileError);
-              setIsLoading(false);
-              return;
-            }
-
-            if (organization) {
-              setCurrentOrganization({
-                id: organization.id,
-                name: organization.school_name,
-                created_at: organization.created_at || new Date().toISOString(),
-                updated_at: organization.updated_at || new Date().toISOString()
-              });
-            }
+          if (profile) {
+            setCurrentOrganization({
+              id: profile.id,
+              name: profile.school_name || 'My Organisation',
+              created_at: profile.created_at || new Date().toISOString(),
+              updated_at: profile.updated_at || new Date().toISOString()
+            });
           }
           
           // Fetch all organizations for the user
@@ -137,29 +111,29 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setIsLoading(true);
     try {
       // Fetch organization details
-      const { data: organization, error: profileError } = await supabase
+      const { data: profile, error } = await supabase
         .from('profiles')
         .select('id, school_name, created_at, updated_at')
         .eq('id', orgId)
         .single();
 
-      if (profileError) {
-        console.error('Error fetching organization profile:', profileError);
+      if (error) {
+        console.error('Error fetching organization profile:', error);
         setIsLoading(false);
         return false;
       }
 
-      if (!organization) {
+      if (!profile) {
         console.error('Organization not found');
         setIsLoading(false);
         return false;
       }
 
       setCurrentOrganization({
-        id: organization.id,
-        name: organization.school_name,
-        created_at: organization.created_at || new Date().toISOString(),
-        updated_at: organization.updated_at || new Date().toISOString()
+        id: profile.id,
+        name: profile.school_name || 'My Organisation',
+        created_at: profile.created_at || new Date().toISOString(),
+        updated_at: profile.updated_at || new Date().toISOString()
       });
       return true;
     } catch (error) {
