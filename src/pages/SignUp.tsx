@@ -98,14 +98,10 @@ const SignUp = () => {
         });
       }
       
-      toast.success('Account created successfully!', {
-        description: 'Please check your email inbox to confirm your account'
-      });
+      toast.success('Account created successfully!');
     } catch (err: any) {
       console.error('Signup error details:', err);
-      toast.error('Failed to create account', {
-        description: err.message || 'Please check your information and try again.'
-      });
+      toast.error('Failed to create account');
     } finally {
       setIsLoading(false);
     }
