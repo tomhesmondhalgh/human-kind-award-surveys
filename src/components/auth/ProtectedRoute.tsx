@@ -1,7 +1,8 @@
+
 import { ReactNode, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from '@/services/toastService';
+import { toast } from 'sonner';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -26,8 +27,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       
       console.log('User not authenticated, redirecting to login with returnTo:', returnTo);
       
-      toast.error({
-        title: 'Authentication Required',
+      toast.error('Authentication Required', {
         description: 'Please log in to access this page'
       });
       

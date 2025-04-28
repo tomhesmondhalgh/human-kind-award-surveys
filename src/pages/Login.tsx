@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
 import AuthForm from '../components/auth/AuthForm';
 import PageTitle from '../components/ui/PageTitle';
 import { useAuth } from '../contexts/AuthContext';
-import { toast } from '../services/toastService';
+import { toast } from 'sonner';
 
 const LOGIN_VERSION = 'main_login_component_v2';
 
@@ -35,12 +36,9 @@ const Login = () => {
       const redirectPath = getReturnPath();
       console.log(`User authenticated, redirecting to: ${redirectPath}`);
       
-      if (!isLoading) {
-        toast.success({
-          title: 'Logged in successfully',
-          description: 'Welcome back!'
-        });
-      }
+      toast.success('Logged in successfully', {
+        description: 'Welcome back!'
+      });
       
       navigate(redirectPath);
     }
@@ -50,15 +48,13 @@ const Login = () => {
     const params = new URLSearchParams(location.search);
     
     if (params.get('email_reset') === 'true') {
-      toast.success({
-        title: 'Password reset email sent!',
+      toast.success('Password reset email sent!', {
         description: 'Please check your inbox for instructions to reset your password.'
       });
     }
     
     if (params.get('password_reset') === 'true') {
-      toast.success({
-        title: 'Password reset successfully!',
+      toast.success('Password reset successfully!', {
         description: 'You can now log in with your new password.'
       });
     }
@@ -75,15 +71,13 @@ const Login = () => {
         console.log('Login successful, waiting for auth state to update');
       } else if (error) {
         console.error('Login error:', error);
-        toast.error({
-          title: 'Failed to log in',
+        toast.error('Failed to log in', {
           description: error.message || 'Please check your credentials and try again.'
         });
       }
     } catch (err) {
       console.error('Login error:', err);
-      toast.error({
-        title: 'Something went wrong',
+      toast.error('Something went wrong', {
         description: 'Please try again later.'
       });
     } finally {

@@ -22,33 +22,43 @@ const Dashboard = () => {
   const [benchmarkScore, setBenchmarkScore] = useState<string | null>(null);
   const [recentSurveys, setRecentSurveys] = useState<SurveyWithResponses[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [dataFetchError, setDataFetchError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    console.log('Dashboard useEffect - User:', user);
+    console.log('Dashboard useEffect - User:', user?.id || 'no user');
     const fetchDashboardData = async () => {
       setIsLoading(true);
+      setDataFetchError(null);
+      
       try {
+        console.log('Fetching dashboard stats...');
         // Fetch dashboard stats
         const stats = await getDashboardStats();
+        console.log('Dashboard stats received:', stats);
+        
         if (stats) {
           setTotalSurveys(stats.totalSurveys);
           setTotalRespondents(stats.totalRespondents);
           setResponseRate(stats.responseRate);
           setBenchmarkScore(stats.benchmarkScore);
         } else {
+          console.warn('No dashboard stats returned');
           toast.error("Failed to load dashboard stats", {
             description: "Please try again later."
           });
         }
 
+        console.log('Fetching recent surveys...');
         // Fetch recent surveys
         const surveys = await getRecentSurveys(3, user?.id);
+        console.log('Recent surveys received:', surveys);
         setRecentSurveys(surveys);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
+        setDataFetchError('Failed to load dashboard data. Please check your connection.');
         toast.error("Failed to load dashboard data", {
           description: "Please check your connection and try again."
         });
@@ -57,11 +67,17 @@ const Dashboard = () => {
       }
     };
 
-    fetchDashboardData();
-
-    // Check for closed surveys when the dashboard loads
-    if (user) {
-      checkForClosedSurveys();
+    if (user?.id) {
+      fetchDashboardData();
+      
+      // Check for closed surveys when the dashboard loads
+      console.log('Checking for closed surveys...');
+      checkForClosedSurveys().catch(err => {
+        console.error('Error checking for closed surveys:', err);
+      });
+    } else {
+      console.log('No user ID available, skipping data fetch');
+      setIsLoading(false);
     }
   }, [user]);
 
@@ -83,6 +99,18 @@ const Dashboard = () => {
             New Survey
           </Button>
         </div>
+
+        {dataFetchError && (
+          <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-md mb-6">
+            <p>{dataFetchError}</p>
+            <button 
+              className="mt-2 text-sm font-medium underline"
+              onClick={() => window.location.reload()}
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         <StatsGrid
           totalSurveys={totalSurveys}

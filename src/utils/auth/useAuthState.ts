@@ -55,6 +55,7 @@ export const useAuthState = () => {
         }
         
         if (mounted) {
+          console.log('Initial session retrieved:', data.session ? 'Session exists' : 'No session');
           setSession(data.session);
           setUser(data.session?.user ?? null);
           setIsLoading(false);

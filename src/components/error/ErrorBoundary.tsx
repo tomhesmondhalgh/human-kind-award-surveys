@@ -1,6 +1,6 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { toast } from '@/services/toastService';
+import { toast } from 'sonner';
 
 interface Props {
   children: ReactNode;
