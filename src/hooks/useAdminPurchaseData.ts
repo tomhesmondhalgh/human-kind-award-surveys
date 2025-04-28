@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Purchase } from '../types/purchases';
 
@@ -23,11 +23,14 @@ export const useAdminPurchaseData = (initialParams?: Partial<PurchasesQueryParam
   const [totalCount, setTotalCount] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(initialParams?.page || 1);
   const [pageSize, setPageSize] = useState<number>(initialParams?.pageSize || 10);
-  const [searchQuery, setSearchQuery] = useState<string>(initialParams?.searchQuery || '');
 
-  // First, check if the user is an admin
+  // State for retry logic
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 3;
+  
+  // Check admin status
   useEffect(() => {
-    async function checkAdminStatus() {
+    const checkAdminStatus = async () => {
       try {
         const user = (await supabase.auth.getUser()).data.user;
         
@@ -59,21 +62,15 @@ export const useAdminPurchaseData = (initialParams?: Partial<PurchasesQueryParam
       } finally {
         setAdminCheckComplete(true);
       }
-    }
+    };
     
     checkAdminStatus();
   }, []);
 
-  // Then fetch payments data if user is admin
-  useEffect(() => {
-    if (!adminCheckComplete) return;
+  // Fetch purchases data with retry logic
+  const fetchPurchases = useCallback(async () => {
     if (!isAdmin) return;
     
-    fetchPurchases();
-  }, [adminCheckComplete, isAdmin, currentPage, pageSize]);
-
-  // Function to fetch purchases with pagination
-  const fetchPurchases = async () => {
     setLoading(true);
     setError(null);
     
@@ -87,8 +84,7 @@ export const useAdminPurchaseData = (initialParams?: Partial<PurchasesQueryParam
       
       if (countError) {
         console.error('Error fetching payment count:', countError);
-        setError(`Failed to fetch payment count: ${countError.message}`);
-        return;
+        throw new Error(`Failed to fetch payment count: ${countError.message}`);
       }
       
       setTotalCount(count || 0);
@@ -113,8 +109,7 @@ export const useAdminPurchaseData = (initialParams?: Partial<PurchasesQueryParam
       
       if (error) {
         console.error('Error fetching payment records:', error);
-        setError(`Failed to fetch payment data: ${error.message}`);
-        return;
+        throw new Error(`Failed to fetch payment data: ${error.message}`);
       }
       
       console.log(`Successfully fetched ${data?.length || 0} payment records for page ${currentPage}`);
@@ -129,7 +124,7 @@ export const useAdminPurchaseData = (initialParams?: Partial<PurchasesQueryParam
         id: item.id,
         subscription_id: item.subscription_id,
         amount: item.amount,
-        currency: item.currency,
+        currency: item.currency || 'GBP',
         payment_method: item.payment_method,
         payment_status: item.payment_status,
         invoice_number: item.invoice_number,
@@ -142,43 +137,34 @@ export const useAdminPurchaseData = (initialParams?: Partial<PurchasesQueryParam
         purchase_type: item.subscriptions?.purchase_type || 'unknown'
       }));
       
-      console.log('Formatted purchase data:', formattedData);
       setPurchases(formattedData);
+      // Reset retry count on success
+      setRetryCount(0);
     } catch (err: any) {
-      console.error('Critical error in fetchPurchases:', err);
+      console.error('Error in fetchPurchases:', err);
       setError(`Failed to load payment data: ${err.message}`);
+      
+      // Implement retry logic
+      if (retryCount < MAX_RETRIES) {
+        console.log(`Retrying fetch (${retryCount + 1}/${MAX_RETRIES})...`);
+        setRetryCount(prev => prev + 1);
+        // Retry after a delay that increases with each retry
+        setTimeout(() => fetchPurchases(), 1000 * (retryCount + 1));
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, pageSize, isAdmin, retryCount]);
 
-  // Function to update search query
-  const updateSearchQuery = (query: string) => {
-    setSearchQuery(query);
-    setCurrentPage(1); // Reset to first page when searching
-  };
-
-  // Function to filter purchases based on search query
-  const getFilteredPurchases = () => {
-    if (!searchQuery.trim()) return purchases;
-    
-    const query = searchQuery.toLowerCase();
-    return purchases.filter(purchase => {
-      return (
-        (purchase.billing_school_name || '').toLowerCase().includes(query) ||
-        (purchase.billing_contact_name || '').toLowerCase().includes(query) ||
-        (purchase.billing_contact_email || '').toLowerCase().includes(query) ||
-        (purchase.invoice_number || '').toLowerCase().includes(query) ||
-        purchase.plan_type.toLowerCase().includes(query) ||
-        purchase.payment_method.toLowerCase().includes(query) ||
-        purchase.payment_status.toLowerCase().includes(query)
-      );
-    });
-  };
+  // Fetch purchases when dependencies change or admin check completes
+  useEffect(() => {
+    if (adminCheckComplete && isAdmin) {
+      fetchPurchases();
+    }
+  }, [adminCheckComplete, isAdmin, currentPage, pageSize, fetchPurchases]);
 
   return { 
     purchases,
-    filteredPurchases: getFilteredPurchases(),
     loading, 
     error, 
     isAdmin, 
@@ -188,8 +174,6 @@ export const useAdminPurchaseData = (initialParams?: Partial<PurchasesQueryParam
     currentPage,
     setCurrentPage,
     pageSize,
-    setPageSize,
-    searchQuery,
-    updateSearchQuery
+    setPageSize
   };
 };

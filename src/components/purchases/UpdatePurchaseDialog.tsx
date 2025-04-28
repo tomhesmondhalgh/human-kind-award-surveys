@@ -5,13 +5,11 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Label } from "../ui/label";
-import { supabase } from "../../integrations/supabase/client";
 import { Alert, AlertDescription } from "../ui/alert";
 import { AlertCircle } from "lucide-react";
-import { useAuth } from '../../contexts/AuthContext';
 import { Purchase, PaymentStatus } from '../../types/purchases';
 import { formatCurrency } from '../../lib/utils';
-import { toast } from 'sonner';
+import { usePurchaseUpdater } from '../../hooks/usePurchaseUpdater';
 
 interface UpdatePurchaseDialogProps {
   open: boolean;
@@ -31,9 +29,9 @@ export const UpdatePurchaseDialog: React.FC<UpdatePurchaseDialogProps> = ({
   const [billingSchoolName, setBillingSchoolName] = useState(purchase.billing_school_name || '');
   const [billingContactName, setBillingContactName] = useState(purchase.billing_contact_name || '');
   const [billingContactEmail, setBillingContactEmail] = useState(purchase.billing_contact_email || '');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
+  
+  // Use our new hook for update logic
+  const { updatePurchase, isSubmitting, error, setError } = usePurchaseUpdater();
 
   const handlePaymentStatusChange = (value: string) => {
     setPaymentStatus(value as PaymentStatus);
@@ -41,58 +39,24 @@ export const UpdatePurchaseDialog: React.FC<UpdatePurchaseDialogProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    setError(null);
+    
+    const updateResult = await updatePurchase(purchase, {
+      invoiceNumber,
+      paymentStatus,
+      billingSchoolName,
+      billingContactName,
+      billingContactEmail
+    });
 
-    try {
-      console.log('Submitting purchase update:', {
-        paymentId: purchase.id,
-        status: paymentStatus,
-        invoiceNumber,
-        adminUserId: user?.id
-      });
-
-      // First, update the billing information directly
-      const { error: billingError } = await supabase
-        .from('payment_history')
-        .update({
-          billing_school_name: billingSchoolName,
-          billing_contact_name: billingContactName,
-          billing_contact_email: billingContactEmail
-        })
-        .eq('id', purchase.id);
-
-      if (billingError) {
-        console.error('Error updating billing information:', billingError);
-        throw new Error(`Failed to update billing information: ${billingError.message}`);
-      }
-
-      // Then call the edge function to update status and handle subscription logic
-      const { data, error: functionError } = await supabase.functions.invoke('update-invoice-status', {
-        body: {
-          paymentId: purchase.id,
-          status: paymentStatus,
-          invoiceNumber: invoiceNumber,
-          adminUserId: user?.id || 'unknown'
-        }
-      });
-
-      if (functionError) {
-        console.error('Edge function error:', functionError);
-        throw new Error(`Failed to update payment status: ${functionError.message}`);
-      }
-
-      console.log('Update response:', data);
-      
-      toast.success("Payment record updated successfully");
+    if (updateResult) {
       onUpdated();
-    } catch (err: any) {
-      console.error('Error in handleSubmit:', err);
-      setError(`An error occurred: ${err.message}`);
-      toast.error('Failed to update payment record');
-    } finally {
-      setIsSubmitting(false);
     }
+  };
+
+  const getButtonColorClass = () => {
+    if (paymentStatus === 'payment_made') return 'bg-green-600 hover:bg-green-700';
+    if (paymentStatus === 'cancelled') return 'bg-red-600 hover:bg-red-700';
+    return '';
   };
 
   return (
@@ -191,8 +155,7 @@ export const UpdatePurchaseDialog: React.FC<UpdatePurchaseDialogProps> = ({
             <Button 
               type="submit" 
               disabled={isSubmitting}
-              className={paymentStatus === 'payment_made' ? 'bg-green-600 hover:bg-green-700' : 
-                         paymentStatus === 'cancelled' ? 'bg-red-600 hover:bg-red-700' : ''}
+              className={getButtonColorClass()}
             >
               {isSubmitting ? 'Updating...' : 'Update Record'}
             </Button>

@@ -6,37 +6,42 @@ import { Button } from "../ui/button";
 import { AlertCircle, Search, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { toast } from 'sonner';
+import { Skeleton } from "../ui/skeleton";
 import { useAdminPurchaseData } from '../../hooks/useAdminPurchaseData';
+import { usePurchaseFilters } from '../../hooks/usePurchaseFilters';
 import { PurchaseTable } from './PurchaseTable';
 import { PurchasePagination } from './PurchasePagination';
 import { UpdatePurchaseDialog } from './UpdatePurchaseDialog';
 import { Purchase } from '../../types/purchases';
 
 const PurchasesManagement = () => {
+  // Use the admin purchase data hook
   const { 
     purchases, 
-    filteredPurchases,
     loading, 
     error, 
     isAdmin, 
     adminCheckComplete, 
     refreshPurchases,
-    totalCount,
+    totalCount
+  } = useAdminPurchaseData();
+  
+  // Use our new filters hook
+  const {
+    searchQuery,
+    updateSearchQuery,
     currentPage,
     setCurrentPage,
     pageSize,
-    setPageSize,
-    searchQuery,
-    updateSearchQuery
-  } = useAdminPurchaseData();
+    handlePageSizeChange,
+    filteredPurchases,
+    totalPages,
+    isFiltering
+  } = usePurchaseFilters(purchases, totalCount);
   
   // State for update dialog
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
-
-  // Calculate total pages
-  const totalPages = Math.ceil(totalCount / pageSize);
 
   // Handler for opening the update dialog
   const handleUpdatePurchase = (purchase: Purchase) => {
@@ -49,14 +54,6 @@ const PurchasesManagement = () => {
     setUpdateDialogOpen(false);
     setSelectedPurchase(null);
     refreshPurchases();
-    toast.success('Purchase record updated successfully');
-  };
-
-  // Handler for changing page size
-  const handlePageSizeChange = (value: string) => {
-    const newSize = parseInt(value, 10);
-    setPageSize(newSize);
-    setCurrentPage(1);  // Reset to first page when changing page size
   };
 
   // Show loading state while checking admin status
@@ -120,12 +117,13 @@ const PurchasesManagement = () => {
               value={searchQuery}
               onChange={(e) => updateSearchQuery(e.target.value)}
               className="pl-10 w-full"
+              disabled={loading}
             />
           </div>
           <div className="flex items-center gap-2 w-full md:w-auto">
             <div className="flex items-center">
               <span className="text-sm text-muted-foreground mr-2">Show:</span>
-              <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
+              <Select value={pageSize.toString()} onValueChange={handlePageSizeChange} disabled={loading}>
                 <SelectTrigger className="w-[80px]">
                   <SelectValue placeholder="10" />
                 </SelectTrigger>
@@ -137,17 +135,27 @@ const PurchasesManagement = () => {
                 </SelectContent>
               </Select>
             </div>
-            <Button variant="outline" onClick={refreshPurchases} className="flex items-center ml-2">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
+            <Button 
+              variant="outline" 
+              onClick={refreshPurchases} 
+              className="flex items-center ml-2"
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              {loading ? 'Loading...' : 'Refresh'}
             </Button>
           </div>
         </div>
 
         {loading ? (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-            <p>Loading purchases data...</p>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-10 w-full max-w-[500px]" />
+              <Skeleton className="h-10 w-20" />
+            </div>
+            {Array.from({ length: 5 }).map((_, index) => (
+              <Skeleton key={index} className="h-16 w-full" />
+            ))}
           </div>
         ) : (
           <>
@@ -158,7 +166,7 @@ const PurchasesManagement = () => {
             
             <div className="mt-4 flex flex-col md:flex-row justify-between items-center">
               <div className="text-sm text-muted-foreground mb-2 md:mb-0">
-                Showing {filteredPurchases.length} of {totalCount} records
+                Showing {filteredPurchases.length} of {isFiltering ? purchases.length : totalCount} records
                 {searchQuery && filteredPurchases.length !== purchases.length && 
                   ` (filtered from ${purchases.length} records)`}
               </div>

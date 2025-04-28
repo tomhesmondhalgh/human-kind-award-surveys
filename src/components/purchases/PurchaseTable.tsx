@@ -10,7 +10,7 @@ import {
 } from "../ui/table";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
-import { Pencil, CreditCard, FileText } from "lucide-react";
+import { Pencil, CreditCard, FileText, AlertCircle } from "lucide-react";
 import { formatCurrency } from '../../lib/utils';
 import { Purchase } from '../../types/purchases';
 
@@ -48,48 +48,56 @@ export const PurchaseTable: React.FC<PurchaseTableProps> = ({
         return <CreditCard className="h-4 w-4 mr-1" />;
       case 'invoice':
         return <FileText className="h-4 w-4 mr-1" />;
+      case 'manual':
+        return <Pencil className="h-4 w-4 mr-1" />;
       default:
-        return null;
+        return <AlertCircle className="h-4 w-4 mr-1" />;
     }
   };
 
   // Format date helper
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-GB');
+    return new Date(dateString).toLocaleDateString('en-GB', { 
+      day: 'numeric', 
+      month: 'short', 
+      year: 'numeric' 
+    });
   };
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Date</TableHead>
-            <TableHead>School/Customer</TableHead>
-            <TableHead>Plan</TableHead>
+            <TableHead className="w-[100px]">Date</TableHead>
+            <TableHead className="min-w-[200px]">School/Customer</TableHead>
+            <TableHead className="min-w-[100px]">Plan</TableHead>
             <TableHead>Amount</TableHead>
-            <TableHead>Payment Method</TableHead>
-            <TableHead>Invoice #</TableHead>
+            <TableHead className="hidden sm:table-cell">Payment Method</TableHead>
+            <TableHead className="hidden md:table-cell">Invoice #</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Actions</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {purchases.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="text-center py-4">
+              <TableCell colSpan={8} className="text-center py-8">
                 No purchases found
               </TableCell>
             </TableRow>
           ) : (
             purchases.map((purchase) => (
-              <TableRow key={purchase.id}>
-                <TableCell>
+              <TableRow key={purchase.id} className="group hover:bg-muted/80">
+                <TableCell className="font-medium">
                   {formatDate(purchase.created_at)}
                 </TableCell>
                 <TableCell>
-                  <div className="font-medium">{purchase.billing_school_name || 'N/A'}</div>
+                  <div className="font-medium truncate max-w-[200px]">
+                    {purchase.billing_school_name || 'N/A'}
+                  </div>
                   {purchase.billing_contact_name && (
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-xs text-muted-foreground truncate max-w-[200px]">
                       {purchase.billing_contact_name}
                     </div>
                   )}
@@ -103,27 +111,27 @@ export const PurchaseTable: React.FC<PurchaseTableProps> = ({
                 <TableCell>
                   {formatCurrency(purchase.amount, purchase.currency, purchase.amount > 10000)}
                 </TableCell>
-                <TableCell>
+                <TableCell className="hidden sm:table-cell">
                   <div className="flex items-center">
                     {getPaymentMethodIcon(purchase.payment_method)}
                     <span className="capitalize">{purchase.payment_method}</span>
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="hidden md:table-cell">
                   {purchase.invoice_number || '—'}
                 </TableCell>
                 <TableCell>
                   {getStatusBadge(purchase.payment_status)}
                 </TableCell>
-                <TableCell>
+                <TableCell className="text-right">
                   <Button 
                     variant="outline" 
                     size="sm" 
                     onClick={() => onUpdatePurchase(purchase)}
-                    className="flex items-center"
+                    className="flex items-center opacity-70 group-hover:opacity-100 transition-opacity"
                   >
                     <Pencil className="h-4 w-4 mr-1" />
-                    Update
+                    <span className="hidden sm:inline">Update</span>
                   </Button>
                 </TableCell>
               </TableRow>
