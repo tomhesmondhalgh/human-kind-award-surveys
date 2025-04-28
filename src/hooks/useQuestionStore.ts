@@ -1,7 +1,17 @@
+
 import { useState } from 'react';
 import { CustomQuestion, convertToCustomQuestion, convertToCustomQuestions } from '../types/customQuestions';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/services/toastService';
+
+// Helper function to create a DB question payload
+const createDbQuestionPayload = (question: Partial<CustomQuestion>) => {
+  return {
+    text: question.text || '',
+    type: question.type || 'text',
+    options: question.options || null
+  };
+};
 
 export function useQuestionStore() {
   const [questions, setQuestions] = useState<CustomQuestion[]>([]);

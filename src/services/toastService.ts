@@ -1,42 +1,59 @@
 
 import { toast as sonnerToast } from 'sonner';
 
-type ToastOptions = {
-  title?: string;
-  description?: string;
-  variant?: 'default' | 'destructive';
-  duration?: number;
-};
-
 /**
  * Unified toast service that wraps sonner functionality
  */
 export const toast = {
-  success: (options: ToastOptions) => {
-    sonnerToast.success(options.title || 'Success', {
-      description: options.description,
-      duration: options.duration || 5000,
-    });
+  success: (message: string | { title?: string; description?: string; duration?: number }) => {
+    if (typeof message === 'string') {
+      sonnerToast.success(message, {
+        duration: 5000,
+      });
+    } else {
+      sonnerToast.success(message.title || 'Success', {
+        description: message.description,
+        duration: message.duration || 5000,
+      });
+    }
   },
   
-  error: (options: ToastOptions) => {
-    sonnerToast.error(options.title || 'Error', {
-      description: options.description,
-      duration: options.duration || 5000,
-    });
+  error: (message: string | { title?: string; description?: string; duration?: number }) => {
+    if (typeof message === 'string') {
+      sonnerToast.error(message, {
+        duration: 5000,
+      });
+    } else {
+      sonnerToast.error(message.title || 'Error', {
+        description: message.description,
+        duration: message.duration || 5000,
+      });
+    }
   },
   
-  info: (options: ToastOptions) => {
-    sonnerToast.info(options.title || 'Info', {
-      description: options.description,
-      duration: options.duration || 5000,
-    });
+  info: (message: string | { title?: string; description?: string; duration?: number }) => {
+    if (typeof message === 'string') {
+      sonnerToast.info(message, {
+        duration: 5000,
+      });
+    } else {
+      sonnerToast.info(message.title || 'Info', {
+        description: message.description,
+        duration: message.duration || 5000,
+      });
+    }
   },
   
-  warning: (options: ToastOptions) => {
-    sonnerToast.warning(options.title || 'Warning', {
-      description: options.description,
-      duration: options.duration || 5000,
-    });
+  warning: (message: string | { title?: string; description?: string; duration?: number }) => {
+    if (typeof message === 'string') {
+      sonnerToast.warning(message, {
+        duration: 5000,
+      });
+    } else {
+      sonnerToast.warning(message.title || 'Warning', {
+        description: message.description,
+        duration: message.duration || 5000,
+      });
+    }
   },
 };
