@@ -1,10 +1,7 @@
-
 import { useState } from 'react';
 import { CustomQuestion, convertToCustomQuestion, convertToCustomQuestions } from '../types/customQuestions';
-import { supabase } from '../lib/supabase';
-import { toast } from 'sonner';
-import { isValidQuestionType, createDbQuestionPayload } from '../utils/questionTypeUtils';
-import { fixCustomQuestionTypes } from '../utils/typeConversions';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/services/toastService';
 
 export function useQuestionStore() {
   const [questions, setQuestions] = useState<CustomQuestion[]>([]);

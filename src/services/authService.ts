@@ -1,5 +1,5 @@
 
-import { supabase } from '../lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { getCacheItem, setCacheItem, clearCacheItem } from '@/utils/cache/cacheUtils';
 
 // Cache expiry time (5 minutes)
