@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useEffect } from 'react';
 import Navbar from './Navbar';
 import TestingModeIndicator from './TestingModeIndicator';
 import CustomScriptsLoader from './CustomScriptsLoader';
@@ -9,6 +10,10 @@ interface MainLayoutProps {
 }
 
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
+  useEffect(() => {
+    console.log('MainLayout mounted');
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-brandPurple-50">
       <Navbar />
@@ -23,7 +28,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       <FeedbackButton />
       <TestingModeIndicator />
       <CustomScriptsLoader />
-      {/* Toaster is now in App.tsx */}
     </div>
   );
 };

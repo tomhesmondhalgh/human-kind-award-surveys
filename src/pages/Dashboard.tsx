@@ -1,5 +1,4 @@
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
 import StatsGrid from '../components/dashboard/StatsGrid';
@@ -15,6 +14,7 @@ import { SurveyWithResponses } from '../utils/surveyUtils';
 import { useIsMobile } from '../hooks/use-mobile';
 
 const Dashboard = () => {
+  console.log('Rendering Dashboard component');
   const [totalSurveys, setTotalSurveys] = useState<number | null>(null);
   const [totalRespondents, setTotalRespondents] = useState<number | null>(null);
   const [responseRate, setResponseRate] = useState<string | null>(null);
@@ -26,6 +26,7 @@ const Dashboard = () => {
   const isMobile = useIsMobile();
 
   useEffect(() => {
+    console.log('Dashboard useEffect - User:', user);
     const fetchDashboardData = async () => {
       setIsLoading(true);
       try {
