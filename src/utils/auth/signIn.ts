@@ -1,5 +1,3 @@
-
-import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
 // Handle sign in with email and password

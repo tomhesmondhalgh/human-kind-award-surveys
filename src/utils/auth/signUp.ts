@@ -1,8 +1,7 @@
-
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { sendUserToHubspot } from './hubspot';
-import { toast } from 'sonner';
+import { toast } from '@/services/toastService';
 
 type SignUpResult = 
   | { error: null; success: true; user: User }

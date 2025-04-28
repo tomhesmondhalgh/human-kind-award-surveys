@@ -1,11 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
 import AuthForm from '../components/auth/AuthForm';
 import PageTitle from '../components/ui/PageTitle';
 import { useAuth } from '../contexts/AuthContext';
-import { toast } from 'sonner';
-import { supabase } from '../lib/supabase/client';
+import { toast } from '@/services/toastService';
+import { supabase } from '@/integrations/supabase/client';
 import { SignUpFormData } from '../types/auth';
 
 const SIGNUP_VERSION = 'main_signup_component_v1.2';
