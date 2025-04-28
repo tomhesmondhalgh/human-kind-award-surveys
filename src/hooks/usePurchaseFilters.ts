@@ -15,23 +15,8 @@ export function usePurchaseFilters(
 ) {
   // Filters state
   const [searchQuery, setSearchQuery] = useState(initialFilters.searchQuery || '');
-  const [currentPage, setCurrentPage] = useState(initialFilters.currentPage || 1);
-  const [pageSize, setPageSize] = useState(initialFilters.pageSize || 10);
-
-  // Reset to first page when search changes
-  const updateSearchQuery = useCallback((query: string) => {
-    setSearchQuery(query);
-    setCurrentPage(1); // Reset to first page when searching
-  }, []);
-
-  // Handler for changing page size
-  const handlePageSizeChange = useCallback((value: string) => {
-    const newSize = parseInt(value, 10);
-    setPageSize(newSize);
-    setCurrentPage(1);  // Reset to first page when changing page size
-  }, []);
-
-  // Calculate filtered purchases based on search query
+  
+  // Filter purchases based on search query
   const filteredPurchases = useMemo(() => {
     if (!searchQuery.trim()) return purchases;
     
@@ -49,23 +34,18 @@ export function usePurchaseFilters(
     });
   }, [purchases, searchQuery]);
 
-  // Calculate total pages
-  const totalPages = useMemo(() => 
-    Math.ceil((searchQuery ? filteredPurchases.length : totalCount) / pageSize),
-  [filteredPurchases.length, totalCount, searchQuery, pageSize]);
+  // Update search query (and reset pagination in parent)
+  const updateSearchQuery = useCallback((query: string) => {
+    setSearchQuery(query);
+  }, []);
 
   return {
     // Filters
     searchQuery,
     updateSearchQuery,
-    currentPage,
-    setCurrentPage,
-    pageSize,
-    handlePageSizeChange,
     
     // Results
     filteredPurchases,
-    totalPages,
     isFiltering: !!searchQuery.trim()
   };
 }

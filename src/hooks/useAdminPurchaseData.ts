@@ -42,7 +42,6 @@ export const useAdminPurchaseData = (initialParams?: Partial<PurchasesQueryParam
         
         console.log('Checking admin status for user:', user.id);
         
-        // Check if the user has admin privileges
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('is_admin')
@@ -67,7 +66,7 @@ export const useAdminPurchaseData = (initialParams?: Partial<PurchasesQueryParam
     checkAdminStatus();
   }, []);
 
-  // Fetch purchases data with retry logic
+  // Fetch purchases data with retry logic and proper pagination
   const fetchPurchases = useCallback(async () => {
     if (!isAdmin) return;
     
@@ -92,9 +91,8 @@ export const useAdminPurchaseData = (initialParams?: Partial<PurchasesQueryParam
       
       // Calculate pagination ranges
       const from = (currentPage - 1) * pageSize;
-      const to = from + pageSize - 1;
       
-      // Direct query to the payment_history table with pagination
+      // Fetch paginated records with all related data
       const { data, error } = await supabase
         .from('payment_history')
         .select(`
@@ -105,7 +103,7 @@ export const useAdminPurchaseData = (initialParams?: Partial<PurchasesQueryParam
           )
         `)
         .order('created_at', { ascending: false })
-        .range(from, to);
+        .range(from, from + pageSize - 1);
       
       if (error) {
         console.error('Error fetching payment records:', error);
@@ -114,7 +112,7 @@ export const useAdminPurchaseData = (initialParams?: Partial<PurchasesQueryParam
       
       console.log(`Successfully fetched ${data?.length || 0} payment records for page ${currentPage}`);
       
-      if (!data || data.length === 0) {
+      if (!data) {
         setPurchases([]);
         return;
       }
@@ -138,8 +136,7 @@ export const useAdminPurchaseData = (initialParams?: Partial<PurchasesQueryParam
       }));
       
       setPurchases(formattedData);
-      // Reset retry count on success
-      setRetryCount(0);
+      setRetryCount(0); // Reset retry count on success
     } catch (err: any) {
       console.error('Error in fetchPurchases:', err);
       setError(`Failed to load payment data: ${err.message}`);

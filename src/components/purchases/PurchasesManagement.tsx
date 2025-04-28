@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";
@@ -23,21 +22,26 @@ const PurchasesManagement = () => {
     isAdmin, 
     adminCheckComplete, 
     refreshPurchases,
-    totalCount
-  } = useAdminPurchaseData();
-  
-  // Use our new filters hook
-  const {
-    searchQuery,
-    updateSearchQuery,
+    totalCount,
     currentPage,
     setCurrentPage,
     pageSize,
-    handlePageSizeChange,
+    setPageSize
+  } = useAdminPurchaseData();
+  
+  // Use our filters hook
+  const {
+    searchQuery,
+    updateSearchQuery,
     filteredPurchases,
-    totalPages,
     isFiltering
   } = usePurchaseFilters(purchases, totalCount);
+  
+  // Handle page size change
+  const handlePageSizeChange = (value: string) => {
+    setPageSize(parseInt(value, 10));
+    setCurrentPage(1); // Reset to first page when changing page size
+  };
   
   // State for update dialog
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
@@ -55,6 +59,11 @@ const PurchasesManagement = () => {
     setSelectedPurchase(null);
     refreshPurchases();
   };
+
+  // Calculate total pages based on whether we're filtering or not
+  const totalPages = Math.ceil(
+    (isFiltering ? filteredPurchases.length : totalCount) / pageSize
+  );
 
   // Show loading state while checking admin status
   if (!adminCheckComplete) {
@@ -171,11 +180,13 @@ const PurchasesManagement = () => {
                   ` (filtered from ${purchases.length} records)`}
               </div>
               
-              <PurchasePagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
-              />
+              {!isFiltering && (
+                <PurchasePagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              )}
             </div>
             
             {filteredPurchases.length === 0 && (
