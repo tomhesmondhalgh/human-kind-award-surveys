@@ -79,9 +79,7 @@ const SignUp = () => {
       }
       
       if (invitationToken) {
-        toast.info('Please check your email to confirm your account before accessing your invitation', {
-          duration: 6000
-        });
+        toast.info('Please check your email to confirm your account before accessing your invitation');
         navigate(`/email-confirmation`, { 
           state: { 
             email: data.email,
