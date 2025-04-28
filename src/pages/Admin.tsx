@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import MainLayout from '../components/layout/MainLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -8,17 +7,15 @@ import CustomScriptsManagement from '../components/admin/CustomScriptsManagement
 import { useAdminRole } from '../hooks/useAdminRole';
 import { Navigate } from 'react-router-dom';
 import { useTestingMode } from '../contexts/TestingModeContext';
-import NewPurchasesManagement from '../components/admin/NewPurchasesManagement';
+import PurchasesManagement from '../components/purchases/PurchasesManagement';
 
 const Admin = () => {
   const { isAdmin, isLoading } = useAdminRole();
   const { isTestingMode } = useTestingMode();
   const [activeTab, setActiveTab] = useState('purchases');
   
-  // Determine if user has admin access
   const hasAdminAccess = isAdmin;
   
-  // Loading state
   if (isLoading) {
     return (
       <MainLayout>
@@ -29,7 +26,6 @@ const Admin = () => {
     );
   }
 
-  // Not an admin - redirect to dashboard
   if (!hasAdminAccess) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -48,7 +44,7 @@ const Admin = () => {
           </TabsList>
           
           <TabsContent value="purchases">
-            <NewPurchasesManagement />
+            <PurchasesManagement />
           </TabsContent>
           
           <TabsContent value="plans">
