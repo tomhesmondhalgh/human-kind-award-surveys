@@ -1,3 +1,4 @@
+
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { OrganizationProvider } from './contexts/OrganizationContext';
@@ -7,6 +8,28 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import StripeProvider from './components/stripe/StripeProvider';
 import ErrorBoundary from './components/error/ErrorBoundary';
+
+// Page imports
+import Index from './pages/Index';
+import Login from './pages/Login';
+import SignUp from './pages/SignUp';
+import EmailConfirmation from './pages/EmailConfirmation';
+import ResetPassword from './pages/ResetPassword';
+import PublicSurveyForm from './pages/PublicSurveyForm';
+import SurveyComplete from './pages/SurveyComplete';
+import SurveyClosed from './pages/SurveyClosed';
+import PaymentSuccess from './pages/PaymentSuccess';
+import Dashboard from './pages/Dashboard';
+import Surveys from './pages/Surveys';
+import SurveyEditor from './pages/SurveyEditor';
+import Analysis from './pages/Analysis';
+import Upgrade from './pages/Upgrade';
+import Improve from './pages/Improve';
+import Profile from './pages/Profile';
+import Purchases from './pages/Purchases';
+import Admin from './pages/Admin';
+import CustomQuestions from './pages/CustomQuestions';
+import NotFound from './pages/NotFound';
 
 console.log('App.tsx - Starting initialization');
 
