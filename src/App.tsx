@@ -1,4 +1,3 @@
-
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { OrganizationProvider } from './contexts/OrganizationContext';
@@ -63,7 +62,7 @@ function App() {
                   <Route path="/survey-closed" element={<SurveyClosed />} />
                   <Route path="/payment-success" element={<PaymentSuccess />} />
                   
-                  {/* Protected routes */}
+                  {/* Protected routes - all using the consolidated ProtectedRoute component */}
                   <Route path="/dashboard" element={
                     <ProtectedRoute>
                       <Dashboard />
@@ -121,7 +120,6 @@ function App() {
                   } />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-                {/* Single Toaster component for the entire app */}
                 <Toaster position="bottom-right" />
               </OrganizationProvider>
             </StripeProvider>
