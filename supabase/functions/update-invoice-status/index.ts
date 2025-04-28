@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
@@ -53,10 +54,14 @@ async function handleCreateInvoiceRequest(
       throw new Error(`Selected plan "${planType}" not found or is not active`);
     }
     
+    // Convert price from pence to pounds for invoice creation
+    const priceInPounds = planData.price / 100;
+    
     console.log("Retrieved plan data:", {
       id: planData.id,
       name: planData.name,
-      price: planData.price
+      priceInPence: planData.price,
+      priceInPounds
     });
     
     console.log("Creating subscription record for user:", user.id);
@@ -81,13 +86,13 @@ async function handleCreateInvoiceRequest(
 
     console.log("Subscription created:", subscription.id);
 
-    // Add billing details to payment_history
+    // Add billing details to payment_history - price stored in pence
     const { data: payment, error: paymentError } = await supabase
       .from('payment_history')
       .insert({
         subscription_id: subscription.id,
         payment_method: 'invoice',
-        amount: planData.price,
+        amount: planData.price, // Store in pence in the database
         currency: planData.currency || 'GBP',
         payment_status: 'pending',
         billing_school_name: billingDetails.schoolName,
@@ -111,7 +116,8 @@ async function handleCreateInvoiceRequest(
       success: true, 
       message: 'Invoice request submitted successfully',
       subscription: subscription.id,
-      payment: payment.id
+      payment: payment.id,
+      amount: priceInPounds // Return the amount in pounds for display
     }), {
       status: 200, 
       headers: { ...corsHeaders, "Content-Type": "application/json" }
