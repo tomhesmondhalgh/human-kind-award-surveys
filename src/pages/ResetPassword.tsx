@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Lock } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '../services/toastService';
 import MainLayout from '../components/layout/MainLayout';
 import PageTitle from '../components/ui/PageTitle';
 import { Input } from '@/components/ui/input';
@@ -21,10 +21,10 @@ const ResetPassword = () => {
     const checkSession = async () => {
       const { data } = await supabase.auth.getSession();
       
-      // If no session or the access token doesn't exist, the reset link is invalid
       if (!data.session) {
         setIsValidToken(false);
-        toast.error('Invalid or expired password reset link', {
+        toast.error({
+          title: 'Invalid or expired password reset link',
           description: 'Please request a new password reset link'
         });
       }
@@ -37,12 +37,17 @@ const ResetPassword = () => {
     e.preventDefault();
     
     if (password !== confirmPassword) {
-      toast.error('Passwords do not match');
+      toast.error({
+        title: 'Passwords do not match'
+      });
       return;
     }
     
     if (password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+      toast.error({
+        title: 'Invalid password',
+        description: 'Password must be at least 6 characters'
+      });
       return;
     }
     
@@ -55,14 +60,17 @@ const ResetPassword = () => {
         throw error;
       }
       
-      toast.success('Password updated successfully');
+      toast.success({
+        title: 'Password updated successfully'
+      });
       
       // Sign out the user and redirect to login
       await supabase.auth.signOut();
       navigate('/login?password_reset=true');
     } catch (error: any) {
       console.error('Password update error:', error);
-      toast.error('Failed to update password', {
+      toast.error({
+        title: 'Failed to update password',
         description: error.message || 'Please try again later'
       });
     } finally {

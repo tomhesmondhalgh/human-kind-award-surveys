@@ -1,24 +1,21 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
 import { Button } from '../components/ui/button';
-import { useToast } from '../hooks/use-toast';
+import { toast } from '../services/toastService';
 import { useEffect, useState } from 'react';
 import { getUserSubscription, checkAndCreateSubscription } from '../lib/supabase/subscription';
 import { supabase } from '../lib/supabase/client';
 
 const PaymentSuccess = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [isVerifying, setIsVerifying] = useState(true);
   
   useEffect(() => {
     // Show success toast on page load
-    toast({
-      title: "Payment Successful!",
-      description: "Thank you for your purchase. Your subscription has been activated.",
-      variant: "default",
+    toast.success({
+      title: 'Payment Successful!',
+      description: 'Thank you for your purchase. Your subscription has been activated.'
     });
     
     // Check subscription status and update if needed
@@ -57,10 +54,9 @@ const PaymentSuccess = () => {
         }
         
         if (!subscription?.isActive) {
-          toast({
-            title: "Subscription Activation Pending",
-            description: "We're processing your payment. Your subscription will be activated shortly.",
-            variant: "default",
+          toast.info({
+            title: 'Subscription Activation Pending',
+            description: "We're processing your payment. Your subscription will be activated shortly."
           });
         }
       } catch (error) {
@@ -71,7 +67,7 @@ const PaymentSuccess = () => {
     };
     
     checkSubscriptionStatus();
-  }, [toast]);
+  }, []);
 
   return (
     <MainLayout>

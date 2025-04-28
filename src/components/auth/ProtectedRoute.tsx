@@ -1,8 +1,7 @@
-
 import { ReactNode, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
+import { toast } from '@/services/toastService';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -22,20 +21,20 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     });
     
     if (!isLoading && authCheckComplete && !isAuthenticated) {
-      // Store the path the user was trying to access for later redirect
       const currentPath = location.pathname + location.search;
       const returnTo = encodeURIComponent(currentPath);
       
       console.log('User not authenticated, redirecting to login with returnTo:', returnTo);
       
-      toast.error('Please log in to access this page');
+      toast.error({
+        title: 'Authentication Required',
+        description: 'Please log in to access this page'
+      });
       
-      // Redirect to login with the return path
       navigate(`/login?returnTo=${returnTo}`);
     }
   }, [isAuthenticated, isLoading, authCheckComplete, navigate, location]);
 
-  // Show loading spinner while checking auth state
   if (isLoading || !authCheckComplete) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -44,7 +43,6 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     );
   }
 
-  // Render protected content only if authenticated
   return isAuthenticated ? <>{children}</> : null;
 };
 
