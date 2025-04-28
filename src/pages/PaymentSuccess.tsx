@@ -5,7 +5,7 @@ import { Button } from '../components/ui/button';
 import { toast } from '../services/toastService';
 import { useEffect, useState } from 'react';
 import { getUserSubscription, checkAndCreateSubscription } from '../lib/supabase/subscription';
-import { supabase } from '../lib/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 
 const PaymentSuccess = () => {
   const navigate = useNavigate();

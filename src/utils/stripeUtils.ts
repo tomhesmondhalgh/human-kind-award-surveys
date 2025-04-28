@@ -1,5 +1,4 @@
-
-import { supabase } from '../lib/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 
 // Function to create a payment session in the backend
 export const createPaymentSession = async (priceId: string, successUrl: string, cancelUrl: string) => {

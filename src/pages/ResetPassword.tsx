@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Lock } from 'lucide-react';
@@ -7,7 +6,7 @@ import MainLayout from '../components/layout/MainLayout';
 import PageTitle from '../components/ui/PageTitle';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/lib/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -16,7 +15,6 @@ const ResetPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isValidToken, setIsValidToken] = useState(true);
 
-  // Check if the password reset token is valid
   useEffect(() => {
     const checkSession = async () => {
       const { data } = await supabase.auth.getSession();
@@ -64,7 +62,6 @@ const ResetPassword = () => {
         title: 'Password updated successfully'
       });
       
-      // Sign out the user and redirect to login
       await supabase.auth.signOut();
       navigate('/login?password_reset=true');
     } catch (error: any) {

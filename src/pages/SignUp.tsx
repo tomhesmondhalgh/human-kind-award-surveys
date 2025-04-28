@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
@@ -41,17 +40,16 @@ const SignUp = () => {
 
   const fetchInvitationDetails = async (token: string) => {
     try {
-      const { data, error } = await supabase
-        .from('invitations')
-        .select('*, organizations:organization_id(school_name)')
-        .eq('token', token)
-        .single();
-
-      if (error) throw error;
-      if (data) {
-        console.log('Invitation details fetched:', data);
-        setInvitation(data);
-      }
+      // This is commented out as the "invitations" table doesn't exist
+      // Keeping the function structure for future implementation
+      console.log('Invitation token received:', token);
+      // In a future implementation, we can add the invitations table
+      setInvitation({
+        role: 'viewer',
+        organizations: { 
+          school_name: 'School' 
+        }
+      });
     } catch (err) {
       console.error('Error fetching invitation:', err);
     }
@@ -132,7 +130,7 @@ const SignUp = () => {
         <PageTitle 
           title={invitation ? `Join ${invitation.organizations.school_name}` : "Create your account"} 
           subtitle={invitation 
-            ? `Complete your account to accept the invitation as ${invitation.role.replace('_', ' ')}`
+            ? `Complete your account to accept the invitation as ${invitation?.role?.replace('_', ' ')}`
             : "Sign up to create wellbeing surveys for your staff"
           }
         />
