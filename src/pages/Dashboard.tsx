@@ -7,7 +7,7 @@ import RecentSurveysList from '../components/dashboard/RecentSurveysList';
 import GettingStartedGuide from '../components/dashboard/GettingStartedGuide';
 import PageTitle from '../components/ui/PageTitle';
 import { Button } from '../components/ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { getDashboardStats, getRecentSurveys, checkForClosedSurveys } from '../utils/surveyUtils';
@@ -24,11 +24,17 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [dataFetchError, setDataFetchError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, session, isAuthenticated } = useAuth();
   const isMobile = useIsMobile();
 
+  console.log('Dashboard auth state:', { 
+    userId: user?.id, 
+    isAuthenticated, 
+    hasSession: !!session
+  });
+
   useEffect(() => {
-    console.log('Dashboard useEffect - User:', user?.id || 'no user');
+    console.log('Dashboard useEffect - User:', user?.id || 'no user', 'Session:', !!session);
     const fetchDashboardData = async () => {
       setIsLoading(true);
       setDataFetchError(null);
@@ -77,9 +83,24 @@ const Dashboard = () => {
       });
     } else {
       console.log('No user ID available, skipping data fetch');
-      setIsLoading(false);
+      if (!isLoading) {
+        // Only set loading to false if we've already determined there's no user
+        // This prevents flickering when authentication is still being determined
+        setIsLoading(false);
+      }
     }
-  }, [user]);
+  }, [user, session]);
+
+  const handleRetry = () => {
+    if (user?.id) {
+      toast.info("Retrying data fetch...");
+      // Force re-fetch by creating a new user object reference
+      const tempUser = { ...user };
+      // @ts-ignore - Intentionally triggering re-render
+      window.dashboardRefetchTrigger = tempUser;
+      window.location.reload();
+    }
+  };
 
   return (
     <MainLayout>
@@ -104,10 +125,23 @@ const Dashboard = () => {
           <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-md mb-6">
             <p>{dataFetchError}</p>
             <button 
-              className="mt-2 text-sm font-medium underline"
-              onClick={() => window.location.reload()}
+              className="mt-2 text-sm font-medium flex items-center gap-2 text-red-700 hover:text-red-800"
+              onClick={handleRetry}
             >
+              <RotateCcw size={16} />
               Retry
+            </button>
+          </div>
+        )}
+
+        {!user && !isLoading && (
+          <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 p-4 rounded-md mb-6">
+            <p>Authentication issue detected. Please try signing out and back in.</p>
+            <button 
+              className="mt-2 text-sm font-medium underline"
+              onClick={() => navigate('/login')}
+            >
+              Go to login
             </button>
           </div>
         )}

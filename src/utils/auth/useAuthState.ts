@@ -13,6 +13,7 @@ export const useAuthState = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [authCheckComplete, setAuthCheckComplete] = useState(false);
+  const [authError, setAuthError] = useState<Error | null>(null);
 
   useEffect(() => {
     console.log('Auth state hook initializing');
@@ -43,10 +44,12 @@ export const useAuthState = () => {
     // Get initial session
     const initializeAuth = async () => {
       try {
+        console.log('Attempting to get initial session...');
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('Error getting initial session:', error);
+          setAuthError(error);
           if (mounted) {
             setIsLoading(false);
             setAuthCheckComplete(true);
@@ -55,14 +58,25 @@ export const useAuthState = () => {
         }
         
         if (mounted) {
-          console.log('Initial session retrieved:', data.session ? 'Session exists' : 'No session');
+          console.log('Initial session retrieved:', 
+            data.session ? `Session exists (user: ${data.session.user.email})` : 'No session');
           setSession(data.session);
           setUser(data.session?.user ?? null);
           setIsLoading(false);
           setAuthCheckComplete(true);
+          
+          // Log session details for debugging
+          if (data.session) {
+            const expiresAt = new Date(data.session.expires_at! * 1000).toISOString();
+            const now = new Date().toISOString();
+            console.log(`Session expires at ${expiresAt} (now: ${now})`);
+            const isExpired = data.session.expires_at! * 1000 < Date.now();
+            console.log(`Is session expired? ${isExpired}`);
+          }
         }
       } catch (error) {
         console.error('Exception getting initial session:', error);
+        setAuthError(error as Error);
         if (mounted) {
           setIsLoading(false);
           setAuthCheckComplete(true);
@@ -86,6 +100,7 @@ export const useAuthState = () => {
     session,
     isLoading,
     isAuthenticated: !!user && !!session,
-    authCheckComplete
+    authCheckComplete,
+    authError
   };
 };
