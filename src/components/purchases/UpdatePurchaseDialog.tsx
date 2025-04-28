@@ -80,7 +80,7 @@ export const UpdatePurchaseDialog: React.FC<UpdatePurchaseDialogProps> = ({
             <div>
               <Label className="text-muted-foreground">Amount</Label>
               <div className="font-medium">
-                {formatCurrency(purchase.amount, purchase.currency)}
+                {formatCurrency(purchase.amount, purchase.currency, true)}
               </div>
             </div>
             <div>
