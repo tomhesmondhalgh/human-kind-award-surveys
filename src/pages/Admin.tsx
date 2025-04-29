@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import MainLayout from '../components/layout/MainLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -8,6 +9,7 @@ import { useAdminRole } from '../hooks/useAdminRole';
 import { Navigate } from 'react-router-dom';
 import { useTestingMode } from '../contexts/TestingModeContext';
 import PurchasesManagement from '../components/purchases/PurchasesManagement';
+import HubspotIntegration from '../components/admin/HubspotIntegration';
 
 const Admin = () => {
   const { isAdmin, isLoading } = useAdminRole();
@@ -41,6 +43,7 @@ const Admin = () => {
             <TabsTrigger value="plans">Plan Management</TabsTrigger>
             <TabsTrigger value="testing">Testing Mode</TabsTrigger>
             <TabsTrigger value="scripts">Custom Scripts</TabsTrigger>
+            <TabsTrigger value="hubspot">Hubspot Integration</TabsTrigger>
           </TabsList>
           
           <TabsContent value="purchases">
@@ -57,6 +60,10 @@ const Admin = () => {
           
           <TabsContent value="scripts">
             <CustomScriptsManagement />
+          </TabsContent>
+          
+          <TabsContent value="hubspot">
+            <HubspotIntegration />
           </TabsContent>
         </Tabs>
       </div>
