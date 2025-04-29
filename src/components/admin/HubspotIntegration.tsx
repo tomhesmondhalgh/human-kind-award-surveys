@@ -19,6 +19,16 @@ interface SyncLogItem {
   total: number;
 }
 
+// Define interfaces for the user data types
+interface UserData {
+  id: string;
+  email?: string;
+}
+
+interface AuthUsers {
+  users: UserData[];
+}
+
 const HubspotIntegration = () => {
   const [newUsersSyncStatus, setNewUsersSyncStatus] = useState<SyncStatus>('idle');
   const [surveyCreatorsSyncStatus, setSurveyCreatorsSyncStatus] = useState<SyncStatus>('idle');
@@ -64,7 +74,8 @@ const HubspotIntegration = () => {
         await Promise.all(batch.map(async (profile) => {
           try {
             // Get user email from auth.users
-            const { data: users } = await supabase.auth.admin.listUsers();
+            const { data: authData } = await supabase.auth.admin.listUsers();
+            const users = authData as AuthUsers;
             const user = users?.users.find(u => u.id === profile.id);
             
             if (!user || !user.email) {
@@ -175,7 +186,8 @@ const HubspotIntegration = () => {
         await Promise.all(batch.map(async (profile) => {
           try {
             // Get user email from auth.users
-            const { data: users } = await supabase.auth.admin.listUsers();
+            const { data: authData } = await supabase.auth.admin.listUsers();
+            const users = authData as AuthUsers;
             const user = users?.users.find(u => u.id === profile.id);
             
             if (!user || !user.email) {
