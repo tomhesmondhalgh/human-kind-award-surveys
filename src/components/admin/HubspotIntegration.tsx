@@ -1,11 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { AlertCircle, Users, Loader2, RefreshCw, Check, AlertTriangle } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
-import { sendUserToHubspot } from '@/utils/auth/hubspot';
 import { Progress } from "../ui/progress";
 import { toast } from "sonner";
 
@@ -19,14 +18,13 @@ interface SyncLogItem {
   total: number;
 }
 
-// Define interfaces for the user data types
-interface UserData {
-  id: string;
-  email?: string;
-}
-
-interface AuthUsers {
-  users: UserData[];
+interface SyncResponse {
+  success: boolean;
+  totalProcessed: number;
+  successCount: number;
+  failCount: number;
+  errors?: string[];
+  message?: string;
 }
 
 const HubspotIntegration = () => {
@@ -46,82 +44,46 @@ const HubspotIntegration = () => {
       setNewUsersSyncStatus('inProgress');
       setNewUsersProgress(0);
       
-      // Get all users with profile information
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*');
+      console.log('Starting sync of all users to Hubspot list 5417');
       
-      if (profilesError) {
-        throw new Error(`Failed to fetch user profiles: ${profilesError.message}`);
+      // Call our edge function to handle the sync
+      const { data, error: syncError } = await supabase.functions.invoke('sync-hubspot-users', {
+        body: {
+          syncType: 'all-users',
+          listId: '5417'
+        }
+      });
+      
+      if (syncError) {
+        throw new Error(`Failed to sync users: ${syncError.message}`);
       }
       
-      if (!profiles || profiles.length === 0) {
-        toast.info("No users found to sync");
-        setNewUsersSyncStatus('completed');
-        return;
-      }
+      const response = data as SyncResponse;
       
-      console.log(`Found ${profiles.length} users to sync to new users list`);
-      
-      let successCount = 0;
-      let failCount = 0;
-      
-      // Process users in batches to avoid overwhelming the API
-      const BATCH_SIZE = 10;
-      for (let i = 0; i < profiles.length; i += BATCH_SIZE) {
-        const batch = profiles.slice(i, i + BATCH_SIZE);
-        
-        await Promise.all(batch.map(async (profile) => {
-          try {
-            // Get user email from auth.users
-            const { data: authData } = await supabase.auth.admin.listUsers();
-            const users = authData as AuthUsers;
-            const user = users?.users.find(u => u.id === profile.id);
-            
-            if (!user || !user.email) {
-              console.error(`No email found for user ${profile.id}`);
-              failCount++;
-              return;
-            }
-            
-            // Send to Hubspot
-            await sendUserToHubspot({
-              email: user.email,
-              firstName: profile.first_name || '',
-              lastName: profile.last_name || '',
-              jobTitle: profile.job_title || '',
-              schoolName: profile.school_name || '',
-              schoolAddress: profile.school_address || ''
-            }, '5417'); // List ID for new users
-            
-            successCount++;
-          } catch (err) {
-            console.error(`Error syncing user to Hubspot:`, err);
-            failCount++;
-          }
-        }));
-        
-        // Update progress
-        setNewUsersProgress(Math.round(((i + batch.length) / profiles.length) * 100));
-      }
+      // Set progress to 100% as the operation is complete
+      setNewUsersProgress(100);
       
       // Log the sync operation
       const logItem: SyncLogItem = {
         timestamp: new Date(),
         operation: "New Users Sync",
-        success: successCount,
-        failed: failCount,
-        total: profiles.length
+        success: response.successCount,
+        failed: response.failCount,
+        total: response.totalProcessed
       };
       
       setSyncLogs(prev => [logItem, ...prev].slice(0, 10));
       
-      if (failCount > 0) {
+      if (response.failCount > 0) {
+        const errorMessage = response.errors && response.errors.length > 0
+          ? response.errors[0]
+          : 'Some users failed to sync';
+          
         toast.warning(`Sync completed with issues`, {
-          description: `${successCount} users synced successfully, ${failCount} failed.`
+          description: `${response.successCount} users synced successfully, ${response.failCount} failed. ${errorMessage}`
         });
       } else {
-        toast.success(`${successCount} users synced successfully to Hubspot`);
+        toast.success(`${response.successCount} users synced successfully to Hubspot`);
       }
       
       setNewUsersSyncStatus('completed');
@@ -139,101 +101,46 @@ const HubspotIntegration = () => {
       setSurveyCreatorsSyncStatus('inProgress');
       setSurveyCreatorsProgress(0);
       
-      // Get all users who have created surveys
-      const { data: surveyTemplates, error: surveyError } = await supabase
-        .from('survey_templates')
-        .select('creator_id')
-        .not('creator_id', 'is', null);
-        
-      if (surveyError) {
-        throw new Error(`Failed to fetch survey creators: ${surveyError.message}`);
+      console.log('Starting sync of survey creators to Hubspot list 5418');
+      
+      // Call our edge function to handle the sync
+      const { data, error: syncError } = await supabase.functions.invoke('sync-hubspot-users', {
+        body: {
+          syncType: 'survey-creators',
+          listId: '5418'
+        }
+      });
+      
+      if (syncError) {
+        throw new Error(`Failed to sync survey creators: ${syncError.message}`);
       }
       
-      if (!surveyTemplates || surveyTemplates.length === 0) {
-        toast.info("No survey creators found to sync");
-        setSurveyCreatorsSyncStatus('completed');
-        return;
-      }
+      const response = data as SyncResponse;
       
-      // Get unique creator IDs
-      const creatorIds = [...new Set(surveyTemplates.map(item => item.creator_id))];
-      console.log(`Found ${creatorIds.length} unique survey creators to sync`);
-      
-      // Get profile data for these creators
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('id', creatorIds);
-      
-      if (profilesError) {
-        throw new Error(`Failed to fetch survey creator profiles: ${profilesError.message}`);
-      }
-      
-      if (!profiles || profiles.length === 0) {
-        toast.info("No survey creator profiles found to sync");
-        setSurveyCreatorsSyncStatus('completed');
-        return;
-      }
-      
-      let successCount = 0;
-      let failCount = 0;
-      
-      // Process users in batches
-      const BATCH_SIZE = 10;
-      for (let i = 0; i < profiles.length; i += BATCH_SIZE) {
-        const batch = profiles.slice(i, i + BATCH_SIZE);
-        
-        await Promise.all(batch.map(async (profile) => {
-          try {
-            // Get user email from auth.users
-            const { data: authData } = await supabase.auth.admin.listUsers();
-            const users = authData as AuthUsers;
-            const user = users?.users.find(u => u.id === profile.id);
-            
-            if (!user || !user.email) {
-              console.error(`No email found for user ${profile.id}`);
-              failCount++;
-              return;
-            }
-            
-            // Send to Hubspot
-            await sendUserToHubspot({
-              email: user.email,
-              firstName: profile.first_name || '',
-              lastName: profile.last_name || '',
-              jobTitle: profile.job_title || '',
-              schoolName: profile.school_name || '',
-              schoolAddress: profile.school_address || ''
-            }, '5418'); // List ID for survey creators
-            
-            successCount++;
-          } catch (err) {
-            console.error(`Error syncing survey creator to Hubspot:`, err);
-            failCount++;
-          }
-        }));
-        
-        // Update progress
-        setSurveyCreatorsProgress(Math.round(((i + batch.length) / profiles.length) * 100));
-      }
+      // Set progress to 100% as the operation is complete
+      setSurveyCreatorsProgress(100);
       
       // Log the sync operation
       const logItem: SyncLogItem = {
         timestamp: new Date(),
         operation: "Survey Creators Sync",
-        success: successCount,
-        failed: failCount,
-        total: profiles.length
+        success: response.successCount,
+        failed: response.failCount,
+        total: response.totalProcessed
       };
       
       setSyncLogs(prev => [logItem, ...prev].slice(0, 10));
       
-      if (failCount > 0) {
+      if (response.failCount > 0) {
+        const errorMessage = response.errors && response.errors.length > 0
+          ? response.errors[0]
+          : 'Some survey creators failed to sync';
+          
         toast.warning(`Survey creators sync completed with issues`, {
-          description: `${successCount} users synced successfully, ${failCount} failed.`
+          description: `${response.successCount} users synced successfully, ${response.failCount} failed. ${errorMessage}`
         });
       } else {
-        toast.success(`${successCount} survey creators synced successfully to Hubspot`);
+        toast.success(`${response.successCount} survey creators synced successfully to Hubspot`);
       }
       
       setSurveyCreatorsSyncStatus('completed');
