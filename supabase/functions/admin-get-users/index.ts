@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
 
 const corsHeaders = {
@@ -67,25 +66,6 @@ Deno.serve(async (req) => {
     // Parse request body to get pagination and search params
     const { page = 1, perPage = 10, searchQuery = '' } = await req.json();
     
-    console.log(`Fetching users page ${page}, perPage ${perPage}, search "${searchQuery}"`);
-
-    // Get users with pagination from Auth API
-    const { data: userData, error: usersError } = await supabaseAdmin.auth.admin.listUsers({
-      page: page,
-      perPage: perPage
-    });
-
-    if (usersError) {
-      throw new Error(`Failed to fetch users: ${usersError.message}`);
-    }
-
-    if (!userData || !userData.users) {
-      return new Response(
-        JSON.stringify({ users: [], count: 0 }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Get the total count for pagination
     const { count, error: countError } = await supabaseAdmin
       .from('profiles')
@@ -95,122 +75,274 @@ Deno.serve(async (req) => {
       console.error('Error counting users:', countError);
     }
     
-    const totalPages = Math.ceil((count || 0) / perPage);
-
-    // Extract user IDs for further queries
-    const userIds = userData.users.map(user => user.id);
+    // Different approach based on search query presence
+    let users = [];
+    let filteredCount = 0;
     
-    // Get user profiles for additional information
-    const { data: profiles, error: profilesError } = await supabaseAdmin
-      .from('profiles')
-      .select('*')
-      .in('id', userIds);
-    
-    if (profilesError) {
-      console.error('Error fetching profiles:', profilesError);
-    }
-    
-    // Map profiles to a dictionary for easy lookup
-    const profileDict: Record<string, any> = {};
-    if (profiles) {
-      profiles.forEach(profile => {
-        profileDict[profile.id] = profile;
-      });
-    }
-    
-    // Get subscription data for each user
-    const { data: subscriptions, error: subsError } = await supabaseAdmin
-      .from('subscriptions')
-      .select('*')
-      .in('user_id', userIds)
-      .order('created_at', { ascending: false });
+    if (searchQuery) {
+      // When searching, fetch a larger set of users (up to 1000)
+      console.log(`Searching users with query: "${searchQuery}"`);
+      const maxUsersToFetch = 1000;  // Adjust based on your expected user base size
       
-    if (subsError) {
-      console.error('Error fetching subscriptions:', subsError);
-    }
-    
-    // Map subscriptions to users (get most recent subscription for each user)
-    const subscriptionDict: Record<string, any> = {};
-    if (subscriptions) {
-      subscriptions.forEach(sub => {
-        if (!subscriptionDict[sub.user_id] || new Date(sub.created_at) > new Date(subscriptionDict[sub.user_id].created_at)) {
-          subscriptionDict[sub.user_id] = sub;
-        }
+      const { data: userData, error: usersError } = await supabaseAdmin.auth.admin.listUsers({
+        page: 1,
+        perPage: maxUsersToFetch
       });
-    }
-    
-    // Get survey counts and response counts for each user
-    const surveyCounts: Record<string, number> = {};
-    const responseCounts: Record<string, number> = {};
-    
-    await Promise.all(userIds.map(async (userId) => {
-      // Count surveys
-      const { count: surveyCount, error: surveyError } = await supabaseAdmin
-        .from('survey_templates')
-        .select('id', { count: 'exact', head: true })
-        .eq('creator_id', userId);
-        
-      if (!surveyError) {
-        surveyCounts[userId] = surveyCount || 0;
+      
+      if (usersError) {
+        throw new Error(`Failed to fetch users: ${usersError.message}`);
       }
       
-      // Get survey IDs for this user
-      const { data: surveys, error: surveysError } = await supabaseAdmin
-        .from('survey_templates')
-        .select('id')
-        .eq('creator_id', userId);
-        
-      if (!surveysError && surveys && surveys.length > 0) {
-        const surveyIds = surveys.map(s => s.id);
-        
-        // Count responses across all surveys
-        const { count: responseCount, error: responseError } = await supabaseAdmin
-          .from('survey_responses')
+      if (!userData || !userData.users) {
+        return new Response(
+          JSON.stringify({ users: [], count: 0, totalPages: 0 }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Get profiles for all users
+      const userIds = userData.users.map(user => user.id);
+      const { data: allProfiles, error: allProfilesError } = await supabaseAdmin
+        .from('profiles')
+        .select('*');
+      
+      if (allProfilesError) {
+        console.error('Error fetching all profiles:', allProfilesError);
+      }
+      
+      // Map profiles to a dictionary for easy lookup
+      const profileDict: Record<string, any> = {};
+      if (allProfiles) {
+        allProfiles.forEach(profile => {
+          profileDict[profile.id] = profile;
+        });
+      }
+      
+      // Get subscription data for all users
+      const { data: allSubscriptions, error: allSubsError } = await supabaseAdmin
+        .from('subscriptions')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (allSubsError) {
+        console.error('Error fetching all subscriptions:', allSubsError);
+      }
+      
+      // Map subscriptions to users (get most recent subscription for each user)
+      const subscriptionDict: Record<string, any> = {};
+      if (allSubscriptions) {
+        allSubscriptions.forEach(sub => {
+          if (!subscriptionDict[sub.user_id] || new Date(sub.created_at) > new Date(subscriptionDict[sub.user_id].created_at)) {
+            subscriptionDict[sub.user_id] = sub;
+          }
+        });
+      }
+      
+      // Get survey counts and response counts for all users
+      const surveyCounts: Record<string, number> = {};
+      const responseCounts: Record<string, number> = {};
+      
+      // This could be optimized further, but for now we'll keep it for consistency
+      await Promise.all(userIds.map(async (userId) => {
+        // Count surveys
+        const { count: surveyCount, error: surveyError } = await supabaseAdmin
+          .from('survey_templates')
           .select('id', { count: 'exact', head: true })
-          .in('survey_template_id', surveyIds);
+          .eq('creator_id', userId);
           
-        if (!responseError) {
-          responseCounts[userId] = responseCount || 0;
+        if (!surveyError) {
+          surveyCounts[userId] = surveyCount || 0;
         }
-      } else {
-        responseCounts[userId] = 0;
-      }
-    }));
-    
-    // Combine all data
-    const combinedUsers = userData.users.map(user => {
-      const profile = profileDict[user.id] || {};
-      const subscription = subscriptionDict[user.id] || {};
+        
+        // Get survey IDs for this user
+        const { data: surveys, error: surveysError } = await supabaseAdmin
+          .from('survey_templates')
+          .select('id')
+          .eq('creator_id', userId);
+          
+        if (!surveysError && surveys && surveys.length > 0) {
+          const surveyIds = surveys.map(s => s.id);
+          
+          // Count responses across all surveys
+          const { count: responseCount, error: responseError } = await supabaseAdmin
+            .from('survey_responses')
+            .select('id', { count: 'exact', head: true })
+            .in('survey_template_id', surveyIds);
+            
+          if (!responseError) {
+            responseCounts[userId] = responseCount || 0;
+          }
+        } else {
+          responseCounts[userId] = 0;
+        }
+      }));
       
-      return {
-        id: user.id,
-        email: user.email || '',
-        firstName: profile.first_name || '',
-        lastName: profile.last_name || '',
-        schoolName: profile.school_name || '',
-        isAdmin: profile.is_admin || false,
-        plan: subscription.plan_type || 'free',
-        surveyCount: surveyCounts[user.id] || 0,
-        responseCount: responseCounts[user.id] || 0,
-        created_at: user.created_at || ''
-      };
-    });
-
-    // Apply search filter if provided
-    const filteredUsers = searchQuery
-      ? combinedUsers.filter(user => 
-          user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          user.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          user.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          user.schoolName.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      : combinedUsers;
+      // Combine all data and apply search filtering
+      const allCombinedUsers = userData.users.map(user => {
+        const profile = profileDict[user.id] || {};
+        const subscription = subscriptionDict[user.id] || {};
+        
+        return {
+          id: user.id,
+          email: user.email || '',
+          firstName: profile.first_name || '',
+          lastName: profile.last_name || '',
+          schoolName: profile.school_name || '',
+          isAdmin: profile.is_admin || false,
+          plan: subscription.plan_type || 'free',
+          surveyCount: surveyCounts[user.id] || 0,
+          responseCount: responseCounts[user.id] || 0,
+          created_at: user.created_at || ''
+        };
+      });
+      
+      // Apply search filter
+      const filteredUsers = allCombinedUsers.filter(user => 
+        user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        user.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        user.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        user.schoolName.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      
+      // Calculate pagination based on filtered results
+      filteredCount = filteredUsers.length;
+      const totalPages = Math.ceil(filteredCount / perPage);
+      
+      // Paginate the filtered results
+      const startIndex = (page - 1) * perPage;
+      users = filteredUsers.slice(startIndex, startIndex + perPage);
+      
+      console.log(`Found ${filteredCount} users matching search, showing page ${page} (${users.length} users)`);
+    } else {
+      // Standard paginated approach when not searching
+      console.log(`Fetching users page ${page}, perPage ${perPage}, no search`);
+      
+      // Get users with pagination from Auth API
+      const { data: userData, error: usersError } = await supabaseAdmin.auth.admin.listUsers({
+        page: page,
+        perPage: perPage
+      });
+      
+      if (usersError) {
+        throw new Error(`Failed to fetch users: ${usersError.message}`);
+      }
+      
+      if (!userData || !userData.users) {
+        return new Response(
+          JSON.stringify({ users: [], count: 0, totalPages: 0 }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      const totalPages = Math.ceil((count || 0) / perPage);
+      
+      // Extract user IDs for further queries
+      const userIds = userData.users.map(user => user.id);
+      
+      // Get user profiles for additional information
+      const { data: profiles, error: profilesError } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .in('id', userIds);
+      
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+      }
+      
+      // Map profiles to a dictionary for easy lookup
+      const profileDict: Record<string, any> = {};
+      if (profiles) {
+        profiles.forEach(profile => {
+          profileDict[profile.id] = profile;
+        });
+      }
+      
+      // Get subscription data for each user
+      const { data: subscriptions, error: subsError } = await supabaseAdmin
+        .from('subscriptions')
+        .select('*')
+        .in('user_id', userIds)
+        .order('created_at', { ascending: false });
+        
+      if (subsError) {
+        console.error('Error fetching subscriptions:', subsError);
+      }
+      
+      // Map subscriptions to users (get most recent subscription for each user)
+      const subscriptionDict: Record<string, any> = {};
+      if (subscriptions) {
+        subscriptions.forEach(sub => {
+          if (!subscriptionDict[sub.user_id] || new Date(sub.created_at) > new Date(subscriptionDict[sub.user_id].created_at)) {
+            subscriptionDict[sub.user_id] = sub;
+          }
+        });
+      }
+      
+      // Get survey counts and response counts for each user
+      const surveyCounts: Record<string, number> = {};
+      const responseCounts: Record<string, number> = {};
+      
+      await Promise.all(userIds.map(async (userId) => {
+        // Count surveys
+        const { count: surveyCount, error: surveyError } = await supabaseAdmin
+          .from('survey_templates')
+          .select('id', { count: 'exact', head: true })
+          .eq('creator_id', userId);
+          
+        if (!surveyError) {
+          surveyCounts[userId] = surveyCount || 0;
+        }
+        
+        // Get survey IDs for this user
+        const { data: surveys, error: surveysError } = await supabaseAdmin
+          .from('survey_templates')
+          .select('id')
+          .eq('creator_id', userId);
+          
+        if (!surveysError && surveys && surveys.length > 0) {
+          const surveyIds = surveys.map(s => s.id);
+          
+          // Count responses across all surveys
+          const { count: responseCount, error: responseError } = await supabaseAdmin
+            .from('survey_responses')
+            .select('id', { count: 'exact', head: true })
+            .in('survey_template_id', surveyIds);
+            
+          if (!responseError) {
+            responseCounts[userId] = responseCount || 0;
+          }
+        } else {
+          responseCounts[userId] = 0;
+        }
+      }));
+      
+      // Combine all data
+      users = userData.users.map(user => {
+        const profile = profileDict[user.id] || {};
+        const subscription = subscriptionDict[user.id] || {};
+        
+        return {
+          id: user.id,
+          email: user.email || '',
+          firstName: profile.first_name || '',
+          lastName: profile.last_name || '',
+          schoolName: profile.school_name || '',
+          isAdmin: profile.is_admin || false,
+          plan: subscription.plan_type || 'free',
+          surveyCount: surveyCounts[user.id] || 0,
+          responseCount: responseCounts[user.id] || 0,
+          created_at: user.created_at || ''
+        };
+      });
+      
+      filteredCount = count || 0;
+    }
 
     return new Response(
       JSON.stringify({ 
-        users: filteredUsers,
-        count: count || 0,
-        totalPages
+        users: users,
+        count: filteredCount,
+        totalPages: Math.ceil(filteredCount / perPage)
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
