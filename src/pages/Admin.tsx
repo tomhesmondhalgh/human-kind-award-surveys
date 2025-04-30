@@ -10,6 +10,8 @@ import { Navigate } from 'react-router-dom';
 import { useTestingMode } from '../contexts/TestingModeContext';
 import PurchasesManagement from '../components/purchases/PurchasesManagement';
 import HubspotIntegration from '../components/admin/HubspotIntegration';
+import UsersManagement from '../components/admin/UsersManagement';
+import SurveyFeedbackAnalytics from '../components/admin/SurveyFeedbackAnalytics';
 
 const Admin = () => {
   const { isAdmin, isLoading } = useAdminRole();
@@ -38,8 +40,10 @@ const Admin = () => {
         <h1 className="text-3xl font-bold mb-6">Admin Panel</h1>
         
         <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="mb-8">
+          <TabsList className="mb-8 flex flex-wrap">
             <TabsTrigger value="purchases">Purchase Management</TabsTrigger>
+            <TabsTrigger value="users">User Management</TabsTrigger>
+            <TabsTrigger value="feedback">Feedback Analytics</TabsTrigger>
             <TabsTrigger value="plans">Plan Management</TabsTrigger>
             <TabsTrigger value="testing">Testing Mode</TabsTrigger>
             <TabsTrigger value="scripts">Custom Scripts</TabsTrigger>
@@ -48,6 +52,14 @@ const Admin = () => {
           
           <TabsContent value="purchases">
             <PurchasesManagement />
+          </TabsContent>
+          
+          <TabsContent value="users">
+            <UsersManagement />
+          </TabsContent>
+          
+          <TabsContent value="feedback">
+            <SurveyFeedbackAnalytics />
           </TabsContent>
           
           <TabsContent value="plans">
