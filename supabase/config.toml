@@ -44,6 +44,9 @@ vector_port = 54328
 backend = "postgres"
 
 [functions]
+[functions.admin-get-users]
+verify_jwt = true
+
 [functions.send-survey-email]
 verify_jwt = false
 
@@ -82,4 +85,3 @@ verify_jwt = false
 
 [functions.generate-survey-summary]
 verify_jwt = false
-

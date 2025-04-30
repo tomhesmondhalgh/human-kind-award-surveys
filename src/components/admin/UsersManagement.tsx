@@ -40,6 +40,7 @@ const UsersManagement = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [processingUsers, setProcessingUsers] = useState<Record<string, boolean>>({});
   
   const usersPerPage = 10;
@@ -53,131 +54,28 @@ const UsersManagement = () => {
       setIsLoading(true);
       setError(null);
       
-      // First, get users from auth
-      const { data: userData, error: userError } = await supabase.auth.admin.listUsers({
-        page: currentPage,
-        perPage: usersPerPage
+      // Call our edge function to get users instead of directly calling auth admin API
+      const { data, error } = await supabase.functions.invoke('admin-get-users', {
+        body: {
+          page: currentPage,
+          perPage: usersPerPage,
+          searchQuery: searchQuery
+        }
       });
       
-      if (userError) {
-        throw new Error(`Failed to fetch users: ${userError.message}`);
+      if (error) {
+        throw new Error(`Failed to fetch users: ${error.message}`);
       }
       
-      if (!userData || !userData.users) {
+      if (!data || !data.users) {
         setUsers([]);
         setIsLoading(false);
         return;
       }
-      
-      // Get the total count for pagination
-      const { count, error: countError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true });
-        
-      if (countError) {
-        console.error('Error counting users:', countError);
-      } else {
-        setTotalPages(Math.ceil((count || 0) / usersPerPage));
-      }
-      
-      // Get user profiles for additional information
-      const userIds = userData.users.map(user => user.id);
-      const { data: profiles, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('id', userIds);
-      
-      if (profileError) {
-        console.error('Error fetching profiles:', profileError);
-      }
-      
-      // Map profiles to a dictionary for easy lookup
-      const profileDict: Record<string, any> = {};
-      if (profiles) {
-        profiles.forEach(profile => {
-          profileDict[profile.id] = profile;
-        });
-      }
-      
-      // Get subscription data for each user
-      const { data: subscriptions, error: subError } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .in('user_id', userIds)
-        .order('created_at', { ascending: false });
-        
-      if (subError) {
-        console.error('Error fetching subscriptions:', subError);
-      }
-      
-      // Map subscriptions to users (get most recent subscription for each user)
-      const subscriptionDict: Record<string, any> = {};
-      if (subscriptions) {
-        subscriptions.forEach(sub => {
-          if (!subscriptionDict[sub.user_id] || new Date(sub.created_at) > new Date(subscriptionDict[sub.user_id].created_at)) {
-            subscriptionDict[sub.user_id] = sub;
-          }
-        });
-      }
-      
-      // Get survey counts for each user
-      const surveyCounts: Record<string, number> = {};
-      const responseCounts: Record<string, number> = {};
-      
-      await Promise.all(userIds.map(async (userId) => {
-        // Count surveys
-        const { count: surveyCount, error: surveyError } = await supabase
-          .from('survey_templates')
-          .select('id', { count: 'exact', head: true })
-          .eq('creator_id', userId);
-          
-        if (!surveyError) {
-          surveyCounts[userId] = surveyCount || 0;
-        }
-        
-        // Get survey IDs for this user
-        const { data: surveys, error: surveysError } = await supabase
-          .from('survey_templates')
-          .select('id')
-          .eq('creator_id', userId);
-          
-        if (!surveysError && surveys && surveys.length > 0) {
-          const surveyIds = surveys.map(s => s.id);
-          
-          // Count responses across all surveys
-          const { count: responseCount, error: responseError } = await supabase
-            .from('survey_responses')
-            .select('id', { count: 'exact', head: true })
-            .in('survey_template_id', surveyIds);
-            
-          if (!responseError) {
-            responseCounts[userId] = responseCount || 0;
-          }
-        } else {
-          responseCounts[userId] = 0;
-        }
-      }));
-      
-      // Combine all data
-      const combinedUsers: UserData[] = userData.users.map(user => {
-        const profile = profileDict[user.id] || {};
-        const subscription = subscriptionDict[user.id] || {};
-        
-        return {
-          id: user.id,
-          email: user.email || '',
-          firstName: profile.first_name || '',
-          lastName: profile.last_name || '',
-          schoolName: profile.school_name || '',
-          isAdmin: profile.is_admin || false,
-          plan: subscription.plan_type || 'free',
-          surveyCount: surveyCounts[user.id] || 0,
-          responseCount: responseCounts[user.id] || 0,
-          created_at: user.created_at || ''
-        };
-      });
-      
-      setUsers(combinedUsers);
+
+      setUsers(data.users);
+      setTotalCount(data.count || 0);
+      setTotalPages(data.totalPages || Math.ceil((data.count || 0) / usersPerPage));
       
     } catch (err) {
       console.error('Error in fetchUsers:', err);
@@ -219,18 +117,15 @@ const UsersManagement = () => {
     }
   };
   
-  const filteredUsers = searchQuery 
-    ? users.filter(user => 
-        user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.schoolName.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : users;
+  const filteredUsers = users;
   
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
+  };
+  
+  const handleSearchSubmit = () => {
     setCurrentPage(1); // Reset to first page on search
+    fetchUsers();
   };
   
   const formatDate = (dateString: string) => {
@@ -262,11 +157,19 @@ const UsersManagement = () => {
               placeholder="Search users by name, email or school..." 
               value={searchQuery}
               onChange={handleSearch}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit()}
               className="flex-1"
             />
             <Button 
+              onClick={handleSearchSubmit}
+              variant="default"
+            >
+              Search
+            </Button>
+            <Button 
               onClick={() => {
                 setSearchQuery('');
+                setCurrentPage(1);
                 fetchUsers();
               }}
               variant="outline"
