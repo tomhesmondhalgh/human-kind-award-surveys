@@ -111,18 +111,51 @@ const Accredit = () => {
     
     setIsSubmitting(true);
     try {
-      const { error } = await supabase
+      const { data: submissionData, error } = await supabase
         .from('action_plan_submissions')
         .insert({
           user_id: user.id,
           status: 'submitted',
           submission_data: readinessData
-        });
+        })
+        .select('id')
+        .single();
 
       if (error) {
         console.error('Error submitting for accreditation:', error);
         toast.error('Failed to submit for accreditation');
         return;
+      }
+
+      console.log('Accreditation submission created with ID:', submissionData.id);
+
+      // Get user profile for notification
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, school_name')
+        .eq('id', user.id)
+        .single();
+
+      // Send notification to admins (don't block submission if this fails)
+      try {
+        console.log('Sending admin notification...');
+        const notificationResponse = await supabase.functions.invoke('send-accreditation-notification', {
+          body: {
+            submissionId: submissionData.id,
+            submitterName: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : 'Unknown User',
+            schoolName: profile?.school_name || '',
+            submissionData: readinessData
+          }
+        });
+
+        if (notificationResponse.error) {
+          console.error('Error sending admin notification:', notificationResponse.error);
+        } else {
+          console.log('Admin notification sent successfully');
+        }
+      } catch (notificationError) {
+        console.error('Failed to send admin notification:', notificationError);
+        // Continue anyway - don't block the submission
       }
 
       toast.success('Successfully submitted for accreditation');
