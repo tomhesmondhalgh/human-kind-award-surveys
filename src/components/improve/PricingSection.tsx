@@ -114,6 +114,11 @@ const PricingSection: React.FC = () => {
       ? `+ VAT (${plan.purchase_type === 'subscription' ? `${plan.duration_months ? plan.duration_months/12 : 3}-year subscription` : 'one-off payment'})`
       : undefined;
     
+    // Special case for legacy plan - skip showing it
+    if (planType === 'legacy') {
+      return null;
+    }
+    
     return {
       title: plan.name,
       description: plan.description,
@@ -128,7 +133,10 @@ const PricingSection: React.FC = () => {
         } else if (isFree || isSubscriptionLoading || 
             (planType === 'progress' && isFoundation) || 
             (planType === 'premium' && (isFoundation || isProgress))) {
-          handleUpgrade(plan.stripe_price_id || '', planType, plan.purchase_type || 'subscription');
+          // Only handle standard plan types, excluding legacy
+          if (planType === 'foundation' || planType === 'progress' || planType === 'premium') {
+            handleUpgrade(plan.stripe_price_id || '', planType, plan.purchase_type || 'subscription');
+          }
         }
       },
       buttonText: getButtonText(planType),
@@ -137,7 +145,7 @@ const PricingSection: React.FC = () => {
                 (planType === 'progress' && (isProgress || isPremium)) ||
                 (planType === 'premium' && isPremium)
     };
-  });
+  }).filter(Boolean); // Filter out null values (legacy plan)
 
   // Sort plans by sort_order
   displayPlans.sort((a, b) => {
@@ -157,7 +165,16 @@ const PricingSection: React.FC = () => {
       </div>
       
       <div className="mt-8 text-center text-sm text-gray-500">
-        <p>Need help choosing the right plan? <a href="mailto:support@wellbeingsurvey.com" className="text-brandPurple-600 underline">Contact our support team</a></p>
+        <p>
+          Need help choosing the right plan? <a href="mailto:support@wellbeingsurvey.com" className="text-brandPurple-600 underline">Contact our support team</a>
+          {" | "}
+          <button 
+            onClick={() => navigate('/upgrade')}
+            className="text-brandPurple-600 underline hover:text-brandPurple-700 transition-colors"
+          >
+            Have a code?
+          </button>
+        </p>
       </div>
     </div>
   );

@@ -117,7 +117,7 @@ export async function checkAndCreateSubscription(
       endDate = date.toISOString();
     }
     
-    // Convert enterprise to premium, keep legacy as-is
+    // Convert enterprise to premium, keep legacy and others as-is
     const dbPlanType: DatabasePlanType = planType === 'enterprise' ? 'premium' : planType as DatabasePlanType;
     
     // Insert subscription record
