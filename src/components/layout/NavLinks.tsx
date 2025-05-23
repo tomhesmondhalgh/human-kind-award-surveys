@@ -50,7 +50,7 @@ export const NavLinks: React.FC<NavLinksProps> = ({
     }
   };
   
-  // Only include main navigation items (Dashboard, Survey, Analyse, Improve, Upgrade)
+  // Include main navigation items plus Accredit
   return (
     <div className="flex flex-col gap-6 md:flex-row md:items-center">
       <NavLink 
@@ -83,6 +83,14 @@ export const NavLinks: React.FC<NavLinksProps> = ({
         onClick={handleLinkClick}
       >
         Improve
+      </NavLink>
+      
+      <NavLink 
+        to="/accredit" 
+        active={isActive('/accredit')} 
+        onClick={handleLinkClick}
+      >
+        Accredit
       </NavLink>
       
       <NavLink 

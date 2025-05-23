@@ -25,6 +25,7 @@ import SurveyEditor from './pages/SurveyEditor';
 import Analysis from './pages/Analysis';
 import Upgrade from './pages/Upgrade';
 import Improve from './pages/Improve';
+import Accredit from './pages/Accredit';
 import Profile from './pages/Profile';
 import Purchases from './pages/Purchases';
 import Admin from './pages/Admin';
@@ -100,6 +101,11 @@ function App() {
                     <Route path="/improve" element={
                       <ProtectedRoute>
                         <Improve />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/accredit" element={
+                      <ProtectedRoute>
+                        <Accredit />
                       </ProtectedRoute>
                     } />
                     <Route path="/profile" element={

@@ -97,6 +97,48 @@ export type Database = {
           },
         ]
       }
+      action_plan_submissions: {
+        Row: {
+          approved_at: string | null
+          created_at: string
+          id: string
+          next_submission_due: string | null
+          reviewed_at: string | null
+          reviewer_notes: string | null
+          status: Database["public"]["Enums"]["accreditation_status"]
+          submission_data: Json | null
+          submitted_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          created_at?: string
+          id?: string
+          next_submission_due?: string | null
+          reviewed_at?: string | null
+          reviewer_notes?: string | null
+          status?: Database["public"]["Enums"]["accreditation_status"]
+          submission_data?: Json | null
+          submitted_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          created_at?: string
+          id?: string
+          next_submission_due?: string | null
+          reviewed_at?: string | null
+          reviewer_notes?: string | null
+          status?: Database["public"]["Enums"]["accreditation_status"]
+          submission_data?: Json | null
+          submitted_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       action_plan_templates: {
         Row: {
           created_at: string
@@ -1140,6 +1182,12 @@ export type Database = {
       }
     }
     Enums: {
+      accreditation_status:
+        | "not_submitted"
+        | "submitted"
+        | "under_review"
+        | "approved"
+        | "rejected"
       descriptor_status:
         | "Not Started"
         | "In Progress"
@@ -1272,6 +1320,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      accreditation_status: [
+        "not_submitted",
+        "submitted",
+        "under_review",
+        "approved",
+        "rejected",
+      ],
       descriptor_status: [
         "Not Started",
         "In Progress",
