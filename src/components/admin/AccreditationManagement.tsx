@@ -28,6 +28,8 @@ const AccreditationManagement = () => {
 
   const fetchSubmissions = async () => {
     try {
+      console.log('Fetching accreditation submissions...');
+      
       const { data, error } = await supabase
         .from('action_plan_submissions')
         .select(`
@@ -42,6 +44,7 @@ const AccreditationManagement = () => {
         return;
       }
 
+      console.log('Fetched submissions:', data);
       setSubmissions(data as AccreditationSubmission[] || []);
     } catch (error) {
       console.error('Error fetching submissions:', error);
