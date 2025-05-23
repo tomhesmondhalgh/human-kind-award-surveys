@@ -2,21 +2,11 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { BarChart3, FileText, Users, TrendingUp } from 'lucide-react';
-import SettingsDropdown from './SettingsDropdown';
 import { useAuth } from '../../contexts/AuthContext';
-import { signOutUser } from '../../utils/auth';
 
 const NavLinks: React.FC = () => {
   const location = useLocation();
   const { user } = useAuth();
-
-  const handleSignOut = async () => {
-    try {
-      await signOutUser();
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
-  };
 
   const navLinkClass = "text-base font-medium text-gray-600 hover:text-brandPurple-600 transition-colors flex items-center";
   const activeNavLinkClass = "text-purple-700";
@@ -33,7 +23,7 @@ const NavLinks: React.FC = () => {
   }
 
   return (
-    <div className="hidden md:flex items-center space-x-8">
+    <>
       <Link 
         to="/dashboard" 
         className={`${navLinkClass} ${isActive('/dashboard') ? activeNavLinkClass : ""}`}
@@ -65,9 +55,7 @@ const NavLinks: React.FC = () => {
         <TrendingUp size={18} className="mr-1" />
         Analysis
       </Link>
-      
-      <SettingsDropdown handleSignOut={handleSignOut} />
-    </div>
+    </>
   );
 };
 
