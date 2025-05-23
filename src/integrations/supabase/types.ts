@@ -1146,7 +1146,7 @@ export type Database = {
         | "Blocked"
         | "Completed"
         | "Not Applicable"
-      payment_method: "stripe" | "invoice" | "manual"
+      payment_method: "stripe" | "invoice" | "manual" | "redemption_code"
       payment_status:
         | "pending"
         | "invoice_raised"
@@ -1279,7 +1279,7 @@ export const Constants = {
         "Completed",
         "Not Applicable",
       ],
-      payment_method: ["stripe", "invoice", "manual"],
+      payment_method: ["stripe", "invoice", "manual", "redemption_code"],
       payment_status: [
         "pending",
         "invoice_raised",

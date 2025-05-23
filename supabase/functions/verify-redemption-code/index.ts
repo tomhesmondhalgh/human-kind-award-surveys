@@ -90,7 +90,6 @@ Deno.serve(async (req) => {
     }
 
     // Check if the code has reached its usage limit
-    // Fixed: Using a separate check rather than SQL template literal which was causing the error
     if (codeData.max_uses > 0 && codeData.current_uses >= codeData.max_uses) {
       return new Response(
         JSON.stringify({ error: 'Redemption code has reached its maximum usage limit' }),
@@ -124,9 +123,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Transaction to create a redemption and update the code usage
-    // We'll use the service role to bypass RLS for the transaction
-    // Fix: Make sure parameters are in the correct order matching the SQL function definition
+    // Use the redeem_code function to handle the transaction
+    // This should now work correctly with 'redemption_code' as a valid payment_method
     const { data: transaction, error: transactionError } = await admin.rpc('redeem_code', {
       user_uuid: user.id,
       code_uuid: codeData.id,
