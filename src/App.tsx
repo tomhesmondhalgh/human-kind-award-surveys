@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { AuthProvider } from './contexts/AuthContext';
@@ -71,7 +71,7 @@ function App() {
                         <Route path="/survey-closed" element={<SurveyClosed />} />
                         
                         {/* Protected routes */}
-                        <Route element={<ProtectedRoute />}>
+                        <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
                           <Route path="/dashboard" element={<Dashboard />} />
                           <Route path="/surveys" element={<Surveys />} />
                           <Route path="/team" element={<Team />} />
