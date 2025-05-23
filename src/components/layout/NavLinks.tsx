@@ -2,6 +2,8 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import SettingsDropdown from './SettingsDropdown';
+import { signOutUser } from '../../utils/auth';
 
 const NavLinks: React.FC = () => {
   const location = useLocation();
@@ -15,6 +17,10 @@ const NavLinks: React.FC = () => {
       return location.pathname === '/' || location.pathname === '/dashboard';
     }
     return location.pathname.startsWith(path);
+  };
+
+  const handleSignOut = async () => {
+    await signOutUser();
   };
 
   if (!user) {
@@ -58,12 +64,7 @@ const NavLinks: React.FC = () => {
         Accredit
       </Link>
       
-      <Link 
-        to="/settings" 
-        className={`${navLinkClass} ${isActive('/settings') ? activeNavLinkClass : ""}`}
-      >
-        Settings
-      </Link>
+      <SettingsDropdown handleSignOut={handleSignOut} />
     </>
   );
 };

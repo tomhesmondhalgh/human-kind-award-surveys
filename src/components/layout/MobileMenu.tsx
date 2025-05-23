@@ -1,7 +1,9 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAdminRole } from '../../hooks/useAdminRole';
+import { ChevronDown, ChevronRight, User, Users, CreditCard, ShieldCheck, LogOut } from 'lucide-react';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -22,6 +24,8 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
 }) => {
   const location = useLocation();
   const { user } = useAuth();
+  const { isAdmin: userIsAdmin } = useAdminRole();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const isActive = (path: string) => {
     if (path === '/dashboard') {
@@ -35,6 +39,10 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
 
   const handleLinkClick = () => {
     setIsMenuOpen(false);
+  };
+
+  const handleSettingsToggle = () => {
+    setIsSettingsOpen(!isSettingsOpen);
   };
 
   return (
@@ -81,14 +89,59 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
             >
               Accredit
             </Link>
-            
-            <Link
-              to="/settings"
-              onClick={handleLinkClick}
-              className={`${mobileLinkClass} ${isActive('/settings') ? activeMobileLinkClass : ""}`}
-            >
-              Settings
-            </Link>
+
+            {/* Settings Dropdown */}
+            <div>
+              <button
+                onClick={handleSettingsToggle}
+                className={`${mobileLinkClass} w-full text-left flex items-center justify-between`}
+              >
+                Settings
+                {isSettingsOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+              </button>
+              
+              {isSettingsOpen && (
+                <div className="ml-4 mt-1 space-y-1">
+                  <Link
+                    to="/profile"
+                    onClick={handleLinkClick}
+                    className={`${mobileLinkClass} flex items-center`}
+                  >
+                    <User size={16} className="mr-2" />
+                    Profile
+                  </Link>
+                  
+                  <Link
+                    to="/team"
+                    onClick={handleLinkClick}
+                    className={`${mobileLinkClass} flex items-center`}
+                  >
+                    <Users size={16} className="mr-2" />
+                    Team
+                  </Link>
+                  
+                  <Link
+                    to="/purchases"
+                    onClick={handleLinkClick}
+                    className={`${mobileLinkClass} flex items-center`}
+                  >
+                    <CreditCard size={16} className="mr-2" />
+                    My Purchases
+                  </Link>
+                  
+                  {userIsAdmin && (
+                    <Link
+                      to="/admin"
+                      onClick={handleLinkClick}
+                      className={`${mobileLinkClass} flex items-center`}
+                    >
+                      <ShieldCheck size={16} className="mr-2" />
+                      Admin
+                    </Link>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Divider */}
             <div className="border-t border-gray-200 my-2"></div>
@@ -99,8 +152,9 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
                 handleSignOut();
                 handleLinkClick();
               }}
-              className={`${mobileLinkClass} w-full text-left text-red-600 hover:text-red-700 hover:bg-red-50`}
+              className={`${mobileLinkClass} w-full text-left text-red-600 hover:text-red-700 hover:bg-red-50 flex items-center`}
             >
+              <LogOut size={16} className="mr-2" />
               Sign Out
             </button>
           </>
