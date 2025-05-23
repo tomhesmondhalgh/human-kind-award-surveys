@@ -1,3 +1,4 @@
+
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { OrganizationProvider } from './contexts/OrganizationContext';
@@ -7,10 +8,10 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import StripeProvider from './components/stripe/StripeProvider';
 import ErrorBoundary from './components/error/ErrorBoundary';
-import CustomQuestionsProvider from './contexts/CustomQuestionsContext';
-import CustomScriptsLoader from './components/CustomScriptsLoader';
-import TestingModeIndicator from './components/TestingModeIndicator';
-import ScreenOrientationOverlay from './components/ScreenOrientationOverlay';
+import { CustomQuestionsProvider } from './contexts/CustomQuestionsContext';
+import CustomScriptsLoader from './components/layout/CustomScriptsLoader';
+import TestingModeIndicator from './components/layout/TestingModeIndicator';
+import ScreenOrientationOverlay from './components/ui/ScreenOrientationOverlay';
 
 // Page imports
 import Index from './pages/Index';
@@ -49,7 +50,7 @@ const queryClient = new QueryClient({
 
 function App() {
   return (
-    <QueryClient client={queryClient}>
+    <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <OrganizationProvider>
           <TestingModeProvider>
@@ -145,7 +146,7 @@ function App() {
           </TestingModeProvider>
         </OrganizationProvider>
       </AuthProvider>
-    </QueryClient>
+    </QueryClientProvider>
   );
 }
 

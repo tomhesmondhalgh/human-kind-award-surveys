@@ -5,7 +5,7 @@ import { ActionPlanDescriptor } from '../../types/actionPlan';
 export async function getActionPlanDescriptors(
   organizationId: string, 
   section?: string
-): Promise<{ data: ActionPlanDescriptor[] | null; error: any }> {
+): Promise<{ success: boolean; data: ActionPlanDescriptor[] | null; error: any }> {
   try {
     console.log('Fetching action plan descriptors for organization:', organizationId, 'section:', section);
     
@@ -23,13 +23,13 @@ export async function getActionPlanDescriptors(
     
     if (error) {
       console.error('Error fetching action plan descriptors:', error);
-      return { data: null, error };
+      return { success: false, data: null, error };
     }
     
     console.log('Fetched descriptors:', data);
-    return { data, error: null };
+    return { success: true, data, error: null };
   } catch (error) {
     console.error('Error in getActionPlanDescriptors:', error);
-    return { data: null, error };
+    return { success: false, data: null, error };
   }
 }

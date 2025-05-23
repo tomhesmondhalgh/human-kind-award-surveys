@@ -9,13 +9,13 @@ import { ACTION_PLAN_SECTIONS } from "../../types/actionPlan";
  * Generate PDF from action plan
  */
 export const generatePDF = async (
-  userId: string
+  organizationId: string
 ): Promise<{ success: boolean, error?: string }> => {
   try {
-    console.log('Generating PDF for user:', userId);
+    console.log('Generating PDF for organization:', organizationId);
 
     // Get summary data
-    const summaryResult = await getSectionProgressSummary(userId);
+    const summaryResult = await getSectionProgressSummary(organizationId);
     if (!summaryResult.success || !summaryResult.data) {
       return { success: false, error: summaryResult.error || 'Failed to fetch summary data' };
     }
@@ -71,7 +71,7 @@ export const generatePDF = async (
       doc.text(section.title, 20, currentY);
       currentY += 10;
 
-      const descriptorsResult = await getActionPlanDescriptors(userId, section.title);
+      const descriptorsResult = await getActionPlanDescriptors(organizationId, section.title);
 
       if (descriptorsResult.success && descriptorsResult.data && descriptorsResult.data.length > 0) {
         const descriptors = descriptorsResult.data;

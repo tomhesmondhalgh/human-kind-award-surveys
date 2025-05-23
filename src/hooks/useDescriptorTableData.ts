@@ -7,7 +7,7 @@ import { useEditableCell } from '@/hooks/useEditableCell';
 import { getLocalStorageCache, setLocalStorageCache } from '@/utils/cache/cacheUtils';
 
 export function useDescriptorTableData(
-  userId: string,
+  organizationId: string,
   section: string,
   onRefreshSummary: () => void
 ) {
@@ -18,12 +18,12 @@ export function useDescriptorTableData(
   const [searchTerm, setSearchTerm] = useState('');
   const { editingCell, editValue, setEditValue, handleEditStart, setEditingCell } = useEditableCell();
 
-  const cacheKey = `descriptors_${userId}_${section}`;
+  const cacheKey = `descriptors_${organizationId}_${section}`;
 
   const fetchDescriptors = useCallback(async () => {
     setIsLoading(true);
     try {
-      const result = await getActionPlanDescriptors(userId, section);
+      const result = await getActionPlanDescriptors(organizationId, section);
       if (result.success && result.data) {
         const sortedDescriptors = result.data.sort((a, b) => 
           a.index_number.localeCompare(b.index_number, undefined, { numeric: true })
@@ -39,7 +39,7 @@ export function useDescriptorTableData(
     } finally {
       setIsLoading(false);
     }
-  }, [userId, section, cacheKey]);
+  }, [organizationId, section, cacheKey]);
 
   useEffect(() => {
     const cachedData = getLocalStorageCache<ActionPlanDescriptor[]>(cacheKey);

@@ -1,6 +1,28 @@
 
 import { supabase } from '../../lib/supabase';
 
+interface SectionStats {
+  notStartedCount: number;
+  inProgressCount: number;
+  completedCount: number;
+  notApplicableCount: number;
+  blockedCount: number;
+  totalCount: number;
+  percentComplete: number;
+}
+
+interface SectionSummary {
+  key: string;
+  title: string;
+  notStartedCount: number;
+  inProgressCount: number;
+  completedCount: number;
+  notApplicableCount: number;
+  blockedCount: number;
+  totalCount: number;
+  percentComplete: number;
+}
+
 export async function getSectionProgressSummary(organizationId: string) {
   try {
     console.log('Getting section progress summary for organization:', organizationId);
@@ -21,7 +43,7 @@ export async function getSectionProgressSummary(organizationId: string) {
     }
     
     // Group by section and count statuses
-    const sectionStats = descriptors.reduce((acc: any, descriptor) => {
+    const sectionStats = descriptors.reduce((acc: Record<string, SectionStats>, descriptor) => {
       const section = descriptor.section;
       if (!acc[section]) {
         acc[section] = {
@@ -29,9 +51,13 @@ export async function getSectionProgressSummary(organizationId: string) {
           inProgressCount: 0,
           completedCount: 0,
           notApplicableCount: 0,
-          blockedCount: 0
+          blockedCount: 0,
+          totalCount: 0,
+          percentComplete: 0
         };
       }
+      
+      acc[section].totalCount++;
       
       switch (descriptor.status) {
         case 'Not Started':
@@ -51,6 +77,12 @@ export async function getSectionProgressSummary(organizationId: string) {
           break;
       }
       
+      // Calculate percentage complete (excluding Not Applicable items)
+      const applicableItems = acc[section].totalCount - acc[section].notApplicableCount;
+      acc[section].percentComplete = applicableItems > 0 
+        ? Math.round((acc[section].completedCount / applicableItems) * 100) 
+        : 0;
+      
       return acc;
     }, {});
     
@@ -64,7 +96,7 @@ export async function getSectionProgressSummary(organizationId: string) {
       'policies_procedures': 'Policies and Procedures'
     };
     
-    const result = Object.entries(sectionStats).map(([key, stats]) => ({
+    const result: SectionSummary[] = Object.entries(sectionStats).map(([key, stats]) => ({
       key,
       title: sectionTitles[key] || key,
       ...stats
