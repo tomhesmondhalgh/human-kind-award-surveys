@@ -1,105 +1,74 @@
 
 import React from 'react';
-import { NavLink as RouterNavLink, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { BarChart3, FileText, Users, TrendingUp } from 'lucide-react';
+import SettingsDropdown from './SettingsDropdown';
+import { useAuth } from '../../contexts/AuthContext';
+import { signOut } from '../../utils/auth';
 
-interface NavLinksProps {
-  closeMobileMenu?: () => void;
-  canManageTeam?: boolean;
-  setIsMenuOpen?: (isOpen: boolean) => void;
-}
-
-interface NavLinkProps {
-  to: string;
-  active: boolean;
-  onClick?: () => void;
-  children: React.ReactNode;
-}
-
-const NavLink: React.FC<NavLinkProps> = ({ to, active, onClick, children }) => {
-  return (
-    <RouterNavLink
-      to={to}
-      className={`block py-2 px-4 text-base font-medium text-gray-600 hover:text-brandPurple-600 md:p-0 ${
-        active ? 'text-purple-700' : ''
-      }`}
-      onClick={onClick}
-    >
-      {children}
-    </RouterNavLink>
-  );
-};
-
-export const NavLinks: React.FC<NavLinksProps> = ({ 
-  closeMobileMenu,
-  setIsMenuOpen
-}) => {
+const NavLinks: React.FC = () => {
   const location = useLocation();
-  
-  // Helper to check if a route is active
+  const { user } = useAuth();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
+  const navLinkClass = "text-base font-medium text-gray-600 hover:text-brandPurple-600 transition-colors flex items-center";
+  const activeNavLinkClass = "text-purple-700";
+
   const isActive = (path: string) => {
-    return location.pathname === path;
-  };
-  
-  // Helper to close mobile menu when a link is clicked
-  const handleLinkClick = () => {
-    if (closeMobileMenu) {
-      closeMobileMenu();
+    if (path === '/dashboard') {
+      return location.pathname === '/' || location.pathname === '/dashboard';
     }
-    if (setIsMenuOpen) {
-      setIsMenuOpen(false);
-    }
+    return location.pathname.startsWith(path);
   };
-  
-  // Include main navigation items plus Accredit
+
+  if (!user) {
+    return null;
+  }
+
   return (
-    <div className="flex flex-col gap-6 md:flex-row md:items-center">
-      <NavLink 
+    <div className="hidden md:flex items-center space-x-8">
+      <Link 
         to="/dashboard" 
-        active={isActive('/dashboard')} 
-        onClick={handleLinkClick}
+        className={`${navLinkClass} ${isActive('/dashboard') ? activeNavLinkClass : ""}`}
       >
+        <BarChart3 size={18} className="mr-1" />
         Dashboard
-      </NavLink>
+      </Link>
       
-      <NavLink 
+      <Link 
         to="/surveys" 
-        active={isActive('/surveys')} 
-        onClick={handleLinkClick}
+        className={`${navLinkClass} ${isActive('/surveys') ? activeNavLinkClass : ""}`}
       >
-        Survey
-      </NavLink>
+        <FileText size={18} className="mr-1" />
+        Surveys
+      </Link>
       
-      <NavLink 
+      <Link 
+        to="/team" 
+        className={`${navLinkClass} ${isActive('/team') ? activeNavLinkClass : ""}`}
+      >
+        <Users size={18} className="mr-1" />
+        Team
+      </Link>
+      
+      <Link 
         to="/analysis" 
-        active={isActive('/analysis')} 
-        onClick={handleLinkClick}
+        className={`${navLinkClass} ${isActive('/analysis') ? activeNavLinkClass : ""}`}
       >
-        Analyse
-      </NavLink>
+        <TrendingUp size={18} className="mr-1" />
+        Analysis
+      </Link>
       
-      <NavLink 
-        to="/improve" 
-        active={isActive('/improve')} 
-        onClick={handleLinkClick}
-      >
-        Improve
-      </NavLink>
-      
-      <NavLink 
-        to="/accredit" 
-        active={isActive('/accredit')} 
-        onClick={handleLinkClick}
-      >
-        Accredit
-      </NavLink>
-      
-      <NavLink 
-        to="/upgrade" 
-        active={isActive('/upgrade')} 
-        onClick={handleLinkClick}
-      >
-        Upgrade
-      </NavLink>
+      <SettingsDropdown handleSignOut={handleSignOut} />
     </div>
   );
 };
+
+export default NavLinks;
