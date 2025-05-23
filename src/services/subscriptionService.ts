@@ -149,10 +149,11 @@ export async function checkPlanAccess(userId: string, requiredPlan: PlanType): P
     const subscription = await getUserSubscription(userId);
     if (!subscription) return false;
     
-    // Compare plan levels
+    // Compare plan levels - legacy has same access as foundation
     const planLevels: Record<PlanType, number> = {
       free: 0,
       foundation: 1,
+      legacy: 1,  // Legacy has same access level as Foundation
       progress: 2,
       premium: 3,
       enterprise: 4

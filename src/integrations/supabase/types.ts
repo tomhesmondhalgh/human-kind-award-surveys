@@ -1145,7 +1145,7 @@ export type Database = {
         | "payment_made"
         | "cancelled"
         | "refunded"
-      plan_type: "free" | "foundation" | "progress" | "premium"
+      plan_type: "free" | "foundation" | "progress" | "premium" | "legacy"
       role_hierarchy_level: "system" | "group" | "organization" | "standard"
       subscription_status: "active" | "canceled" | "expired" | "pending"
       survey_status: "Saved" | "Scheduled" | "Sent" | "Completed" | "Archived"
@@ -1279,7 +1279,7 @@ export const Constants = {
         "cancelled",
         "refunded",
       ],
-      plan_type: ["free", "foundation", "progress", "premium"],
+      plan_type: ["free", "foundation", "progress", "premium", "legacy"],
       role_hierarchy_level: ["system", "group", "organization", "standard"],
       subscription_status: ["active", "canceled", "expired", "pending"],
       survey_status: ["Saved", "Scheduled", "Sent", "Completed", "Archived"],

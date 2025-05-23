@@ -11,6 +11,7 @@ import { Button } from '../../components/ui/button';
 import { Label } from '../../components/ui/label';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
+import RedemptionCodeDialog from './RedemptionCodeDialog';
 
 interface UserProfile {
   firstName: string;
@@ -36,6 +37,7 @@ const PricingSection: React.FC = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
+  const [showRedemptionDialog, setShowRedemptionDialog] = useState(false);
   const [currentPlan, setCurrentPlan] = useState<{type: 'foundation' | 'progress' | 'premium', purchaseType: 'subscription' | 'one-time'} | null>(null);
   const [invoiceDetails, setInvoiceDetails] = useState<InvoiceDetails>({
     schoolName: '',
@@ -52,7 +54,8 @@ const PricingSection: React.FC = () => {
     isFree,
     isFoundation,
     isProgress,
-    isPremium
+    isPremium,
+    isLegacy
   } = useSubscription();
   
   const {
@@ -279,17 +282,21 @@ const PricingSection: React.FC = () => {
   };
 
   const getButtonText = (planType: PlanType) => {
-    if (planType === 'free' && isFree || planType === 'foundation' && isFoundation || planType === 'progress' && isProgress || planType === 'premium' && isPremium) {
+    if (planType === 'free' && isFree || 
+        planType === 'foundation' && (isFoundation || isLegacy) || 
+        planType === 'progress' && isProgress || 
+        planType === 'premium' && isPremium) {
       return 'Your Current Plan';
     }
 
     const planLevels = {
       free: 0,
       foundation: 1,
+      legacy: 1,
       progress: 2,
       premium: 3
     };
-    const currentPlanLevel = isFree ? 0 : isFoundation ? 1 : isProgress ? 2 : isPremium ? 3 : 0;
+    const currentPlanLevel = isFree ? 0 : (isFoundation || isLegacy) ? 1 : isProgress ? 2 : isPremium ? 3 : 0;
     const targetPlanLevel = planLevels[planType];
     
     if (targetPlanLevel < currentPlanLevel) {
@@ -304,16 +311,20 @@ const PricingSection: React.FC = () => {
   };
 
   const getButtonVariant = (planType: PlanType): 'default' | 'outline' => {
-    if (planType === 'free' && isFree || planType === 'foundation' && isFoundation || planType === 'progress' && isProgress || planType === 'premium' && isPremium) {
+    if (planType === 'free' && isFree || 
+        planType === 'foundation' && (isFoundation || isLegacy) || 
+        planType === 'progress' && isProgress || 
+        planType === 'premium' && isPremium) {
       return 'outline';
     }
     const planLevels = {
       free: 0,
       foundation: 1,
+      legacy: 1,
       progress: 2,
       premium: 3
     };
-    const currentPlanLevel = isFree ? 0 : isFoundation ? 1 : isProgress ? 2 : isPremium ? 3 : 0;
+    const currentPlanLevel = isFree ? 0 : (isFoundation || isLegacy) ? 1 : isProgress ? 2 : isPremium ? 3 : 0;
     const targetPlanLevel = planLevels[planType];
     return targetPlanLevel > currentPlanLevel ? 'default' : 'outline';
   };
@@ -322,10 +333,11 @@ const PricingSection: React.FC = () => {
     const planLevels = {
       free: 0,
       foundation: 1,
+      legacy: 1,
       progress: 2,
       premium: 3
     };
-    const currentPlanLevel = isFree ? 0 : isFoundation ? 1 : isProgress ? 2 : isPremium ? 3 : 0;
+    const currentPlanLevel = isFree ? 0 : (isFoundation || isLegacy) ? 1 : isProgress ? 2 : isPremium ? 3 : 0;
     const targetPlanLevel = planLevels[planType];
     
     if (targetPlanLevel < currentPlanLevel) {
@@ -347,47 +359,50 @@ const PricingSection: React.FC = () => {
     );
   }
 
-  const displayPlans = plans.map(plan => {
-    const planType = plan.name.toLowerCase() as PlanType;
-    const price = formatPrice(plan.price);
-    const priceSubtext = plan.price > 0 
-      ? `+ VAT (${plan.purchase_type === 'subscription' ? `${plan.duration_months ? plan.duration_months/12 : 3}-year subscription` : 'one-off payment'})`
-      : undefined;
-    
-    const isPaidPlan = planType !== 'free';
-    const upgradePlanType = isPaidPlan ? planType as 'foundation' | 'progress' | 'premium' : 'foundation';
-    
-    return {
-      title: plan.name,
-      description: plan.description,
-      price: plan.price === 0 ? "Free" : price,
-      priceSubtext,
-      features: plan.features.map(feature => ({ text: feature })),
-      planType,
-      isPopular: plan.is_popular,
-      onButtonClick: () => handleButtonClick(planType, () => {
-        if (planType === 'free') {
-          navigate('/dashboard');
-        } else if (isFree || isSubscriptionLoading || 
-            (planType === 'progress' && isFoundation) || 
-            (planType === 'premium' && (isFoundation || isProgress))) {
-          handleUpgrade(plan.stripe_price_id || '', upgradePlanType, plan.purchase_type || 'subscription');
-        }
-      }),
-      buttonText: getButtonText(planType),
-      buttonVariant: getButtonVariant(planType),
-      disabled: (planType === 'foundation' && (isFoundation || isProgress || isPremium)) ||
-                (planType === 'progress' && (isProgress || isPremium)) ||
-                (planType === 'premium' && isPremium),
-      hasInvoiceOption: planType !== 'free',
-      onCardPayment: () => isPaidPlan ? 
-        handleUpgrade(plan.stripe_price_id || '', upgradePlanType, plan.purchase_type || 'subscription') : 
-        navigate('/dashboard'),
-      onInvoiceRequest: () => isPaidPlan ? 
-        openInvoiceDialog(upgradePlanType, plan.purchase_type || 'subscription') : 
-        null
-    };
-  });
+  // Filter out legacy plans from the main display
+  const displayPlans = plans
+    .filter(plan => plan.name.toLowerCase() !== 'legacy')
+    .map(plan => {
+      const planType = plan.name.toLowerCase() as PlanType;
+      const price = formatPrice(plan.price);
+      const priceSubtext = plan.price > 0 
+        ? `+ VAT (${plan.purchase_type === 'subscription' ? `${plan.duration_months ? plan.duration_months/12 : 3}-year subscription` : 'one-off payment'})`
+        : undefined;
+      
+      const isPaidPlan = planType !== 'free';
+      const upgradePlanType = isPaidPlan ? planType as 'foundation' | 'progress' | 'premium' : 'foundation';
+      
+      return {
+        title: plan.name,
+        description: plan.description,
+        price: plan.price === 0 ? "Free" : price,
+        priceSubtext,
+        features: plan.features.map(feature => ({ text: feature })),
+        planType,
+        isPopular: plan.is_popular,
+        onButtonClick: () => handleButtonClick(planType, () => {
+          if (planType === 'free') {
+            navigate('/dashboard');
+          } else if (isFree || isSubscriptionLoading || 
+              (planType === 'progress' && isFoundation) || 
+              (planType === 'premium' && (isFoundation || isProgress))) {
+            handleUpgrade(plan.stripe_price_id || '', upgradePlanType, plan.purchase_type || 'subscription');
+          }
+        }),
+        buttonText: getButtonText(planType),
+        buttonVariant: getButtonVariant(planType),
+        disabled: (planType === 'foundation' && (isFoundation || isProgress || isPremium)) ||
+                  (planType === 'progress' && (isProgress || isPremium)) ||
+                  (planType === 'premium' && isPremium),
+        hasInvoiceOption: planType !== 'free',
+        onCardPayment: () => isPaidPlan ? 
+          handleUpgrade(plan.stripe_price_id || '', upgradePlanType, plan.purchase_type || 'subscription') : 
+          navigate('/dashboard'),
+        onInvoiceRequest: () => isPaidPlan ? 
+          openInvoiceDialog(upgradePlanType, plan.purchase_type || 'subscription') : 
+          null
+      };
+    });
 
   displayPlans.sort((a, b) => {
     const aOrder = plans.find(p => p.name.toLowerCase() === a.planType)?.sort_order || 0;
@@ -413,8 +428,22 @@ const PricingSection: React.FC = () => {
       </div>
       
       <div className="mt-8 text-center text-sm text-gray-500">
-        <p>Need help choosing the right plan? <a href="mailto:contact@humankindaward.com" className="text-brandPurple-600 underline">Contact our support team</a></p>
+        <p>
+          Need help choosing the right plan? <a href="mailto:contact@humankindaward.com" className="text-brandPurple-600 underline">Contact our support team</a>
+          {" | "}
+          <button 
+            onClick={() => setShowRedemptionDialog(true)}
+            className="text-brandPurple-600 underline hover:text-brandPurple-700 transition-colors"
+          >
+            Have a code?
+          </button>
+        </p>
       </div>
+
+      <RedemptionCodeDialog 
+        open={showRedemptionDialog} 
+        onOpenChange={setShowRedemptionDialog} 
+      />
 
       {showInvoiceDialog && (
         <Dialog 

@@ -1,10 +1,9 @@
-
 // Type definitions for subscription-related functionality
 import { supabase } from '@/integrations/supabase/client';
 
-export type PlanType = 'free' | 'foundation' | 'progress' | 'premium' | 'enterprise';
-// This is the database-specific plan type, which doesn't include 'enterprise'
-export type DatabasePlanType = 'free' | 'foundation' | 'progress' | 'premium';
+export type PlanType = 'free' | 'foundation' | 'progress' | 'premium' | 'enterprise' | 'legacy';
+// This is the database-specific plan type, which includes legacy but not enterprise
+export type DatabasePlanType = 'free' | 'foundation' | 'progress' | 'premium' | 'legacy';
 
 export interface SubscriptionAccess {
   plan: PlanType;
@@ -118,8 +117,8 @@ export async function checkAndCreateSubscription(
       endDate = date.toISOString();
     }
     
-    // Enterprise plan is not in the database, so we need to convert it to premium if necessary
-    const dbPlanType: DatabasePlanType = planType === 'enterprise' ? 'premium' : planType;
+    // Convert enterprise to premium, keep legacy as-is
+    const dbPlanType: DatabasePlanType = planType === 'enterprise' ? 'premium' : planType as DatabasePlanType;
     
     // Insert subscription record
     const { error } = await supabase

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
@@ -261,6 +260,7 @@ const RedemptionCodesManagement: React.FC = () => {
                         <Badge variant={
                           code.plan_type === 'premium' ? 'default' : 
                           code.plan_type === 'progress' ? 'secondary' : 
+                          code.plan_type === 'legacy' ? 'secondary' :
                           'outline'
                         }>
                           {code.plan_type.charAt(0).toUpperCase() + code.plan_type.slice(1)}
@@ -350,6 +350,7 @@ const RedemptionCodesManagement: React.FC = () => {
                     <SelectItem value="foundation">Foundation</SelectItem>
                     <SelectItem value="progress">Progress</SelectItem>
                     <SelectItem value="premium">Premium</SelectItem>
+                    <SelectItem value="legacy">Legacy</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

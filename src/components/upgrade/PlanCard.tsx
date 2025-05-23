@@ -1,4 +1,3 @@
-
 import React, { ReactNode, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -7,7 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ChevronDown } from 'lucide-react';
 import RedemptionCodeDialog from './RedemptionCodeDialog';
 
-export type PlanType = 'free' | 'foundation' | 'progress' | 'premium';
+export type PlanType = 'free' | 'foundation' | 'progress' | 'premium' | 'legacy';
 
 interface PlanCardProps {
   title: string;

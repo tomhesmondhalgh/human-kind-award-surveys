@@ -43,7 +43,7 @@ export function useSubscription() {
   const hasAccess = useCallback(async (requiredPlan: PlanType): Promise<boolean> => {
     if (!user) return false;
     if (isTestingMode && testingPlan) {
-      const planLevels = { free: 0, foundation: 1, progress: 2, premium: 3 };
+      const planLevels = { free: 0, foundation: 1, legacy: 1, progress: 2, premium: 3 };
       return planLevels[testingPlan] >= planLevels[requiredPlan];
     }
     return checkPlanAccess(user.id, requiredPlan);
@@ -71,6 +71,7 @@ export function useSubscription() {
     isPremium: effectiveSubscription?.plan === 'premium' && effectiveSubscription?.isActive,
     isProgress: effectiveSubscription?.plan === 'progress' && effectiveSubscription?.isActive,
     isFoundation: effectiveSubscription?.plan === 'foundation' && effectiveSubscription?.isActive,
+    isLegacy: effectiveSubscription?.plan === 'legacy' && effectiveSubscription?.isActive,
     isFree: effectiveSubscription?.plan === 'free' || !effectiveSubscription?.isActive,
   };
 }

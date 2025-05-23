@@ -1,10 +1,9 @@
-
 import React, { ReactNode } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import PlanFeatureItem from './PlanFeatureItem';
 
-export type PlanType = 'free' | 'foundation' | 'progress' | 'premium';
+export type PlanType = 'free' | 'foundation' | 'progress' | 'premium' | 'legacy';
 
 interface PlanCardProps {
   title: string;
