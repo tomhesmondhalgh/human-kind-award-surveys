@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import MainLayout from '../components/layout/MainLayout';
 import PageTitle from '../components/ui/PageTitle';
@@ -32,14 +33,13 @@ const Improve = () => {
   const [hasFoundationPlan, setHasFoundationPlan] = useState<boolean | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
 
-  // Store the initialization state in sessionStorage to prevent re-initialization on tab changes
+  // Clear initialization state when organization changes
   useEffect(() => {
-    const initState = sessionStorage.getItem('actionPlanInitialized');
-    if (initState === 'true') {
-      console.log('Action plan already initialized according to sessionStorage');
-      setHasInitialized(true);
+    if (currentOrganization) {
+      setHasInitialized(false);
+      sessionStorage.removeItem('actionPlanInitialized');
     }
-  }, []);
+  }, [currentOrganization?.id]);
 
   useEffect(() => {
     async function checkAccess() {
@@ -159,13 +159,15 @@ const Improve = () => {
   const shouldShowOverlay = isMobile && orientation === 'portrait' && !overlayDismissed;
   const isSubscriptionChecking = isSubscriptionLoading || hasFoundationPlan === null;
 
-  // Add better organization state logging
+  // Enhanced organization state logging
   console.log('Improve page - Organization state:', {
     currentOrganization,
     isOrgLoading,
     orgError,
     organizations,
-    user: user?.id
+    user: user?.id,
+    hasInitialized,
+    hasFoundationPlan
   });
 
   return (

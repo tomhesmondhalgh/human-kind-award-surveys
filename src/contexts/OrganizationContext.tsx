@@ -44,21 +44,7 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     console.log('OrganizationContext: Fetching organizations for user:', user.id);
     
     try {
-      // First, test direct access to organization_memberships
-      console.log('OrganizationContext: Testing direct membership access...');
-      const { data: directMemberships, error: directError } = await supabase
-        .from('organization_memberships')
-        .select('*')
-        .eq('user_id', user.id);
-
-      if (directError) {
-        console.error('OrganizationContext: Error with direct membership query:', directError);
-        throw directError;
-      }
-
-      console.log('OrganizationContext: Direct memberships found:', directMemberships);
-
-      // Now fetch with organization details
+      // Fetch with organization details using the cleaned data structure
       const { data: memberships, error } = await supabase
         .from('organization_memberships')
         .select(`
@@ -180,6 +166,9 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setIsLoading(true);
       setError(null);
       
+      // Clear any cached state
+      sessionStorage.removeItem('actionPlanInitialized');
+      
       try {
         if (user) {
           console.log('OrganizationContext: User authenticated, fetching organizations');
@@ -188,7 +177,6 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           
           if (orgs.length === 0) {
             console.log('OrganizationContext: No organizations found for user');
-            // Don't set this as an error anymore - user might just need to create an organization
             setCurrentOrganization(null);
           } else {
             // Set primary organization as current, or first available
