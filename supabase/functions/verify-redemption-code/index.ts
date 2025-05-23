@@ -55,22 +55,45 @@ Deno.serve(async (req) => {
     // Create admin client to perform tasks that require elevated permissions
     const admin = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-    // Check if the code exists and is valid
+    // First, get the redemption code and validate it exists and is active
     const { data: codeData, error: codeError } = await admin
       .from('redemption_codes')
       .select('*')
       .eq('code', code)
       .eq('is_active', true)
-      .lte('current_uses', admin.sql`max_uses`)
-      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
-      .single();
+      .maybeSingle();
 
-    if (codeError || !codeData) {
+    if (codeError) {
+      console.error('Error fetching redemption code:', codeError);
       return new Response(
         JSON.stringify({ 
-          error: 'Invalid or expired redemption code',
-          details: codeError?.message 
+          error: 'Failed to validate redemption code',
+          details: codeError.message 
         }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!codeData) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid redemption code' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Now check if the code has expired
+    if (codeData.expires_at && new Date(codeData.expires_at) < new Date()) {
+      return new Response(
+        JSON.stringify({ error: 'Redemption code has expired' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if the code has reached its usage limit
+    // Fixed: Using a separate check rather than SQL template literal which was causing the error
+    if (codeData.max_uses > 0 && codeData.current_uses >= codeData.max_uses) {
+      return new Response(
+        JSON.stringify({ error: 'Redemption code has reached its maximum usage limit' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -82,6 +105,17 @@ Deno.serve(async (req) => {
       .eq('code_id', codeData.id)
       .eq('user_id', user.id)
       .maybeSingle();
+
+    if (redemptionError) {
+      console.error('Error checking existing redemptions:', redemptionError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to validate redemption history',
+          details: redemptionError.message 
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (existingRedemption) {
       return new Response(
@@ -99,6 +133,7 @@ Deno.serve(async (req) => {
     });
 
     if (transactionError) {
+      console.error('Transaction error:', transactionError);
       return new Response(
         JSON.stringify({ 
           error: 'Failed to redeem code', 
