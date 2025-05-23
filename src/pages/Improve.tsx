@@ -19,7 +19,7 @@ import { useNavigate } from 'react-router-dom';
 
 const Improve = () => {
   const { user } = useAuth();
-  const { currentOrganization, isLoading: isOrgLoading, error: orgError } = useOrganization();
+  const { currentOrganization, isLoading: isOrgLoading, error: orgError, organizations } = useOrganization();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('summary');
   const [isLoading, setIsLoading] = useState(true);
@@ -159,6 +159,15 @@ const Improve = () => {
   const shouldShowOverlay = isMobile && orientation === 'portrait' && !overlayDismissed;
   const isSubscriptionChecking = isSubscriptionLoading || hasFoundationPlan === null;
 
+  // Add better organization state logging
+  console.log('Improve page - Organization state:', {
+    currentOrganization,
+    isOrgLoading,
+    orgError,
+    organizations,
+    user: user?.id
+  });
+
   return (
     <MainLayout>
       {shouldShowOverlay && (
@@ -207,18 +216,18 @@ const Improve = () => {
         ) : isOrgLoading ? (
           <div className="flex justify-center items-center h-64">
             <div className="text-center">
-              <div className="mb-4">Loading organization...</div>
+              <div className="mb-4">Loading organisation...</div>
               <div className="text-sm text-gray-500">Please wait while we set up your workspace</div>
             </div>
           </div>
         ) : orgError ? (
-          <div className="mt-8 rounded-lg border border-yellow-200 bg-yellow-50 p-8 text-center">
-            <h2 className="text-xl font-semibold mb-4 text-yellow-700">Organization Access Required</h2>
+          <div className="mt-8 rounded-lg border border-red-200 bg-red-50 p-8 text-center">
+            <h2 className="text-xl font-semibold mb-4 text-red-700">Error Loading Organisation Data</h2>
             <p className="text-gray-700 mb-6">{orgError}</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button onClick={() => navigate('/team')} variant="outline">
                 <Plus className="h-4 w-4 mr-2" />
-                Create Organization
+                Manage Organisations
               </Button>
               <Button onClick={() => window.location.reload()} variant="default">
                 Retry Loading
@@ -227,13 +236,16 @@ const Improve = () => {
           </div>
         ) : !currentOrganization ? (
           <div className="mt-8 rounded-lg border border-gray-200 bg-gray-50 p-8 text-center">
-            <h2 className="text-xl font-semibold mb-4">No Organization Found</h2>
+            <h2 className="text-xl font-semibold mb-4">No Organisation Selected</h2>
             <p className="text-gray-600 mb-6">
-              You need to be a member of an organization to access the Action Plan.
+              {organizations.length === 0 
+                ? "You need to be a member of an organisation to access the Action Plan. Create or join an organisation to get started."
+                : "Please select an organisation to access the Action Plan."
+              }
             </p>
             <Button onClick={() => navigate('/team')} className="px-8">
               <Plus className="h-4 w-4 mr-2" />
-              Create or Join Organization
+              {organizations.length === 0 ? "Create or Join Organisation" : "Select Organisation"}
             </Button>
           </div>
         ) : isLoading ? (

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
@@ -45,6 +44,21 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     console.log('OrganizationContext: Fetching organizations for user:', user.id);
     
     try {
+      // First, test direct access to organization_memberships
+      console.log('OrganizationContext: Testing direct membership access...');
+      const { data: directMemberships, error: directError } = await supabase
+        .from('organization_memberships')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (directError) {
+        console.error('OrganizationContext: Error with direct membership query:', directError);
+        throw directError;
+      }
+
+      console.log('OrganizationContext: Direct memberships found:', directMemberships);
+
+      // Now fetch with organization details
       const { data: memberships, error } = await supabase
         .from('organization_memberships')
         .select(`
@@ -67,6 +81,11 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       console.log('OrganizationContext: Raw memberships data:', memberships);
 
+      if (!memberships || memberships.length === 0) {
+        console.log('OrganizationContext: No memberships found for user');
+        return [];
+      }
+
       const organizations = memberships
         .filter(membership => membership.organizations)
         .map(membership => ({
@@ -87,11 +106,15 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     
     try {
       setError(null);
+      console.log('OrganizationContext: Refreshing organizations...');
       const orgs = await fetchOrganizations();
       setOrganizations(orgs);
+      console.log('OrganizationContext: Organizations refreshed successfully');
     } catch (error) {
       console.error('OrganizationContext: Error in refreshOrganizations:', error);
-      setError(error instanceof Error ? error.message : 'Failed to load organizations');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load organizations';
+      setError(errorMessage);
+      console.error('OrganizationContext: Setting error:', errorMessage);
     }
   };
 
@@ -165,7 +188,7 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           
           if (orgs.length === 0) {
             console.log('OrganizationContext: No organizations found for user');
-            setError('You are not a member of any organization. Please contact your administrator to be added to an organization.');
+            // Don't set this as an error anymore - user might just need to create an organization
             setCurrentOrganization(null);
           } else {
             // Set primary organization as current, or first available
@@ -183,7 +206,8 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
       } catch (error) {
         console.error('OrganizationContext: Error in fetchCurrentOrganization:', error);
-        setError(error instanceof Error ? error.message : 'Failed to load organization data');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to load organization data';
+        setError(errorMessage);
         setOrganizations([]);
         setCurrentOrganization(null);
       } finally {
