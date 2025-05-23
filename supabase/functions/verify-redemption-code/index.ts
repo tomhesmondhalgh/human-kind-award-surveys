@@ -126,6 +126,7 @@ Deno.serve(async (req) => {
 
     // Transaction to create a redemption and update the code usage
     // We'll use the service role to bypass RLS for the transaction
+    // Fix: Make sure parameters are in the correct order matching the SQL function definition
     const { data: transaction, error: transactionError } = await admin.rpc('redeem_code', {
       user_uuid: user.id,
       code_uuid: codeData.id,

@@ -1111,6 +1111,14 @@ export type Database = {
         Args: { survey_id: string }
         Returns: boolean
       }
+      redeem_code: {
+        Args: {
+          user_uuid: string
+          code_uuid: string
+          plan: Database["public"]["Enums"]["plan_type"]
+        }
+        Returns: Json
+      }
       user_can_edit_survey: {
         Args: { user_uuid: string; template_id: string }
         Returns: boolean
