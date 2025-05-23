@@ -79,7 +79,7 @@ const Admin = () => {
     <MainLayout>
       <div className="-mx-5 sm:-mx-20">
         <SidebarProvider defaultOpen={true}>
-          <div className="min-h-[calc(100vh-5rem)] flex w-full pt-20">
+          <div className="min-h-[calc(100vh-5rem)] flex w-full">
             <AppSidebar activeTab={activeTab} onTabChange={setActiveTab} />
             <SidebarInset>
               <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
