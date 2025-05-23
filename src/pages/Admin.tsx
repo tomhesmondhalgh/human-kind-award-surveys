@@ -8,6 +8,7 @@ import AppSidebar from '../components/admin/AppSidebar';
 import PlansManagement from '../components/admin/PlansManagement';
 import TestingMode from '../components/admin/TestingMode';
 import CustomScriptsManagement from '../components/admin/CustomScriptsManagement';
+import AccreditationManagement from '../components/admin/AccreditationManagement';
 import { useAdminRole } from '../hooks/useAdminRole';
 import { Navigate } from 'react-router-dom';
 import { useTestingMode } from '../contexts/TestingModeContext';
@@ -44,6 +45,7 @@ const Admin = () => {
       users: 'User Management', 
       feedback: 'Feedback Analytics',
       redemption: 'Redemption Codes',
+      accreditation: 'Accreditation Reviews',
       plans: 'Plan Management',
       testing: 'Testing Mode',
       scripts: 'Custom Scripts',
@@ -62,6 +64,8 @@ const Admin = () => {
         return <SurveyFeedbackAnalytics />;
       case 'redemption':
         return <RedemptionCodesManagement />;
+      case 'accreditation':
+        return <AccreditationManagement />;
       case 'plans':
         return <PlansManagement />;
       case 'testing':

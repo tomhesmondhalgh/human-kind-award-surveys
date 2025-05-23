@@ -19,7 +19,8 @@ import {
   Package, 
   FlaskConical, 
   Code, 
-  Database 
+  Database,
+  Award
 } from 'lucide-react';
 
 interface AdminSidebarProps {
@@ -43,6 +44,11 @@ const AppSidebar: React.FC<AdminSidebarProps> = ({ activeTab, onTabChange }) => 
       title: "Redemption Codes",
       value: "redemption",
       icon: Gift,
+    },
+    {
+      title: "Accreditation Reviews",
+      value: "accreditation",
+      icon: Award,
     },
   ];
 
