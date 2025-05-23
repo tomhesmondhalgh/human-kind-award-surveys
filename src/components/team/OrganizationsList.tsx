@@ -16,6 +16,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { Organization } from '@/types/organizations';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrganization } from '@/contexts/OrganizationContext';
+import { useNavigate } from 'react-router-dom';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -34,10 +36,10 @@ const CreateOrganizationDialog = ({
 }: { 
   isOpen: boolean; 
   onClose: () => void; 
-  onComplete: () => void; 
+  onComplete: (success: boolean) => void; 
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user } = useAuth();
+  const { createOrganization } = useOrganization();
   
   const form = useForm<CreateOrgFormValues>({
     resolver: zodResolver(createOrgFormSchema),
@@ -49,46 +51,26 @@ const CreateOrganizationDialog = ({
   });
 
   const handleSubmit = async (values: CreateOrgFormValues) => {
-    if (!user) return;
-    
     setIsSubmitting(true);
     
     try {
-      // Create the organization
-      const { data: orgData, error: orgError } = await supabase
-        .from('organizations')
-        .insert({
-          name: values.name,
-          address: values.address || null,
-          urn: values.urn || null,
-        })
-        .select('id')
-        .single();
-        
-      if (orgError) {
-        throw orgError;
-      }
+      const org = await createOrganization(
+        values.name,
+        values.address,
+        values.urn
+      );
       
-      // Add user as admin of the new organization
-      const { error: membershipError } = await supabase
-        .from('organization_memberships')
-        .insert({
-          user_id: user.id,
-          organization_id: orgData.id,
-          role: 'admin',
-          is_primary: true
-        });
-        
-      if (membershipError) {
-        throw membershipError;
+      if (org) {
+        toast.success('Organisation created successfully');
+        form.reset();
+        onComplete(true);
+      } else {
+        throw new Error('Failed to create organization');
       }
-      
-      toast.success('Organisation created successfully');
-      form.reset();
-      onComplete();
     } catch (error) {
       console.error('Error creating organisation:', error);
       toast.error('Failed to create organisation');
+      onComplete(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -186,49 +168,18 @@ const OrganizationsList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { organizations, refreshOrganizations } = useOrganization();
 
-  const { data: organizationsData, isLoading, refetch } = useQuery({
-    queryKey: ['organizations', user?.id],
-    queryFn: async () => {
-      if (!user) return { organizations: [], total: 0 };
-      
-      const { data: memberships, error } = await supabase
-        .from('organization_memberships')
-        .select(`
-          *,
-          organizations:organization_id (
-            id,
-            name,
-            address,
-            urn,
-            created_at,
-            updated_at
-          )
-        `)
-        .eq('user_id', user.id);
-        
-      if (error) {
-        toast.error('Failed to load organizations');
-        throw error;
-      }
-      
-      const organizations = memberships
-        .filter(membership => membership.organizations)
-        .map(membership => membership.organizations) as Organization[];
-      
-      return {
-        organizations,
-        total: organizations.length
-      };
-    },
-    enabled: !!user
-  });
+  // We'll use the organizations directly from the OrganizationContext
+  // instead of fetching them again
+  const isLoading = false;
 
   // Filter organizations based on search term
-  const filteredOrganizations = organizationsData?.organizations.filter(org => {
+  const filteredOrganizations = organizations.filter(org => {
     const orgName = org.name || '';
     return searchTerm === '' || orgName.toLowerCase().includes(searchTerm.toLowerCase());
-  }) || [];
+  });
   
   // Pagination
   const totalPages = Math.ceil(filteredOrganizations.length / ITEMS_PER_PAGE);
@@ -237,9 +188,18 @@ const OrganizationsList = () => {
     currentPage * ITEMS_PER_PAGE
   );
 
-  const handleCreateComplete = () => {
-    refetch();
-    setIsCreateDialogOpen(false);
+  const handleCreateComplete = (success: boolean) => {
+    if (success) {
+      // If organization was created successfully, navigate to team page
+      setIsCreateDialogOpen(false);
+      // We don't need to refetch as the context already has the updated list
+      // and the new org is set as current
+      
+      // Force reload the current page to reflect changes
+      window.location.reload();
+    } else {
+      setIsCreateDialogOpen(false);
+    }
   };
 
   const handleRemoveOrganization = async (orgId: string) => {
@@ -257,7 +217,7 @@ const OrganizationsList = () => {
       }
       
       toast.success('Left organization successfully');
-      refetch();
+      refreshOrganizations();
     } catch (error) {
       console.error('Error leaving organization:', error);
       toast.error('Failed to leave organization');

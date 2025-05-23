@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { Organization, OrganizationWithRole } from '../types/organizations';
+import { toast } from 'sonner';
 
 export interface OrganizationContextType {
   currentOrganization: OrganizationWithRole | null;
@@ -11,6 +12,7 @@ export interface OrganizationContextType {
   switchOrganization: (orgId: string) => Promise<boolean>;
   organizations: OrganizationWithRole[];
   refreshOrganizations: () => Promise<void>;
+  createOrganization: (name: string, address?: string, urn?: string) => Promise<OrganizationWithRole | null>;
   error: string | null;
 }
 
@@ -21,6 +23,7 @@ const OrganizationContext = createContext<OrganizationContextType>({
   switchOrganization: async () => false,
   organizations: [],
   refreshOrganizations: async () => {},
+  createOrganization: async () => null,
   error: null
 });
 
@@ -89,6 +92,62 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } catch (error) {
       console.error('OrganizationContext: Error in refreshOrganizations:', error);
       setError(error instanceof Error ? error.message : 'Failed to load organizations');
+    }
+  };
+
+  const createOrganization = async (name: string, address?: string, urn?: string): Promise<OrganizationWithRole | null> => {
+    if (!user) return null;
+    
+    setIsLoading(true);
+    try {
+      // Create the organization
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .insert({
+          name,
+          address: address || null,
+          urn: urn || null,
+        })
+        .select('*')
+        .single();
+        
+      if (orgError) {
+        throw orgError;
+      }
+      
+      // Add user as admin of the new organization
+      const { error: membershipError } = await supabase
+        .from('organization_memberships')
+        .insert({
+          user_id: user.id,
+          organization_id: orgData.id,
+          role: 'admin',
+          is_primary: true
+        });
+        
+      if (membershipError) {
+        throw membershipError;
+      }
+      
+      // Create the OrganizationWithRole object
+      const newOrg: OrganizationWithRole = {
+        ...orgData,
+        role: 'admin'
+      };
+      
+      // Refresh organizations list
+      await refreshOrganizations();
+      
+      // Set as current organization
+      setCurrentOrganization(newOrg);
+      
+      return newOrg;
+    } catch (error) {
+      console.error('OrganizationContext: Error creating organization:', error);
+      toast.error('Failed to create organisation');
+      return null;
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -161,6 +220,7 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       switchOrganization,
       organizations,
       refreshOrganizations,
+      createOrganization,
       error
     }}>
       {children}
