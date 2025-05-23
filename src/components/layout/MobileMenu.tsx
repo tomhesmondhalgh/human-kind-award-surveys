@@ -1,8 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { User, ShieldCheck, LogOut, CreditCard } from 'lucide-react';
-import { NavLinks } from './NavLinks';
-import { useAdminRole } from '../../hooks/useAdminRole';
+import NavLinks from './NavLinks';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -10,7 +8,7 @@ interface MobileMenuProps {
   hideAuthButtons: boolean;
   isAdmin: boolean;
   handleSignOut: () => Promise<void>;
-  setIsMenuOpen: (isOpen: boolean) => void;
+  setIsMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const MobileMenu: React.FC<MobileMenuProps> = ({
@@ -21,82 +19,31 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
   handleSignOut,
   setIsMenuOpen,
 }) => {
-  if (!isOpen) return null;
-
-  const { isAdmin: isAdminFromHook } = useAdminRole();
-  
-  const showAdminLink = isAdmin || isAdminFromHook;
-
   return (
-    <div className="md:hidden bg-white shadow-lg animate-slide-down">
+    <div className={`md:hidden ${isOpen ? 'block' : 'hidden'} bg-white w-full border-t`}>
       <div className="px-2 pt-2 pb-3 space-y-1">
         {isAuthenticated ? (
           <>
-            <div className="flex flex-col space-y-1">
-              <NavLinks setIsMenuOpen={setIsMenuOpen} />
-            </div>
-            
-            <div className="px-4 pt-2 pb-1 text-base font-semibold text-gray-500">
-              Settings
-            </div>
-            
-            <Link 
-              to="/profile" 
-              className="block px-4 py-2 rounded-md font-medium text-base hover:bg-brandPurple-50"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <span className="flex items-center">
-                <User size={16} className="mr-2" />
-                Profile
-              </span>
-            </Link>
-
-            <Link 
-              to="/purchases" 
-              className="block px-4 py-2 rounded-md font-medium text-base hover:bg-brandPurple-50"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <span className="flex items-center">
-                <CreditCard size={16} className="mr-2" />
-                My Purchases
-              </span>
-            </Link>
-            
-            {showAdminLink && (
-              <Link 
-                to="/admin" 
-                className="block px-4 py-2 rounded-md font-medium text-base hover:bg-brandPurple-50"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <span className="flex items-center">
-                  <ShieldCheck size={16} className="mr-2" />
-                  Admin
-                </span>
-              </Link>
-            )}
-            
-            <button 
-              className="flex items-center w-full text-left px-4 py-2 rounded-md font-medium text-base hover:bg-brandPurple-50"
+            <NavLinks />
+            <button
               onClick={handleSignOut}
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-brandPurple-600 hover:bg-brandPurple-50 focus:outline-none"
             >
-              <LogOut size={16} className="mr-2" />
               Sign Out
             </button>
           </>
         ) : (
           !hideAuthButtons && (
             <>
-              <Link 
-                to="/login" 
-                className="block px-4 py-2 rounded-md font-medium text-base hover:bg-brandPurple-50"
-                onClick={() => setIsMenuOpen(false)}
+              <Link
+                to="/login"
+                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-brandPurple-600 hover:bg-brandPurple-50 focus:outline-none"
               >
                 Log in
               </Link>
-              <Link 
-                to="/signup" 
-                className="block px-4 py-2 rounded-md font-medium text-base text-brandPurple-600 hover:bg-brandPurple-50"
-                onClick={() => setIsMenuOpen(false)}
+              <Link
+                to="/signup"
+                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-brandPurple-600 hover:bg-brandPurple-50 focus:outline-none"
               >
                 Sign up
               </Link>

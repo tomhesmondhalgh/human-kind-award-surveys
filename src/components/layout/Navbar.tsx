@@ -7,12 +7,13 @@ import { useAdminRole } from '../../hooks/useAdminRole';
 import NavbarBrand from './NavbarBrand';
 import DesktopNav from './DesktopNav';
 import MobileMenu from './MobileMenu';
+import { signOutUser } from '../../utils/auth';
 
 const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const { isAdmin } = useAdminRole();
   
   const isAuthenticated = !!user;
@@ -28,7 +29,7 @@ const Navbar: React.FC = () => {
   }, []);
 
   const handleSignOut = async () => {
-    await signOut();
+    await signOutUser();
     setIsMenuOpen(false);
   };
 

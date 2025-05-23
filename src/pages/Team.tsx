@@ -1,4 +1,3 @@
-
 import React from 'react';
 import MainLayout from '../components/layout/MainLayout';
 import { useOrganization } from '../contexts/OrganizationContext';
@@ -10,7 +9,6 @@ import { Users, UserPlus, Mail, Crown, Edit3, Eye, Trash2 } from 'lucide-react';
 import { useTeamMembers } from '../components/team/hooks/useTeamMembers';
 import { useTeamInvitations } from '../components/team/hooks/useTeamInvitations';
 import { Skeleton } from '../components/ui/skeleton';
-import { toast } from 'sonner';
 import TeamInviteModal from '../components/team/TeamInviteModal';
 import ConfirmDeleteModal from '../components/team/ConfirmDeleteModal';
 
@@ -32,6 +30,12 @@ const Team = () => {
     invitations,
     invitationsLoading
   } = useTeamInvitations(currentOrganization?.id);
+
+  // Function to handle sending invitations that returns void
+  const handleSendInvitation = async (data: { email: string; role: string }) => {
+    await sendInvitation.mutateAsync(data);
+    return;
+  };
 
   if (!currentOrganization) {
     return (
@@ -240,7 +244,7 @@ const Team = () => {
         <TeamInviteModal
           isOpen={isInviteModalOpen}
           onClose={() => setIsInviteModalOpen(false)}
-          onSendInvitation={sendInvitation.mutateAsync}
+          onSendInvitation={handleSendInvitation}
           isLoading={sendInvitation.isPending}
         />
 

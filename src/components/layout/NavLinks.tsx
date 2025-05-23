@@ -4,7 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { BarChart3, FileText, Users, TrendingUp } from 'lucide-react';
 import SettingsDropdown from './SettingsDropdown';
 import { useAuth } from '../../contexts/AuthContext';
-import { signOut } from '../../utils/auth';
+import { signOutUser } from '../../utils/auth';
 
 const NavLinks: React.FC = () => {
   const location = useLocation();
@@ -12,7 +12,7 @@ const NavLinks: React.FC = () => {
 
   const handleSignOut = async () => {
     try {
-      await signOut();
+      await signOutUser();
     } catch (error) {
       console.error('Error signing out:', error);
     }

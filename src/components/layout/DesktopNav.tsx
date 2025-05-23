@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { NavLinks } from './NavLinks';
+import NavLinks from './NavLinks';
 import SettingsDropdown from './SettingsDropdown';
 
 interface DesktopNavProps {
@@ -24,7 +24,7 @@ const DesktopNav: React.FC<DesktopNavProps> = ({
       {isAuthenticated ? (
         <>
           <div className="flex items-center space-x-8">
-            <NavLinks canManageTeam={canManageTeam} />
+            <NavLinks />
           </div>
           <SettingsDropdown handleSignOut={handleSignOut} />
         </>
