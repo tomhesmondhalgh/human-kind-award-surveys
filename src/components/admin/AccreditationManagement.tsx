@@ -32,7 +32,7 @@ const AccreditationManagement = () => {
         .from('action_plan_submissions')
         .select(`
           *,
-          profiles!user_id(first_name, last_name, school_name)
+          profiles(first_name, last_name, school_name)
         `)
         .order('submitted_at', { ascending: false });
 
@@ -42,7 +42,7 @@ const AccreditationManagement = () => {
         return;
       }
 
-      setSubmissions(data || []);
+      setSubmissions(data as AccreditationSubmission[] || []);
     } catch (error) {
       console.error('Error fetching submissions:', error);
       toast.error('Failed to load submissions');
