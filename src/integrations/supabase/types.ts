@@ -1336,6 +1336,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_user_memberships: {
+        Args: { user_uuid: string }
+        Returns: {
+          created_at: string
+          id: string
+          is_primary: boolean
+          organization_id: string
+          role: Database["public"]["Enums"]["organization_role"]
+          user_id: string
+        }[]
+      }
       get_user_subscription: {
         Args: { user_uuid: string }
         Returns: {

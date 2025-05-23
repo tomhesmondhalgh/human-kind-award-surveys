@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import MainLayout from '../components/layout/MainLayout';
 import PageTitle from '../components/ui/PageTitle';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Download, Save, ArrowRight } from 'lucide-react';
+import { Download, Save, ArrowRight, Plus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { toast } from 'sonner';
@@ -20,7 +19,7 @@ import { useNavigate } from 'react-router-dom';
 
 const Improve = () => {
   const { user } = useAuth();
-  const { currentOrganization, isLoading: isOrgLoading } = useOrganization();
+  const { currentOrganization, isLoading: isOrgLoading, error: orgError } = useOrganization();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('summary');
   const [isLoading, setIsLoading] = useState(true);
@@ -159,7 +158,6 @@ const Improve = () => {
 
   const shouldShowOverlay = isMobile && orientation === 'portrait' && !overlayDismissed;
   const isSubscriptionChecking = isSubscriptionLoading || hasFoundationPlan === null;
-  const isLoadingOrganization = isOrgLoading || !currentOrganization;
 
   return (
     <MainLayout>
@@ -206,12 +204,37 @@ const Improve = () => {
               View Upgrade Options <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
-        ) : isLoadingOrganization ? (
+        ) : isOrgLoading ? (
           <div className="flex justify-center items-center h-64">
             <div className="text-center">
               <div className="mb-4">Loading organization...</div>
               <div className="text-sm text-gray-500">Please wait while we set up your workspace</div>
             </div>
+          </div>
+        ) : orgError ? (
+          <div className="mt-8 rounded-lg border border-yellow-200 bg-yellow-50 p-8 text-center">
+            <h2 className="text-xl font-semibold mb-4 text-yellow-700">Organization Access Required</h2>
+            <p className="text-gray-700 mb-6">{orgError}</p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button onClick={() => navigate('/team')} variant="outline">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Organization
+              </Button>
+              <Button onClick={() => window.location.reload()} variant="default">
+                Retry Loading
+              </Button>
+            </div>
+          </div>
+        ) : !currentOrganization ? (
+          <div className="mt-8 rounded-lg border border-gray-200 bg-gray-50 p-8 text-center">
+            <h2 className="text-xl font-semibold mb-4">No Organization Found</h2>
+            <p className="text-gray-600 mb-6">
+              You need to be a member of an organization to access the Action Plan.
+            </p>
+            <Button onClick={() => navigate('/team')} className="px-8">
+              <Plus className="h-4 w-4 mr-2" />
+              Create or Join Organization
+            </Button>
           </div>
         ) : isLoading ? (
           <div className="flex justify-center items-center h-64">

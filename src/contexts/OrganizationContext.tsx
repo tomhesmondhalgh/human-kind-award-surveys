@@ -11,6 +11,7 @@ export interface OrganizationContextType {
   switchOrganization: (orgId: string) => Promise<boolean>;
   organizations: OrganizationWithRole[];
   refreshOrganizations: () => Promise<void>;
+  error: string | null;
 }
 
 const OrganizationContext = createContext<OrganizationContextType>({
@@ -19,7 +20,8 @@ const OrganizationContext = createContext<OrganizationContextType>({
   isLoading: true,
   switchOrganization: async () => false,
   organizations: [],
-  refreshOrganizations: async () => {}
+  refreshOrganizations: async () => {},
+  error: null
 });
 
 export const useOrganization = () => useContext(OrganizationContext);
@@ -28,10 +30,17 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [currentOrganization, setCurrentOrganization] = useState<OrganizationWithRole | null>(null);
   const [organizations, setOrganizations] = useState<OrganizationWithRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
   const fetchOrganizations = async () => {
-    if (!user) return [];
+    if (!user) {
+      console.log('OrganizationContext: No user found, returning empty organizations');
+      return [];
+    }
+    
+    console.log('OrganizationContext: Fetching organizations for user:', user.id);
+    
     try {
       const { data: memberships, error } = await supabase
         .from('organization_memberships')
@@ -49,46 +58,77 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         .eq('user_id', user.id);
 
       if (error) {
-        console.error('Error fetching organizations:', error);
-        return [];
+        console.error('OrganizationContext: Error fetching organizations:', error);
+        throw error;
       }
 
-      return memberships
+      console.log('OrganizationContext: Raw memberships data:', memberships);
+
+      const organizations = memberships
         .filter(membership => membership.organizations)
         .map(membership => ({
           ...membership.organizations,
           role: membership.role
         })) as OrganizationWithRole[];
+      
+      console.log('OrganizationContext: Processed organizations:', organizations);
+      return organizations;
     } catch (error) {
-      console.error('Error fetching organizations:', error);
-      return [];
+      console.error('OrganizationContext: Error in fetchOrganizations:', error);
+      throw error;
     }
   };
 
   const refreshOrganizations = async () => {
     if (!user) return;
-    const orgs = await fetchOrganizations();
-    setOrganizations(orgs);
+    
+    try {
+      setError(null);
+      const orgs = await fetchOrganizations();
+      setOrganizations(orgs);
+    } catch (error) {
+      console.error('OrganizationContext: Error in refreshOrganizations:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load organizations');
+    }
   };
 
   useEffect(() => {
     const fetchCurrentOrganization = async () => {
+      console.log('OrganizationContext: Starting fetchCurrentOrganization, user:', user?.id);
       setIsLoading(true);
+      setError(null);
+      
       try {
         if (user) {
+          console.log('OrganizationContext: User authenticated, fetching organizations');
           const orgs = await fetchOrganizations();
           setOrganizations(orgs);
           
-          // Set primary organization as current, or first available
-          const primaryOrg = orgs.find(org => 
-            org.role === 'admin' // Prefer admin role
-          ) || orgs[0];
-          
-          if (primaryOrg) {
+          if (orgs.length === 0) {
+            console.log('OrganizationContext: No organizations found for user');
+            setError('You are not a member of any organization. Please contact your administrator to be added to an organization.');
+            setCurrentOrganization(null);
+          } else {
+            // Set primary organization as current, or first available
+            const primaryOrg = orgs.find(org => 
+              org.role === 'admin' // Prefer admin role
+            ) || orgs[0];
+            
+            console.log('OrganizationContext: Setting current organization:', primaryOrg);
             setCurrentOrganization(primaryOrg);
           }
+        } else {
+          console.log('OrganizationContext: No user, clearing organizations');
+          setOrganizations([]);
+          setCurrentOrganization(null);
         }
+      } catch (error) {
+        console.error('OrganizationContext: Error in fetchCurrentOrganization:', error);
+        setError(error instanceof Error ? error.message : 'Failed to load organization data');
+        setOrganizations([]);
+        setCurrentOrganization(null);
       } finally {
+        console.log('OrganizationContext: Finished loading, setting isLoading to false');
         setIsLoading(false);
       }
     };
@@ -106,7 +146,7 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
       return false;
     } catch (error) {
-      console.error('Error switching organization:', error);
+      console.error('OrganizationContext: Error switching organization:', error);
       return false;
     } finally {
       setIsLoading(false);
@@ -120,7 +160,8 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       isLoading, 
       switchOrganization,
       organizations,
-      refreshOrganizations
+      refreshOrganizations,
+      error
     }}>
       {children}
     </OrganizationContext.Provider>
