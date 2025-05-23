@@ -13,6 +13,11 @@ export interface AccreditationSubmission {
   submission_data?: any;
   created_at: string;
   updated_at: string;
+  profiles?: {
+    first_name?: string;
+    last_name?: string;
+    school_name?: string;
+  };
 }
 
 export interface AccreditationReadiness {
