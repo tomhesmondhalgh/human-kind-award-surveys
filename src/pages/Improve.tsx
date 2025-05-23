@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Download, Save, ArrowRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useOrganization } from '../contexts/OrganizationContext';
 import { toast } from 'sonner';
 import { initializeActionPlan, getSectionProgressSummary, generatePDF } from '../utils/actionPlanUtils';
 import { ACTION_PLAN_SECTIONS } from '../types/actionPlan';
@@ -19,6 +20,7 @@ import { useNavigate } from 'react-router-dom';
 
 const Improve = () => {
   const { user } = useAuth();
+  const { currentOrganization, isLoading: isOrgLoading } = useOrganization();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('summary');
   const [isLoading, setIsLoading] = useState(true);
@@ -60,35 +62,39 @@ const Improve = () => {
   }, [hasAccess, isSubscriptionLoading]);
 
   useEffect(() => {
-    if (user && !hasInitialized && hasFoundationPlan === true) {
-      console.log('Initializing action plan for user:', user.id);
+    if (currentOrganization && !hasInitialized && hasFoundationPlan === true) {
+      console.log('Initializing action plan for organization:', currentOrganization.id);
       initializeActionPlanData();
-    } else if (hasInitialized && hasFoundationPlan === true) {
+    } else if (hasInitialized && hasFoundationPlan === true && currentOrganization) {
       console.log('Action plan already initialized, fetching summary data only');
       fetchSummaryData();
       setIsLoading(false);
     }
-  }, [user, hasInitialized, hasFoundationPlan]);
+  }, [currentOrganization, hasInitialized, hasFoundationPlan]);
 
   const initializeActionPlanData = async () => {
+    if (!currentOrganization) {
+      setInitError('No organization found. Please ensure you are a member of an organization.');
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setInitError(null);
     try {
-      if (user?.id) {
-        console.log('Starting action plan initialization...');
-        const result = await initializeActionPlan(user.id);
-        
-        if (result.success) {
-          console.log('Action plan initialized successfully');
-          await fetchSummaryData();
-          // Mark as initialized in both state and sessionStorage
-          setHasInitialized(true);
-          sessionStorage.setItem('actionPlanInitialized', 'true');
-        } else {
-          console.error("Failed to initialize action plan:", result.error);
-          setInitError(`Initialization failed: ${result.error}`);
-          toast.error("Failed to initialize action plan");
-        }
+      console.log('Starting action plan initialization...');
+      const result = await initializeActionPlan(currentOrganization.id);
+      
+      if (result.success) {
+        console.log('Action plan initialized successfully');
+        await fetchSummaryData();
+        // Mark as initialized in both state and sessionStorage
+        setHasInitialized(true);
+        sessionStorage.setItem('actionPlanInitialized', 'true');
+      } else {
+        console.error("Failed to initialize action plan:", result.error);
+        setInitError(`Initialization failed: ${result.error}`);
+        toast.error("Failed to initialize action plan");
       }
     } catch (error) {
       console.error("Error initializing action plan:", error);
@@ -100,17 +106,17 @@ const Improve = () => {
   };
 
   const fetchSummaryData = async () => {
+    if (!currentOrganization) return;
+    
     try {
-      if (user?.id) {
-        console.log('Fetching summary data...');
-        const result = await getSectionProgressSummary(user.id);
-        if (result.success && result.data) {
-          console.log('Summary data fetched successfully', result.data);
-          setSummaryData(result.data);
-        } else {
-          console.error('Failed to fetch summary data:', result.error);
-          toast.error('Failed to load summary data');
-        }
+      console.log('Fetching summary data...');
+      const result = await getSectionProgressSummary(currentOrganization.id);
+      if (result.success && result.data) {
+        console.log('Summary data fetched successfully', result.data);
+        setSummaryData(result.data);
+      } else {
+        console.error('Failed to fetch summary data:', result.error);
+        toast.error('Failed to load summary data');
       }
     } catch (error) {
       console.error('Error fetching summary data:', error);
@@ -119,10 +125,10 @@ const Improve = () => {
   };
 
   const handleExportPDF = async () => {
-    if (!user) return;
+    if (!user || !currentOrganization) return;
     setIsGeneratingPDF(true);
     try {
-      const result = await generatePDF(user.id);
+      const result = await generatePDF(currentOrganization.id);
       if (result.success) {
         toast.success('PDF exported successfully');
       } else {
@@ -145,7 +151,7 @@ const Improve = () => {
   };
 
   const handleRetryInitialization = () => {
-    if (user) {
+    if (currentOrganization) {
       setInitError(null);
       initializeActionPlanData();
     }
@@ -153,6 +159,7 @@ const Improve = () => {
 
   const shouldShowOverlay = isMobile && orientation === 'portrait' && !overlayDismissed;
   const isSubscriptionChecking = isSubscriptionLoading || hasFoundationPlan === null;
+  const isLoadingOrganization = isOrgLoading || !currentOrganization;
 
   return (
     <MainLayout>
@@ -167,7 +174,7 @@ const Improve = () => {
             alignment="left"
           />
           
-          {hasFoundationPlan && (
+          {hasFoundationPlan && currentOrganization && (
             <div className="flex space-x-2">
               <Button
                 variant="outline"
@@ -198,6 +205,13 @@ const Improve = () => {
             <Button onClick={() => navigate('/upgrade')} size="lg" className="px-8">
               View Upgrade Options <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
+          </div>
+        ) : isLoadingOrganization ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="text-center">
+              <div className="mb-4">Loading organization...</div>
+              <div className="text-sm text-gray-500">Please wait while we set up your workspace</div>
+            </div>
           </div>
         ) : isLoading ? (
           <div className="flex justify-center items-center h-64">
@@ -247,9 +261,9 @@ const Improve = () => {
             
             {ACTION_PLAN_SECTIONS.map(section => (
               <TabsContent key={section.key} value={section.key} className="mt-6 overflow-x-auto">
-                {user && (
+                {currentOrganization && (
                   <DescriptorTable
-                    userId={user.id}
+                    userId={currentOrganization.id}
                     section={section.title}
                     onRefreshSummary={fetchSummaryData}
                   />

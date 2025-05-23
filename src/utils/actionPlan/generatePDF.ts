@@ -1,131 +1,100 @@
 
-import { jsPDF } from "jspdf";
-import "jspdf-autotable";
-import { getSectionProgressSummary } from "./sectionProgressSummary";
-import { getActionPlanDescriptors } from "./getDescriptors";
-import { ACTION_PLAN_SECTIONS } from "../../types/actionPlan";
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import { supabase } from '../../lib/supabase';
+import { ActionPlanDescriptor } from '../../types/actionPlan';
 
-/**
- * Generate PDF from action plan
- */
-export const generatePDF = async (
-  organizationId: string
-): Promise<{ success: boolean, error?: string }> => {
+export async function generatePDF(organizationId: string): Promise<{ success: boolean; error?: any }> {
   try {
     console.log('Generating PDF for organization:', organizationId);
-
-    // Get summary data
-    const summaryResult = await getSectionProgressSummary(organizationId);
-    if (!summaryResult.success || !summaryResult.data) {
-      return { success: false, error: summaryResult.error || 'Failed to fetch summary data' };
+    
+    // Fetch all descriptors for the organization
+    const { data: descriptors, error } = await supabase
+      .from('action_plan_descriptors')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .order('section')
+      .order('index_number');
+    
+    if (error) {
+      console.error('Error fetching descriptors for PDF:', error);
+      return { success: false, error };
     }
-
-    // Create new PDF document
-    const doc = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
-    });
-
+    
+    if (!descriptors || descriptors.length === 0) {
+      return { success: false, error: 'No action plan data found to export' };
+    }
+    
+    // Create PDF
+    const doc = new jsPDF();
+    
     // Add title
-    doc.setFontSize(22);
-    doc.setTextColor(85, 51, 136); // Purple color
-    doc.text('Wellbeing Action Plan', 105, 20, { align: 'center' });
-
-    doc.setFontSize(14);
-    doc.setTextColor(100, 100, 100);
-    doc.text('Generated: ' + new Date().toLocaleDateString('en-GB'), 105, 30, { align: 'center' });
-
-    // Add summary section
-    doc.setFontSize(16);
-    doc.setTextColor(0, 0, 0);
-    doc.text('Summary of Progress', 20, 45);
-
-    // Create summary table
-    const summaryData = summaryResult.data.map(section => [
-      section.title,
-      `${section.completedCount}/${section.totalCount - section.notApplicableCount}`,
-      `${section.percentComplete}%`
-    ]);
-
-    (doc as any).autoTable({
-      head: [['Section', 'Completed', 'Progress']],
-      body: summaryData,
-      startY: 50,
-      theme: 'grid',
-      headStyles: { fillColor: [85, 51, 136], textColor: [255, 255, 255], fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [240, 240, 250] }
-    });
-
-    // Fetch all action plan sections data
-    let currentY = (doc as any).lastAutoTable.finalY + 15;
-
-    for (const section of ACTION_PLAN_SECTIONS) {
-      if (currentY > 250) {
+    doc.setFontSize(20);
+    doc.text('Wellbeing Action Plan', 20, 20);
+    
+    // Add generation date
+    doc.setFontSize(12);
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-GB')}`, 20, 35);
+    
+    let yPosition = 50;
+    
+    // Group descriptors by section
+    const sections = [...new Set(descriptors.map(d => d.section))];
+    
+    sections.forEach(section => {
+      const sectionDescriptors = descriptors.filter(d => d.section === section);
+      
+      // Add section header
+      doc.setFontSize(16);
+      doc.text(section, 20, yPosition);
+      yPosition += 10;
+      
+      // Create table data
+      const tableData = sectionDescriptors.map(descriptor => [
+        descriptor.index_number,
+        descriptor.descriptor_text,
+        descriptor.status,
+        descriptor.assigned_to || '',
+        descriptor.deadline ? new Date(descriptor.deadline).toLocaleDateString('en-GB') : '',
+        descriptor.key_actions || ''
+      ]);
+      
+      // Add table
+      (doc as any).autoTable({
+        startY: yPosition,
+        head: [['Ref', 'Description', 'Status', 'Assigned To', 'Deadline', 'Key Actions']],
+        body: tableData,
+        theme: 'striped',
+        styles: {
+          fontSize: 8,
+          cellPadding: 3
+        },
+        columnStyles: {
+          0: { cellWidth: 15 },
+          1: { cellWidth: 60 },
+          2: { cellWidth: 25 },
+          3: { cellWidth: 25 },
+          4: { cellWidth: 20 },
+          5: { cellWidth: 40 }
+        },
+        margin: { left: 20, right: 20 }
+      });
+      
+      yPosition = (doc as any).lastAutoTable.finalY + 15;
+      
+      // Add new page if needed
+      if (yPosition > 250) {
         doc.addPage();
-        currentY = 20;
+        yPosition = 20;
       }
-
-      doc.setFontSize(14);
-      doc.setTextColor(85, 51, 136);
-      doc.text(section.title, 20, currentY);
-      currentY += 10;
-
-      const descriptorsResult = await getActionPlanDescriptors(organizationId, section.title);
-
-      if (descriptorsResult.success && descriptorsResult.data && descriptorsResult.data.length > 0) {
-        const descriptors = descriptorsResult.data;
-
-        const descriptorRows = descriptors.map(descriptor => [
-          descriptor.index_number,
-          descriptor.descriptor_text.substring(0, 40) + (descriptor.descriptor_text.length > 40 ? '...' : ''),
-          descriptor.status,
-          descriptor.assigned_to || '',
-          descriptor.deadline ? new Date(descriptor.deadline).toLocaleDateString('en-GB') : ''
-        ]);
-
-        (doc as any).autoTable({
-          head: [['#', 'Description', 'Status', 'Assigned To', 'Deadline']],
-          body: descriptorRows,
-          startY: currentY,
-          theme: 'grid',
-          styles: { fontSize: 9 },
-          headStyles: { fillColor: [130, 106, 168], textColor: [255, 255, 255] },
-          columnStyles: {
-            0: { cellWidth: 15 },
-            1: { cellWidth: 'auto' },
-            2: { cellWidth: 30 },
-            3: { cellWidth: 30 },
-            4: { cellWidth: 25 }
-          }
-        });
-
-        currentY = (doc as any).lastAutoTable.finalY + 15;
-      } else {
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.text('No data available for this section', 20, currentY);
-        currentY += 15;
-      }
-    }
-
-    // Add footer
-    const pageCount = doc.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(8);
-      doc.setTextColor(150, 150, 150);
-      doc.text(`National Staff Wellbeing Survey - Page ${i} of ${pageCount}`, 105, 285, { align: 'center' });
-    }
-
-    doc.save('Wellbeing_Action_Plan.pdf');
-
+    });
+    
+    // Save the PDF
+    doc.save('wellbeing-action-plan.pdf');
+    
     return { success: true };
   } catch (error) {
     console.error('Error generating PDF:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    };
+    return { success: false, error };
   }
-};
+}
