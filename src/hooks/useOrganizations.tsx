@@ -2,11 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Organization } from '../types/organizations';
-
-export interface OrganizationWithRole extends Organization {
-  role: string;
-}
+import { OrganizationWithRole } from '../types/organizations';
 
 export const useOrganizations = () => {
   const { user } = useAuth();
@@ -26,26 +22,33 @@ export const useOrganizations = () => {
       setError(null);
 
       try {
-        // In the simplified model, we just use the user's profile as their organization
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('school_name')
-          .eq('id', user.id)
-          .single();
+        const { data: memberships, error: membershipError } = await supabase
+          .from('organization_memberships')
+          .select(`
+            *,
+            organizations:organization_id (
+              id,
+              name,
+              address,
+              urn,
+              created_at,
+              updated_at
+            )
+          `)
+          .eq('user_id', user.id);
 
-        if (profileError) {
-          throw profileError;
+        if (membershipError) {
+          throw membershipError;
         }
 
-        // Create an organization entry based on user's profile
-        const personalOrg: OrganizationWithRole = {
-          id: user.id,
-          name: profile?.school_name || 'My Organisation',
-          created_at: new Date().toISOString(),
-          role: 'administrator'
-        };
+        const orgsWithRoles = memberships
+          .filter(membership => membership.organizations)
+          .map(membership => ({
+            ...membership.organizations,
+            role: membership.role
+          })) as OrganizationWithRole[];
 
-        setOrganizations([personalOrg]);
+        setOrganizations(orgsWithRoles);
       } catch (err) {
         console.error('Error fetching organizations:', err);
         setError(err instanceof Error ? err : new Error('Unknown error loading organizations'));

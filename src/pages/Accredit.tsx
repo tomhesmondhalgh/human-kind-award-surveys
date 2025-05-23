@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import MainLayout from '../components/layout/MainLayout';
 import PageTitle from '../components/ui/PageTitle';
@@ -7,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight, Award, CheckCircle, Clock, AlertCircle, Download } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useOrganization } from '../contexts/OrganizationContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -25,6 +25,7 @@ interface AccreditationSubmission {
 
 const Accredit = () => {
   const { user } = useAuth();
+  const { currentOrganization } = useOrganization();
   const navigate = useNavigate();
   const { hasAccess, isLoading: isSubscriptionLoading } = useSubscription();
   const [hasProgressAccess, setHasProgressAccess] = useState<boolean | null>(null);
@@ -51,22 +52,22 @@ const Accredit = () => {
   }, [hasAccess, isSubscriptionLoading]);
 
   useEffect(() => {
-    if (user && hasProgressAccess) {
+    if (user && currentOrganization && hasProgressAccess) {
       fetchSubmissionData();
       fetchReadinessData();
     } else if (hasProgressAccess === false) {
       setIsLoading(false);
     }
-  }, [user, hasProgressAccess]);
+  }, [user, currentOrganization, hasProgressAccess]);
 
   const fetchSubmissionData = async () => {
-    if (!user) return;
+    if (!user || !currentOrganization) return;
     
     try {
       const { data, error } = await supabase
         .from('action_plan_submissions')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('organization_id', currentOrganization.id)
         .order('submitted_at', { ascending: false })
         .limit(1)
         .single();
@@ -86,10 +87,10 @@ const Accredit = () => {
   };
 
   const fetchReadinessData = async () => {
-    if (!user) return;
+    if (!currentOrganization) return;
     
     try {
-      const result = await getSectionProgressSummary(user.id);
+      const result = await getSectionProgressSummary(currentOrganization.id);
       if (result.success && result.data) {
         setReadinessData(result.data);
       }
@@ -107,7 +108,7 @@ const Accredit = () => {
   };
 
   const handleSubmission = async () => {
-    if (!user || !checkSubmissionReadiness()) return;
+    if (!user || !currentOrganization || !checkSubmissionReadiness()) return;
     
     setIsSubmitting(true);
     try {
@@ -115,6 +116,7 @@ const Accredit = () => {
         .from('action_plan_submissions')
         .insert({
           user_id: user.id,
+          organization_id: currentOrganization.id,
           status: 'submitted',
           submission_data: readinessData
         })
@@ -132,7 +134,7 @@ const Accredit = () => {
       // Get user profile for notification
       const { data: profile } = await supabase
         .from('profiles')
-        .select('first_name, last_name, school_name')
+        .select('first_name, last_name')
         .eq('id', user.id)
         .single();
 
@@ -143,7 +145,7 @@ const Accredit = () => {
           body: {
             submissionId: submissionData.id,
             submitterName: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : 'Unknown User',
-            schoolName: profile?.school_name || '',
+            schoolName: currentOrganization.name,
             submissionData: readinessData
           }
         });
@@ -234,6 +236,28 @@ const Accredit = () => {
     );
   }
 
+  if (!currentOrganization) {
+    return (
+      <MainLayout>
+        <div className="container mx-auto px-4 py-8">
+          <PageTitle 
+            title="Action Plan Accreditation" 
+            subtitle="Get your wellbeing action plan formally accredited"
+            alignment="left"
+          />
+          
+          <div className="mt-8 rounded-lg border border-gray-200 bg-gray-50 p-8 text-center">
+            <Award className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+            <h2 className="text-2xl font-bold mb-4">No Organization Selected</h2>
+            <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
+              Please select an organization to view accreditation options.
+            </p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
   const isReady = checkSubmissionReadiness();
   const hasSubmission = submission && submission.status !== 'not_submitted';
 
@@ -242,7 +266,7 @@ const Accredit = () => {
       <div className="container mx-auto px-4 py-8">
         <PageTitle 
           title="Action Plan Accreditation" 
-          subtitle="Get your wellbeing action plan formally accredited"
+          subtitle={`Get ${currentOrganization.name}'s wellbeing action plan formally accredited`}
           alignment="left"
         />
 

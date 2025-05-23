@@ -20,32 +20,28 @@ export function useTeamMembers(organizationId?: string) {
     queryFn: async () => {
       if (!organizationId) return [];
       
-      // In this simplified implementation, we'll just return the organization owner
       try {
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name, job_title')
-          .eq('id', organizationId)
-          .single();
+        const { data, error } = await supabase
+          .from('organization_memberships')
+          .select(`
+            *,
+            profiles:user_id (
+              first_name,
+              last_name,
+              job_title
+            )
+          `)
+          .eq('organization_id', organizationId);
           
         if (error) throw error;
         
-        if (!profile) return [];
-        
-        // Create a single member representing the organization owner
-        const member: OrganizationMember = {
-          id: profile.id,
-          user_id: profile.id,
-          organization_id: profile.id,
-          role: 'administrator',
-          is_primary: true,
-          created_at: new Date().toISOString()
-        };
-        
-        return [member];
+        return (data || []).map(membership => ({
+          ...membership,
+          profile: membership.profiles
+        })) as OrganizationMember[];
       } catch (error) {
         console.error('Error fetching organization members:', error);
-        return [];
+        throw error;
       }
     },
     enabled: !!organizationId
@@ -53,12 +49,32 @@ export function useTeamMembers(organizationId?: string) {
   
   const sendInvitation = useMutation({
     mutationFn: async ({ email, role }: { email: string; role: string }) => {
+      if (!organizationId) throw new Error('No organization selected');
+      
       try {
-        // Simplified invitation handling - in a real app you would store this in a database
-        console.log(`Sending invitation to ${email} with role ${role}`);
+        const token = crypto.randomUUID();
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
         
-        // Simulated success
-        return { success: true, message: 'Invitation sent!' };
+        const { data, error } = await supabase
+          .from('organization_invitations')
+          .insert({
+            email,
+            organization_id: organizationId,
+            role: role as any,
+            token,
+            invited_by: (await supabase.auth.getUser()).data.user?.id,
+            expires_at: expiresAt.toISOString()
+          })
+          .select()
+          .single();
+          
+        if (error) throw error;
+        
+        // TODO: Send invitation email via edge function
+        console.log('Invitation created:', data);
+        
+        return data;
       } catch (error) {
         console.error('Error sending invitation:', error);
         throw error;
@@ -76,11 +92,12 @@ export function useTeamMembers(organizationId?: string) {
   
   const removeMember = useMutation({
     mutationFn: async (memberId: string) => {
-      // In a real application, we would remove the member from the database
-      console.log(`Removing member ${memberId}`);
-      
-      // Simulated success
-      return { success: true };
+      const { error } = await supabase
+        .from('organization_memberships')
+        .delete()
+        .eq('id', memberId);
+        
+      if (error) throw error;
     },
     onSuccess: () => {
       toast.success('Team member removed');

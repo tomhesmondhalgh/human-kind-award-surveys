@@ -15,16 +15,18 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { Organization } from '@/types/organizations';
+import { useAuth } from '@/contexts/AuthContext';
 
 const ITEMS_PER_PAGE = 10;
 
 const createOrgFormSchema = z.object({
   name: z.string().min(2, { message: "Organisation name must be at least 2 characters" }),
+  address: z.string().optional(),
+  urn: z.string().optional(),
 });
 
 type CreateOrgFormValues = z.infer<typeof createOrgFormSchema>;
 
-// Simple component to replace the group-based dialog
 const CreateOrganizationDialog = ({ 
   isOpen, 
   onClose, 
@@ -35,37 +37,50 @@ const CreateOrganizationDialog = ({
   onComplete: () => void; 
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useAuth();
   
   const form = useForm<CreateOrgFormValues>({
     resolver: zodResolver(createOrgFormSchema),
     defaultValues: {
       name: '',
+      address: '',
+      urn: '',
     },
   });
 
   const handleSubmit = async (values: CreateOrgFormValues) => {
+    if (!user) return;
+    
     setIsSubmitting(true);
     
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData.user?.id;
-      
-      if (!userId) {
-        throw new Error('User not authenticated');
-      }
-      
-      // Create the organization profile
+      // Create the organization
       const { data: orgData, error: orgError } = await supabase
-        .from('profiles')
+        .from('organizations')
         .insert({
-          id: crypto.randomUUID(),
-          school_name: values.name,
+          name: values.name,
+          address: values.address || null,
+          urn: values.urn || null,
         })
         .select('id')
         .single();
         
       if (orgError) {
         throw orgError;
+      }
+      
+      // Add user as admin of the new organization
+      const { error: membershipError } = await supabase
+        .from('organization_memberships')
+        .insert({
+          user_id: user.id,
+          organization_id: orgData.id,
+          role: 'admin',
+          is_primary: true
+        });
+        
+      if (membershipError) {
+        throw membershipError;
       }
       
       toast.success('Organisation created successfully');
@@ -108,6 +123,40 @@ const CreateOrganizationDialog = ({
               )}
             />
             
+            <FormField
+              control={form.control}
+              name="address"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Address (Optional)</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter organisation address" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="urn"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>URN (Optional)</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter Unique Reference Number" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
             <DialogFooter className="mt-6">
               <UIButton 
                 type="button" 
@@ -136,45 +185,43 @@ const OrganizationsList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const { user } = useAuth();
 
   const { data: organizationsData, isLoading, refetch } = useQuery({
-    queryKey: ['organizations'],
+    queryKey: ['organizations', user?.id],
     queryFn: async () => {
-      // Get the current user
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData.user?.id;
+      if (!user) return { organizations: [], total: 0 };
       
-      if (!userId) {
-        return { organizations: [], total: 0 };
-      }
-      
-      // Get the user's profile which serves as their organization
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      const { data: memberships, error } = await supabase
+        .from('organization_memberships')
+        .select(`
+          *,
+          organizations:organization_id (
+            id,
+            name,
+            address,
+            urn,
+            created_at,
+            updated_at
+          )
+        `)
+        .eq('user_id', user.id);
         
       if (error) {
-        toast.error('Failed to load user organizations');
+        toast.error('Failed to load organizations');
         throw error;
       }
       
-      // Create an organization object from the profile
-      const organizations: Organization[] = profile ? [
-        {
-          id: profile.id,
-          name: profile.school_name || 'My Organisation',
-          created_at: profile.created_at || new Date().toISOString(),
-          updated_at: profile.updated_at || new Date().toISOString()
-        }
-      ] : [];
+      const organizations = memberships
+        .filter(membership => membership.organizations)
+        .map(membership => membership.organizations) as Organization[];
       
       return {
         organizations,
         total: organizations.length
       };
-    }
+    },
+    enabled: !!user
   });
 
   // Filter organizations based on search term
@@ -196,24 +243,24 @@ const OrganizationsList = () => {
   };
 
   const handleRemoveOrganization = async (orgId: string) => {
-    if (!confirm("Are you sure you want to remove this organization? This will remove all members and data.")) return;
+    if (!confirm("Are you sure you want to leave this organization?")) return;
     
     try {
-      // Remove the organization profile
       const { error } = await supabase
-        .from('profiles')
+        .from('organization_memberships')
         .delete()
-        .eq('id', orgId);
+        .eq('user_id', user?.id)
+        .eq('organization_id', orgId);
         
       if (error) {
         throw error;
       }
       
-      toast.success('Organization removed successfully');
+      toast.success('Left organization successfully');
       refetch();
     } catch (error) {
-      console.error('Error removing organization:', error);
-      toast.error('Failed to remove organization');
+      console.error('Error leaving organization:', error);
+      toast.error('Failed to leave organization');
     }
   };
 
@@ -260,6 +307,8 @@ const OrganizationsList = () => {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">URN</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -276,6 +325,12 @@ const OrganizationsList = () => {
                           {organization.name}
                         </div>
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {organization.address || 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {organization.urn || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(organization.created_at).toLocaleDateString()}
@@ -297,7 +352,7 @@ const OrganizationsList = () => {
                             onClick={() => handleRemoveOrganization(organization.id)}
                             className="text-red-600 hover:text-red-800 hover:bg-red-50"
                           >
-                            Remove
+                            Leave Organization
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

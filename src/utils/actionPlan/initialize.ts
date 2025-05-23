@@ -1,30 +1,43 @@
 
-import { supabase } from "../../lib/supabase";
+import { supabase } from '../../lib/supabase';
+import { INITIAL_DESCRIPTORS } from '../../lib/supabase/mockData';
 
-/**
- * Initialize the action plan for a user
- */
-export const initializeActionPlan = async (userId: string): Promise<{ success: boolean, error?: string }> => {
+export async function initializeActionPlan(organizationId: string): Promise<{ success: boolean; error?: any }> {
   try {
-    console.log('Initializing action plan for user:', userId);
-
-    const { data, error } = await supabase
+    console.log('Initializing action plan for organization:', organizationId);
+    
+    // Check if descriptors already exist for this organization
+    const { data: existingDescriptors } = await supabase
       .from('action_plan_descriptors')
       .select('id')
-      .eq('user_id', userId)
+      .eq('organization_id', organizationId)
       .limit(1);
-
-    if (error) {
-      console.error('Error checking existing action plan:', error);
-      return { success: false, error: error.message };
+    
+    if (existingDescriptors && existingDescriptors.length > 0) {
+      console.log('Action plan already initialized for organization:', organizationId);
+      return { success: true };
     }
-
+    
+    // Create initial descriptors for the organization
+    const descriptorsToInsert = INITIAL_DESCRIPTORS.map(descriptor => ({
+      ...descriptor,
+      organization_id: organizationId,
+      user_id: null // Remove user_id as we're now using organization_id
+    }));
+    
+    const { error } = await supabase
+      .from('action_plan_descriptors')
+      .insert(descriptorsToInsert);
+    
+    if (error) {
+      console.error('Error initializing action plan:', error);
+      return { success: false, error };
+    }
+    
+    console.log('Action plan initialized successfully for organization:', organizationId);
     return { success: true };
   } catch (error) {
-    console.error('Error initializing action plan:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    };
+    console.error('Error in initializeActionPlan:', error);
+    return { success: false, error };
   }
-};
+}

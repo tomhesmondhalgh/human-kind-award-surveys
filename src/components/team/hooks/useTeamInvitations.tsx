@@ -1,7 +1,8 @@
 
 import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { OrganizationInvitation } from '@/types/organizations';
 
-// Simplified hook that returns empty invitations since we've removed the invitation system
 export function useTeamInvitations(organizationId: string | undefined) {
   const { 
     data: invitations, 
@@ -11,16 +12,31 @@ export function useTeamInvitations(organizationId: string | undefined) {
   } = useQuery({
     queryKey: ['organizationInvitations', organizationId],
     queryFn: async () => {
-      // In the simplified model, we return an empty array
-      return [];
+      if (!organizationId) return [];
+      
+      try {
+        const { data, error } = await supabase
+          .from('organization_invitations')
+          .select('*')
+          .eq('organization_id', organizationId)
+          .is('accepted_at', null)
+          .gt('expires_at', new Date().toISOString());
+          
+        if (error) throw error;
+        
+        return data as OrganizationInvitation[];
+      } catch (error) {
+        console.error('Error fetching invitations:', error);
+        return [];
+      }
     },
     enabled: !!organizationId
   });
 
   return {
-    invitations: [],
-    invitationsLoading: false,
-    invitationsError: null,
+    invitations: invitations || [],
+    invitationsLoading,
+    invitationsError,
     refetchInvitations
   };
 }

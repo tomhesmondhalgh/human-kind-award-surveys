@@ -1,88 +1,79 @@
 
-import { supabase } from "../../lib/supabase";
-import { ACTION_PLAN_SECTIONS } from "../../types/actionPlan";
+import { supabase } from '../../lib/supabase';
 
-export interface SectionSummary {
-  key: string;
-  title: string;
-  totalCount: number;
-  completedCount: number;
-  inProgressCount: number;
-  notStartedCount: number;
-  blockedCount: number;
-  notApplicableCount: number;
-  percentComplete: number;
-}
-
-/**
- * Get section progress summary
- */
-export const getSectionProgressSummary = async (
-  userId: string
-): Promise<{ success: boolean, data?: SectionSummary[], error?: string }> => {
+export async function getSectionProgressSummary(organizationId: string) {
   try {
-    console.log('Fetching section progress summary for user:', userId);
-
-    const { data, error } = await supabase
+    console.log('Getting section progress summary for organization:', organizationId);
+    
+    const { data: descriptors, error } = await supabase
       .from('action_plan_descriptors')
       .select('section, status')
-      .eq('user_id', userId);
-
+      .eq('organization_id', organizationId);
+    
     if (error) {
-      console.error('Error fetching descriptors for summary:', error);
-      return { success: false, error: error.message };
+      console.error('Error fetching descriptors for progress summary:', error);
+      return { success: false, error, data: null };
     }
-
-    const sections: Record<string, SectionSummary> = {};
-
-    data.forEach((descriptor: any) => {
+    
+    if (!descriptors || descriptors.length === 0) {
+      console.log('No descriptors found for organization:', organizationId);
+      return { success: true, data: [] };
+    }
+    
+    // Group by section and count statuses
+    const sectionStats = descriptors.reduce((acc: any, descriptor) => {
       const section = descriptor.section;
-
-      if (!sections[section]) {
-        sections[section] = {
-          key: section.toLowerCase().replace(/\s+/g, '_'),
-          title: section,
-          totalCount: 0,
-          completedCount: 0,
-          inProgressCount: 0,
+      if (!acc[section]) {
+        acc[section] = {
           notStartedCount: 0,
-          blockedCount: 0,
+          inProgressCount: 0,
+          completedCount: 0,
           notApplicableCount: 0,
-          percentComplete: 0
+          blockedCount: 0
         };
       }
-
-      sections[section].totalCount++;
-
-      if (descriptor.status === 'Completed') {
-        sections[section].completedCount++;
-      } else if (descriptor.status === 'In Progress') {
-        sections[section].inProgressCount++;
-      } else if (descriptor.status === 'Not Started') {
-        sections[section].notStartedCount++;
-      } else if (descriptor.status === 'Blocked') {
-        sections[section].blockedCount++;
-      } else if (descriptor.status === 'Not Applicable') {
-        sections[section].notApplicableCount++;
+      
+      switch (descriptor.status) {
+        case 'Not Started':
+          acc[section].notStartedCount++;
+          break;
+        case 'In Progress':
+          acc[section].inProgressCount++;
+          break;
+        case 'Completed':
+          acc[section].completedCount++;
+          break;
+        case 'Not Applicable':
+          acc[section].notApplicableCount++;
+          break;
+        case 'Blocked':
+          acc[section].blockedCount++;
+          break;
       }
-    });
-
-    Object.values(sections).forEach(section => {
-      const applicableCount = section.totalCount - section.notApplicableCount;
-      section.percentComplete = applicableCount > 0 
-        ? Math.round((section.completedCount / applicableCount) * 100) 
-        : 0;
-    });
-
-    return { 
-      success: true, 
-      data: Object.values(sections)
+      
+      return acc;
+    }, {});
+    
+    // Convert to array format with section titles
+    const sectionTitles: { [key: string]: string } = {
+      'leadership': 'Leadership and Management',
+      'staff_wellbeing': 'Staff Wellbeing and Support',
+      'workload_management': 'Workload Management',
+      'professional_development': 'Professional Development',
+      'communication': 'Communication and Engagement',
+      'policies_procedures': 'Policies and Procedures'
     };
+    
+    const result = Object.entries(sectionStats).map(([key, stats]) => ({
+      key,
+      title: sectionTitles[key] || key,
+      ...stats
+    }));
+    
+    console.log('Section progress summary:', result);
+    return { success: true, data: result };
   } catch (error) {
-    console.error('Error calculating section progress summary:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    };
+    console.error('Error in getSectionProgressSummary:', error);
+    return { success: false, error, data: null };
   }
-};
+}

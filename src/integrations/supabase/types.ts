@@ -19,6 +19,7 @@ export type Database = {
           index_number: string | null
           key_actions: string | null
           last_updated: string | null
+          organization_id: string | null
           reference: string
           section: string
           status: Database["public"]["Enums"]["descriptor_status"]
@@ -34,6 +35,7 @@ export type Database = {
           index_number?: string | null
           key_actions?: string | null
           last_updated?: string | null
+          organization_id?: string | null
           reference: string
           section: string
           status?: Database["public"]["Enums"]["descriptor_status"]
@@ -49,6 +51,7 @@ export type Database = {
           index_number?: string | null
           key_actions?: string | null
           last_updated?: string | null
+          organization_id?: string | null
           reference?: string
           section?: string
           status?: Database["public"]["Enums"]["descriptor_status"]
@@ -56,6 +59,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "action_plan_descriptors_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "action_plan_descriptors_template_id_fkey"
             columns: ["template_id"]
@@ -103,6 +113,7 @@ export type Database = {
           created_at: string
           id: string
           next_submission_due: string | null
+          organization_id: string | null
           reviewed_at: string | null
           reviewer_notes: string | null
           status: Database["public"]["Enums"]["accreditation_status"]
@@ -116,6 +127,7 @@ export type Database = {
           created_at?: string
           id?: string
           next_submission_due?: string | null
+          organization_id?: string | null
           reviewed_at?: string | null
           reviewer_notes?: string | null
           status?: Database["public"]["Enums"]["accreditation_status"]
@@ -129,6 +141,7 @@ export type Database = {
           created_at?: string
           id?: string
           next_submission_due?: string | null
+          organization_id?: string | null
           reviewed_at?: string | null
           reviewer_notes?: string | null
           status?: Database["public"]["Enums"]["accreditation_status"]
@@ -137,13 +150,22 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "action_plan_submissions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       action_plan_templates: {
         Row: {
           created_at: string
           id: string
           name: string
+          organization_id: string | null
           updated_at: string
           user_id: string
         }
@@ -151,6 +173,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          organization_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -158,10 +181,19 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          organization_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "action_plan_templates_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       custom_question_responses: {
         Row: {
@@ -253,6 +285,172 @@ export type Database = {
           is_active?: boolean
           script_content?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      organization_group_memberships: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          organization_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          organization_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_group_memberships_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "organization_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_group_memberships_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_groups: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      organization_invitations: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          organization_id: string
+          role: Database["public"]["Enums"]["organization_role"]
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          invited_by: string
+          organization_id: string
+          role?: Database["public"]["Enums"]["organization_role"]
+          token: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          organization_id?: string
+          role?: Database["public"]["Enums"]["organization_role"]
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_invitations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_memberships: {
+        Row: {
+          created_at: string
+          id: string
+          is_primary: boolean
+          organization_id: string
+          role: Database["public"]["Enums"]["organization_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          organization_id: string
+          role?: Database["public"]["Enums"]["organization_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          organization_id?: string
+          role?: Database["public"]["Enums"]["organization_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_memberships_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          address: string | null
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          urn: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          urn?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          urn?: string | null
         }
         Relationships: []
       }
@@ -1177,7 +1375,7 @@ export type Database = {
         Returns: boolean
       }
       user_has_organization_role: {
-        Args: { user_uuid: string; org_id: string; role_level: string }
+        Args: { user_uuid: string; org_id: string; required_role: string }
         Returns: boolean
       }
     }
@@ -1194,6 +1392,7 @@ export type Database = {
         | "Blocked"
         | "Completed"
         | "Not Applicable"
+      organization_role: "admin" | "editor" | "viewer"
       payment_method: "stripe" | "invoice" | "manual" | "redemption_code"
       payment_status:
         | "pending"
@@ -1334,6 +1533,7 @@ export const Constants = {
         "Completed",
         "Not Applicable",
       ],
+      organization_role: ["admin", "editor", "viewer"],
       payment_method: ["stripe", "invoice", "manual", "redemption_code"],
       payment_status: [
         "pending",
