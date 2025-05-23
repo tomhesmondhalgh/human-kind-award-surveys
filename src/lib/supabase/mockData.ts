@@ -2,7 +2,7 @@
 import { ActionPlanDescriptor } from '../../types/actionPlan';
 
 // Default action plan descriptors for new organizations
-export const INITIAL_DESCRIPTORS: Partial<ActionPlanDescriptor>[] = [
+export const INITIAL_DESCRIPTORS: Omit<ActionPlanDescriptor, 'id' | 'user_id' | 'organization_id'>[] = [
   {
     section: 'leadership',
     index_number: '1.1',

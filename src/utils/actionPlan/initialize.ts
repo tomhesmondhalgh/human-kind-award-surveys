@@ -18,11 +18,17 @@ export async function initializeActionPlan(organizationId: string): Promise<{ su
       return { success: true };
     }
     
+    // Get the authenticated user ID for the user_id field
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: 'No authenticated user found' };
+    }
+    
     // Create initial descriptors for the organization
     const descriptorsToInsert = INITIAL_DESCRIPTORS.map(descriptor => ({
       ...descriptor,
       organization_id: organizationId,
-      user_id: null // Remove user_id as we're now using organization_id
+      user_id: user.id
     }));
     
     const { error } = await supabase
