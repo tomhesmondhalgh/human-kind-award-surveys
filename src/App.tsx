@@ -81,6 +81,7 @@ function App() {
                           <Route path="/survey-form/:id" element={<Navigate to={`/survey-editor`} replace />} />
                           <Route path="/payment-success" element={<PaymentSuccess />} />
                           <Route path="/survey-editor" element={<SurveyEditor />} />
+                          <Route path="/survey-editor/:id" element={<SurveyEditor />} />
                           <Route path="/purchases" element={<Purchases />} />
                           <Route path="/custom-questions" element={<CustomQuestions />} />
                           <Route path="/upgrade" element={<Upgrade />} />

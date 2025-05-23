@@ -189,7 +189,7 @@ const Surveys = () => {
           />
           {user && (
             <Link 
-              to="/new-survey"
+              to="/survey-editor"
               className={`btn-primary ${isMobile ? 'w-full text-center py-3' : ''}`}
               aria-label="Create new survey"
             >
@@ -210,7 +210,7 @@ const Surveys = () => {
                 <h2 className="text-xl font-semibold mb-2">No surveys found</h2>
                 <p className="text-gray-500 mb-6">You haven't created any surveys yet.</p>
                 <Link 
-                  to="/new-survey" 
+                  to="/survey-editor" 
                   className="bg-brandPurple-500 hover:bg-brandPurple-600 text-white font-medium py-2 px-6 rounded-md transition-all duration-200 inline-block"
                   aria-label="Create your first survey"
                 >
