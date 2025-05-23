@@ -268,7 +268,7 @@ const RedemptionCodesManagement: React.FC = () => {
                       </TableCell>
                       <TableCell className="text-center">
                         {code.is_active ? (
-                          <Badge variant="success" className="bg-green-100 text-green-800 hover:bg-green-200">Active</Badge>
+                          <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-200">Active</Badge>
                         ) : (
                           <Badge variant="destructive" className="bg-red-100 text-red-800 hover:bg-red-200">Inactive</Badge>
                         )}
