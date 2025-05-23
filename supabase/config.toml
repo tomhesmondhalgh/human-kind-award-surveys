@@ -85,3 +85,6 @@ verify_jwt = false
 
 [functions.generate-survey-summary]
 verify_jwt = false
+
+[functions.verify-redemption-code]
+verify_jwt = true

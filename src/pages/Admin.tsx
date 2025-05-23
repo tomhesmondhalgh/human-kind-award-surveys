@@ -12,6 +12,7 @@ import PurchasesManagement from '../components/purchases/PurchasesManagement';
 import HubspotIntegration from '../components/admin/HubspotIntegration';
 import UsersManagement from '../components/admin/UsersManagement';
 import SurveyFeedbackAnalytics from '../components/admin/SurveyFeedbackAnalytics';
+import RedemptionCodesManagement from '../components/admin/RedemptionCodesManagement';
 
 const Admin = () => {
   const { isAdmin, isLoading } = useAdminRole();
@@ -44,6 +45,7 @@ const Admin = () => {
             <TabsTrigger value="purchases">Purchase Management</TabsTrigger>
             <TabsTrigger value="users">User Management</TabsTrigger>
             <TabsTrigger value="feedback">Feedback Analytics</TabsTrigger>
+            <TabsTrigger value="redemption">Redemption Codes</TabsTrigger>
             <TabsTrigger value="plans">Plan Management</TabsTrigger>
             <TabsTrigger value="testing">Testing Mode</TabsTrigger>
             <TabsTrigger value="scripts">Custom Scripts</TabsTrigger>
@@ -60,6 +62,10 @@ const Admin = () => {
           
           <TabsContent value="feedback">
             <SurveyFeedbackAnalytics />
+          </TabsContent>
+          
+          <TabsContent value="redemption">
+            <RedemptionCodesManagement />
           </TabsContent>
           
           <TabsContent value="plans">

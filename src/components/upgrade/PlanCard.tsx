@@ -1,10 +1,11 @@
 
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import PlanFeatureItem from './PlanFeatureItem';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../components/ui/dropdown-menu';
 import { ChevronDown } from 'lucide-react';
+import RedemptionCodeDialog from './RedemptionCodeDialog';
 
 export type PlanType = 'free' | 'foundation' | 'progress' | 'premium';
 
@@ -25,7 +26,7 @@ interface PlanCardProps {
   disabled?: boolean;
   hasInvoiceOption?: boolean; 
   onInvoiceRequest?: () => void;
-  onCardPayment?: () => void; // Add this new prop
+  onCardPayment?: () => void;
 }
 
 const PlanCard: React.FC<PlanCardProps> = ({
@@ -43,6 +44,8 @@ const PlanCard: React.FC<PlanCardProps> = ({
   onInvoiceRequest,
   onCardPayment
 }) => {
+  const [showRedemptionCodeDialog, setShowRedemptionCodeDialog] = useState(false);
+
   return (
     <Card className={`relative ${isPopular 
       ? 'border-brandPurple-400 shadow-lg hover:shadow-xl transition-shadow duration-300 scale-105 z-10' 
@@ -85,6 +88,9 @@ const PlanCard: React.FC<PlanCardProps> = ({
               <DropdownMenuItem onClick={onInvoiceRequest} className="cursor-pointer">
                 Pay by Invoice
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowRedemptionCodeDialog(true)} className="cursor-pointer">
+                Use Redemption Code
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
@@ -97,6 +103,11 @@ const PlanCard: React.FC<PlanCardProps> = ({
             {buttonText}
           </Button>
         )}
+        
+        <RedemptionCodeDialog 
+          open={showRedemptionCodeDialog} 
+          onOpenChange={setShowRedemptionCodeDialog} 
+        />
       </CardFooter>
     </Card>
   );

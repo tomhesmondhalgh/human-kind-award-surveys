@@ -366,6 +366,74 @@ export type Database = {
         }
         Relationships: []
       }
+      redemption_codes: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          current_uses: number | null
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          plan_type: Database["public"]["Enums"]["plan_type"]
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          current_uses?: number | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          plan_type: Database["public"]["Enums"]["plan_type"]
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          current_uses?: number | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          plan_type?: Database["public"]["Enums"]["plan_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      redemptions: {
+        Row: {
+          code_id: string | null
+          id: string
+          redeemed_at: string
+          user_id: string | null
+        }
+        Insert: {
+          code_id?: string | null
+          id?: string
+          redeemed_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          code_id?: string | null
+          id?: string
+          redeemed_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "redemptions_code_id_fkey"
+            columns: ["code_id"]
+            isOneToOne: false
+            referencedRelation: "redemption_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schools: {
         Row: {
           AccreditationExpiryDate: string | null
