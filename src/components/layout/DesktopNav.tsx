@@ -2,7 +2,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import NavLinks from './NavLinks';
-import SettingsDropdown from './SettingsDropdown';
 
 interface DesktopNavProps {
   isAuthenticated: boolean;
@@ -22,12 +21,9 @@ const DesktopNav: React.FC<DesktopNavProps> = ({
   return (
     <nav className="hidden md:flex items-center space-x-8">
       {isAuthenticated ? (
-        <>
-          <div className="flex items-center space-x-8">
-            <NavLinks />
-          </div>
-          <SettingsDropdown handleSignOut={handleSignOut} />
-        </>
+        <div className="flex items-center space-x-8">
+          <NavLinks />
+        </div>
       ) : (
         // Only show login/signup options if not on survey response or complete pages
         !hideAuthButtons && (

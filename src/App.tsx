@@ -23,6 +23,7 @@ import Analysis from './pages/Analysis';
 import Improve from './pages/Improve';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
+import Settings from './pages/Settings';
 import PublicSurveyForm from './pages/PublicSurveyForm';
 import SurveyComplete from './pages/SurveyComplete';
 import SurveyClosed from './pages/SurveyClosed';
@@ -78,6 +79,7 @@ function App() {
                           <Route path="/improve" element={<Improve />} />
                           <Route path="/profile" element={<Profile />} />
                           <Route path="/admin" element={<Admin />} />
+                          <Route path="/settings" element={<Settings />} />
                           <Route path="/survey-form/:id" element={<Navigate to={`/survey-editor`} replace />} />
                           <Route path="/payment-success" element={<PaymentSuccess />} />
                           <Route path="/survey-editor" element={<SurveyEditor />} />

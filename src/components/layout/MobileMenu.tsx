@@ -1,9 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { BarChart3, FileText, Users, TrendingUp, User, ShieldCheck, CreditCard } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useAdminRole } from '../../hooks/useAdminRole';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -24,7 +22,6 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
 }) => {
   const location = useLocation();
   const { user } = useAuth();
-  const { isAdmin: isAdminRole } = useAdminRole();
 
   const isActive = (path: string) => {
     if (path === '/dashboard') {
@@ -33,7 +30,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
     return location.pathname.startsWith(path);
   };
 
-  const mobileLinkClass = "block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-brandPurple-600 hover:bg-brandPurple-50 focus:outline-none flex items-center";
+  const mobileLinkClass = "block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-brandPurple-600 hover:bg-brandPurple-50 focus:outline-none";
   const activeMobileLinkClass = "text-purple-700 bg-brandPurple-50";
 
   const handleLinkClick = () => {
@@ -45,13 +42,11 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
       <div className="px-2 pt-2 pb-3 space-y-1">
         {isAuthenticated && user ? (
           <>
-            {/* Main Navigation Links */}
             <Link
               to="/dashboard"
               onClick={handleLinkClick}
               className={`${mobileLinkClass} ${isActive('/dashboard') ? activeMobileLinkClass : ""}`}
             >
-              <BarChart3 size={18} className="mr-2" />
               Dashboard
             </Link>
             
@@ -60,17 +55,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
               onClick={handleLinkClick}
               className={`${mobileLinkClass} ${isActive('/surveys') ? activeMobileLinkClass : ""}`}
             >
-              <FileText size={18} className="mr-2" />
-              Surveys
-            </Link>
-            
-            <Link
-              to="/team"
-              onClick={handleLinkClick}
-              className={`${mobileLinkClass} ${isActive('/team') ? activeMobileLinkClass : ""}`}
-            >
-              <Users size={18} className="mr-2" />
-              Team
+              Survey
             </Link>
             
             <Link
@@ -78,42 +63,35 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
               onClick={handleLinkClick}
               className={`${mobileLinkClass} ${isActive('/analysis') ? activeMobileLinkClass : ""}`}
             >
-              <TrendingUp size={18} className="mr-2" />
-              Analysis
+              Analyse
+            </Link>
+            
+            <Link
+              to="/improve"
+              onClick={handleLinkClick}
+              className={`${mobileLinkClass} ${isActive('/improve') ? activeMobileLinkClass : ""}`}
+            >
+              Improve
+            </Link>
+            
+            <Link
+              to="/accredit"
+              onClick={handleLinkClick}
+              className={`${mobileLinkClass} ${isActive('/accredit') ? activeMobileLinkClass : ""}`}
+            >
+              Accredit
+            </Link>
+            
+            <Link
+              to="/settings"
+              onClick={handleLinkClick}
+              className={`${mobileLinkClass} ${isActive('/settings') ? activeMobileLinkClass : ""}`}
+            >
+              Settings
             </Link>
 
             {/* Divider */}
             <div className="border-t border-gray-200 my-2"></div>
-
-            {/* Settings Links */}
-            <Link
-              to="/profile"
-              onClick={handleLinkClick}
-              className={`${mobileLinkClass} ${isActive('/profile') ? activeMobileLinkClass : ""}`}
-            >
-              <User size={18} className="mr-2" />
-              Profile
-            </Link>
-            
-            <Link
-              to="/purchases"
-              onClick={handleLinkClick}
-              className={`${mobileLinkClass} ${isActive('/purchases') ? activeMobileLinkClass : ""}`}
-            >
-              <CreditCard size={18} className="mr-2" />
-              My Purchases
-            </Link>
-            
-            {isAdminRole && (
-              <Link
-                to="/admin"
-                onClick={handleLinkClick}
-                className={`${mobileLinkClass} ${isActive('/admin') ? activeMobileLinkClass : ""}`}
-              >
-                <ShieldCheck size={18} className="mr-2" />
-                Admin
-              </Link>
-            )}
 
             {/* Sign Out Button */}
             <button
