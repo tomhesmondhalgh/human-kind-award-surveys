@@ -1,7 +1,10 @@
 
 import React, { useState } from 'react';
 import MainLayout from '../components/layout/MainLayout';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { SidebarProvider, SidebarInset, SidebarTrigger } from '../components/ui/sidebar';
+import { Separator } from '../components/ui/separator';
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '../components/ui/breadcrumb';
+import AppSidebar from '../components/admin/AppSidebar';
 import PlansManagement from '../components/admin/PlansManagement';
 import TestingMode from '../components/admin/TestingMode';
 import CustomScriptsManagement from '../components/admin/CustomScriptsManagement';
@@ -35,57 +38,77 @@ const Admin = () => {
     return <Navigate to="/dashboard" replace />;
   }
 
+  const getTabTitle = (tab: string) => {
+    const tabTitles = {
+      purchases: 'Purchase Management',
+      users: 'User Management', 
+      feedback: 'Feedback Analytics',
+      redemption: 'Redemption Codes',
+      plans: 'Plan Management',
+      testing: 'Testing Mode',
+      scripts: 'Custom Scripts',
+      hubspot: 'Hubspot Integration'
+    };
+    return tabTitles[tab as keyof typeof tabTitles] || 'Admin Panel';
+  };
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'purchases':
+        return <PurchasesManagement />;
+      case 'users':
+        return <UsersManagement />;
+      case 'feedback':
+        return <SurveyFeedbackAnalytics />;
+      case 'redemption':
+        return <RedemptionCodesManagement />;
+      case 'plans':
+        return <PlansManagement />;
+      case 'testing':
+        return <TestingMode />;
+      case 'scripts':
+        return <CustomScriptsManagement />;
+      case 'hubspot':
+        return <HubspotIntegration />;
+      default:
+        return <PurchasesManagement />;
+    }
+  };
+
   return (
-    <MainLayout>
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">Admin Panel</h1>
-        
-        <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="mb-8 flex flex-wrap">
-            <TabsTrigger value="purchases">Purchase Management</TabsTrigger>
-            <TabsTrigger value="users">User Management</TabsTrigger>
-            <TabsTrigger value="feedback">Feedback Analytics</TabsTrigger>
-            <TabsTrigger value="redemption">Redemption Codes</TabsTrigger>
-            <TabsTrigger value="plans">Plan Management</TabsTrigger>
-            <TabsTrigger value="testing">Testing Mode</TabsTrigger>
-            <TabsTrigger value="scripts">Custom Scripts</TabsTrigger>
-            <TabsTrigger value="hubspot">Hubspot Integration</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="purchases">
-            <PurchasesManagement />
-          </TabsContent>
-          
-          <TabsContent value="users">
-            <UsersManagement />
-          </TabsContent>
-          
-          <TabsContent value="feedback">
-            <SurveyFeedbackAnalytics />
-          </TabsContent>
-          
-          <TabsContent value="redemption">
-            <RedemptionCodesManagement />
-          </TabsContent>
-          
-          <TabsContent value="plans">
-            <PlansManagement />
-          </TabsContent>
-          
-          <TabsContent value="testing">
-            <TestingMode />
-          </TabsContent>
-          
-          <TabsContent value="scripts">
-            <CustomScriptsManagement />
-          </TabsContent>
-          
-          <TabsContent value="hubspot">
-            <HubspotIntegration />
-          </TabsContent>
-        </Tabs>
+    <SidebarProvider defaultOpen={true}>
+      <div className="min-h-screen flex w-full">
+        <AppSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        <SidebarInset>
+          <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+            <div className="flex items-center gap-2 px-4">
+              <SidebarTrigger className="-ml-1" />
+              <Separator orientation="vertical" className="mr-2 h-4" />
+              <Breadcrumb>
+                <BreadcrumbList>
+                  <BreadcrumbItem className="hidden md:block">
+                    <BreadcrumbLink href="/admin">
+                      Admin Panel
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator className="hidden md:block" />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>{getTabTitle(activeTab)}</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
+            </div>
+          </header>
+          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+            <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min">
+              <div className="p-6">
+                {renderContent()}
+              </div>
+            </div>
+          </div>
+        </SidebarInset>
       </div>
-    </MainLayout>
+    </SidebarProvider>
   );
 };
 
