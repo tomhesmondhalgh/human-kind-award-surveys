@@ -3,17 +3,18 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { Badge } from "../ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
-import { CreditCard, FileText, AlertCircle, ListTodo } from "lucide-react";
+import { CreditCard, FileText, AlertCircle, ListTodo, Gift } from "lucide-react";
 import { formatCurrency } from '../../lib/utils';
 import PageTitle from '../ui/PageTitle';
 import { useSubscription } from '../../hooks/useSubscription';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+
 export type Purchase = {
   id: string;
   subscription_id: string;
-  payment_method: 'stripe' | 'invoice' | 'manual';
+  payment_method: 'stripe' | 'invoice' | 'manual' | 'redemption_code';
   amount: number;
   currency: string;
   payment_status: 'pending' | 'invoice_raised' | 'payment_made' | 'cancelled' | 'refunded';
@@ -26,6 +27,7 @@ export type Purchase = {
   plan_type: string;
   purchase_type: string;
 };
+
 export type Subscription = {
   id: string;
   plan_type: string;
@@ -34,6 +36,7 @@ export type Subscription = {
   end_date: string;
   purchase_type: string;
 };
+
 const MyPurchases = () => {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [activeSubscription, setActiveSubscription] = useState<Subscription | null>(null);
@@ -46,6 +49,7 @@ const MyPurchases = () => {
     subscription,
     isLoading: isSubscriptionLoading
   } = useSubscription();
+
   const fetchPurchases = async () => {
     if (!user) return;
     setLoading(true);
@@ -57,7 +61,11 @@ const MyPurchases = () => {
       if (subError) {
         throw subError;
       }
-      const active = subscriptions?.find(sub => sub.status === 'active' && sub.purchase_type === 'subscription' && (sub.end_date === null || new Date(sub.end_date) > new Date()));
+      const active = subscriptions?.find(sub => 
+        sub.status === 'active' && 
+        sub.purchase_type === 'subscription' && 
+        (sub.end_date === null || new Date(sub.end_date) > new Date())
+      );
       if (active) {
         setActiveSubscription({
           id: active.id,
@@ -103,11 +111,13 @@ const MyPurchases = () => {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     if (user) {
       fetchPurchases();
     }
   }, [user]);
+
   const handleCancelSubscription = async () => {
     if (!user || !activeSubscription) return;
     setCancellingSubscription(true);
@@ -133,6 +143,7 @@ const MyPurchases = () => {
       setCancellingSubscription(false);
     }
   };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'payment_made':
@@ -149,36 +160,43 @@ const MyPurchases = () => {
         return <Badge className="bg-gray-500">{status}</Badge>;
     }
   };
+
   const getPaymentMethodIcon = (method: string) => {
     switch (method) {
       case 'stripe':
         return <CreditCard className="h-4 w-4 mr-1" />;
       case 'invoice':
         return <FileText className="h-4 w-4 mr-1" />;
+      case 'redemption_code':
+        return <Gift className="h-4 w-4 mr-1" />;
       default:
         return null;
     }
   };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-GB');
   };
+
   const formatPlanName = (planType: string | undefined) => {
     if (!planType) return 'Free';
     return planType.charAt(0).toUpperCase() + planType.slice(1);
   };
+
   const formatRoleName = (role: string | null) => {
     if (!role) return 'No Role';
     return role.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
-  return <div className="container py-8">
+
+  return (
+    <div className="container py-8">
       <PageTitle title="My Purchases" subtitle="View your purchases including credit card payments and invoices" />
       
-      {activeSubscription && <Card className="mb-8 mx-0 my-[30px]">
+      {activeSubscription && (
+        <Card className="mb-8 mx-0 my-[30px]">
           <CardHeader>
             <CardTitle>Active Subscription</CardTitle>
-            <CardDescription>
-              Your current subscription details
-            </CardDescription>
+            <CardDescription>Your current subscription details</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -198,27 +216,28 @@ const MyPurchases = () => {
                   </p>
                 </div>
               </div>
-              
-              <div className="flex justify-end">
-                
-              </div>
             </div>
           </CardContent>
-        </Card>}
+        </Card>
+      )}
 
       <Card className="mb-12">
         <CardHeader>
           <CardTitle>Purchase History</CardTitle>
-          <CardDescription>
-            All your purchases including credit card payments and invoices
-          </CardDescription>
+          <CardDescription>All your purchases including credit card payments and invoices</CardDescription>
         </CardHeader>
         <CardContent>
-          {loading ? <div className="text-center py-4">Loading purchases data...</div> : <div className="overflow-x-auto">
-              {purchases.length === 0 ? <div className="text-center py-8 flex flex-col items-center">
+          {loading ? (
+            <div className="text-center py-4">Loading purchases data...</div>
+          ) : (
+            <div className="overflow-x-auto">
+              {purchases.length === 0 ? (
+                <div className="text-center py-8 flex flex-col items-center">
                   <AlertCircle className="h-8 w-8 text-muted-foreground mb-2" />
                   <p className="text-lg text-muted-foreground">No purchases found</p>
-                </div> : <Table>
+                </div>
+              ) : (
+                <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Date</TableHead>
@@ -231,45 +250,39 @@ const MyPurchases = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {purchases.map(purchase => <TableRow key={purchase.id}>
-                        <TableCell>
-                          {formatDate(purchase.created_at)}
-                        </TableCell>
+                    {purchases.map(purchase => (
+                      <TableRow key={purchase.id}>
+                        <TableCell>{formatDate(purchase.created_at)}</TableCell>
                         <TableCell>
                           <div className="font-medium">{purchase.billing_school_name || 'N/A'}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {purchase.billing_contact_name}
-                          </div>
+                          <div className="text-sm text-muted-foreground">{purchase.billing_contact_name}</div>
                         </TableCell>
                         <TableCell>
                           <div className="capitalize font-medium">{purchase.plan_type}</div>
-                          <div className="text-xs text-muted-foreground capitalize">
-                            {purchase.purchase_type}
-                          </div>
+                          <div className="text-xs text-muted-foreground capitalize">{purchase.purchase_type}</div>
                         </TableCell>
-                        <TableCell>
-                          {formatCurrency(purchase.amount, purchase.currency)}
-                        </TableCell>
+                        <TableCell>{formatCurrency(purchase.amount, purchase.currency)}</TableCell>
                         <TableCell>
                           <div className="flex items-center">
                             {getPaymentMethodIcon(purchase.payment_method)}
-                            <span className="capitalize">{purchase.payment_method}</span>
+                            <span className="capitalize">
+                              {purchase.payment_method === 'redemption_code' ? 'Redemption Code' : purchase.payment_method}
+                            </span>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          {purchase.invoice_number || '—'}
-                        </TableCell>
-                        <TableCell>
-                          {getStatusBadge(purchase.payment_status)}
-                        </TableCell>
-                      </TableRow>)}
+                        <TableCell>{purchase.invoice_number || '—'}</TableCell>
+                        <TableCell>{getStatusBadge(purchase.payment_status)}</TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
-                </Table>}
-            </div>}
+                </Table>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
-
-      
-    </div>;
+    </div>
+  );
 };
+
 export default MyPurchases;

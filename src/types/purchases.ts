@@ -1,5 +1,5 @@
 
-export type PaymentMethod = 'stripe' | 'invoice' | 'manual';
+export type PaymentMethod = 'stripe' | 'invoice' | 'manual' | 'redemption_code';
 export type PaymentStatus = 'pending' | 'invoice_raised' | 'payment_made' | 'cancelled' | 'refunded';
 export type PurchaseType = 'subscription' | 'one-time' | 'credit' | 'unknown';
 

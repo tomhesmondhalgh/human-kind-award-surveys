@@ -10,7 +10,7 @@ import {
 } from "../ui/table";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
-import { Pencil, CreditCard, FileText, AlertCircle } from "lucide-react";
+import { Pencil, CreditCard, FileText, AlertCircle, Gift } from "lucide-react";
 import { formatCurrency } from '../../lib/utils';
 import { Purchase } from '../../types/purchases';
 
@@ -50,6 +50,8 @@ export const PurchaseTable: React.FC<PurchaseTableProps> = ({
         return <FileText className="h-4 w-4 mr-1" />;
       case 'manual':
         return <Pencil className="h-4 w-4 mr-1" />;
+      case 'redemption_code':
+        return <Gift className="h-4 w-4 mr-1" />;
       default:
         return <AlertCircle className="h-4 w-4 mr-1" />;
     }
@@ -114,7 +116,9 @@ export const PurchaseTable: React.FC<PurchaseTableProps> = ({
                 <TableCell className="hidden sm:table-cell">
                   <div className="flex items-center">
                     {getPaymentMethodIcon(purchase.payment_method)}
-                    <span className="capitalize">{purchase.payment_method}</span>
+                    <span className="capitalize">
+                      {purchase.payment_method === 'redemption_code' ? 'Redemption Code' : purchase.payment_method}
+                    </span>
                   </div>
                 </TableCell>
                 <TableCell className="hidden md:table-cell">
