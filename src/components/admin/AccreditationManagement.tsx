@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,7 +32,7 @@ const AccreditationManagement = () => {
         .from('action_plan_submissions')
         .select(`
           *,
-          profiles!inner(first_name, last_name, school_name)
+          profiles:user_id(first_name, last_name, school_name)
         `)
         .order('submitted_at', { ascending: false });
 
