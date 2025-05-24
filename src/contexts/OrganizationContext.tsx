@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
@@ -44,84 +45,57 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     console.log('OrganizationContext: Fetching organizations for user:', user.id);
     
     try {
-      // Try using the security definer function first
-      const { data: userMemberships, error: membershipError } = await supabase
-        .rpc('get_user_memberships', { user_uuid: user.id });
+      // First, try to get user memberships directly
+      console.log('OrganizationContext: Querying organization_memberships table...');
+      const { data: memberships, error: membershipError } = await supabase
+        .from('organization_memberships')
+        .select('*')
+        .eq('user_id', user.id);
 
       if (membershipError) {
-        console.error('OrganizationContext: Error with get_user_memberships function:', membershipError);
-        // Fallback to direct query if function fails
-        const { data: directMemberships, error: directError } = await supabase
-          .from('organization_memberships')
-          .select('*')
-          .eq('user_id', user.id);
-          
-        if (directError) {
-          console.error('OrganizationContext: Direct query also failed:', directError);
-          throw new Error(`Database query failed: ${directError.message}`);
-        }
-        
-        // Process direct memberships
-        if (!directMemberships || directMemberships.length === 0) {
-          console.log('OrganizationContext: No memberships found for user');
-          return [];
-        }
-        
-        // Get organization details separately
-        const orgIds = directMemberships.map(m => m.organization_id);
-        const { data: organizationsData, error: orgsError } = await supabase
-          .from('organizations')
-          .select('*')
-          .in('id', orgIds);
-          
-        if (orgsError) {
-          throw new Error(`Failed to fetch organization details: ${orgsError.message}`);
-        }
-        
-        const organizations = directMemberships
-          .map(membership => {
-            const org = organizationsData?.find(o => o.id === membership.organization_id);
-            if (!org) return null;
-            return {
-              ...org,
-              role: membership.role
-            };
-          })
-          .filter(org => org !== null) as OrganizationWithRole[];
-        
-        console.log('OrganizationContext: Processed organizations from direct query:', organizations);
-        return organizations;
+        console.error('OrganizationContext: Error fetching memberships:', membershipError);
+        throw new Error(`Failed to fetch user memberships: ${membershipError.message}`);
       }
 
-      // Process function result
-      if (!userMemberships || userMemberships.length === 0) {
-        console.log('OrganizationContext: No memberships found for user via function');
+      console.log('OrganizationContext: Found memberships:', memberships);
+
+      if (!memberships || memberships.length === 0) {
+        console.log('OrganizationContext: No memberships found for user');
         return [];
       }
 
       // Get organization details for the memberships
-      const orgIds = userMemberships.map((m: any) => m.organization_id);
+      const orgIds = memberships.map(m => m.organization_id);
+      console.log('OrganizationContext: Fetching organization details for IDs:', orgIds);
+      
       const { data: organizationsData, error: orgsError } = await supabase
         .from('organizations')
         .select('*')
         .in('id', orgIds);
         
       if (orgsError) {
+        console.error('OrganizationContext: Error fetching organizations:', orgsError);
         throw new Error(`Failed to fetch organization details: ${orgsError.message}`);
       }
 
-      const organizations = userMemberships
-        .map((membership: any) => {
-          const org = organizationsData?.find((o: any) => o.id === membership.organization_id);
-          if (!org) return null;
+      console.log('OrganizationContext: Found organizations:', organizationsData);
+
+      // Combine membership and organization data
+      const organizations = memberships
+        .map(membership => {
+          const org = organizationsData?.find(o => o.id === membership.organization_id);
+          if (!org) {
+            console.warn('OrganizationContext: Organization not found for membership:', membership);
+            return null;
+          }
           return {
             ...org,
             role: membership.role
           };
         })
-        .filter((org: any) => org !== null) as OrganizationWithRole[];
+        .filter(org => org !== null) as OrganizationWithRole[];
       
-      console.log('OrganizationContext: Processed organizations from function:', organizations);
+      console.log('OrganizationContext: Processed organizations:', organizations);
       return organizations;
     } catch (error) {
       console.error('OrganizationContext: Error in fetchOrganizations:', error);
@@ -130,38 +104,52 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   const refreshOrganizations = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('OrganizationContext: No user for refresh, skipping');
+      return;
+    }
     
     try {
       setError(null);
       console.log('OrganizationContext: Refreshing organizations...');
       const orgs = await fetchOrganizations();
       setOrganizations(orgs);
-      console.log('OrganizationContext: Organizations refreshed successfully');
+      console.log('OrganizationContext: Organizations refreshed successfully, count:', orgs.length);
     } catch (error) {
       console.error('OrganizationContext: Error in refreshOrganizations:', error);
+      
       let errorMessage = 'Failed to load organizations';
       
       if (error instanceof Error) {
-        if (error.message.includes('infinite recursion')) {
-          errorMessage = 'Database configuration issue detected. Please contact support.';
-        } else if (error.message.includes('policy')) {
-          errorMessage = 'Permission denied. Please check your account access.';
+        const errorString = error.message.toLowerCase();
+        
+        if (errorString.includes('infinite recursion')) {
+          errorMessage = 'Database policy error detected. Please contact support if this persists.';
+        } else if (errorString.includes('policy')) {
+          errorMessage = 'Permission denied. Please check your account access or contact support.';
+        } else if (errorString.includes('network') || errorString.includes('fetch')) {
+          errorMessage = 'Network error. Please check your connection and try again.';
         } else {
-          errorMessage = error.message;
+          errorMessage = `Error: ${error.message}`;
         }
       }
       
       setError(errorMessage);
-      console.error('OrganizationContext: Setting error:', errorMessage);
+      setOrganizations([]);
+      toast.error(errorMessage);
     }
   };
 
   const createOrganization = async (name: string, address?: string, urn?: string): Promise<OrganizationWithRole | null> => {
-    if (!user) return null;
+    if (!user) {
+      console.error('OrganizationContext: No user found for organization creation');
+      return null;
+    }
     
     setIsLoading(true);
     try {
+      console.log('OrganizationContext: Creating organization:', { name, address, urn });
+      
       // Create the organization
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
@@ -174,8 +162,11 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         .single();
         
       if (orgError) {
+        console.error('OrganizationContext: Error creating organization:', orgError);
         throw orgError;
       }
+      
+      console.log('OrganizationContext: Organization created:', orgData);
       
       // Add user as admin of the new organization
       const { error: membershipError } = await supabase
@@ -188,8 +179,11 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         });
         
       if (membershipError) {
+        console.error('OrganizationContext: Error creating membership:', membershipError);
         throw membershipError;
       }
+      
+      console.log('OrganizationContext: Membership created successfully');
       
       // Create the OrganizationWithRole object
       const newOrg: OrganizationWithRole = {
@@ -203,10 +197,12 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // Set as current organization
       setCurrentOrganization(newOrg);
       
+      console.log('OrganizationContext: Organization creation completed successfully');
       return newOrg;
     } catch (error) {
-      console.error('OrganizationContext: Error creating organization:', error);
-      toast.error('Failed to create organisation');
+      console.error('OrganizationContext: Error in createOrganization:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create organisation';
+      toast.error(`Failed to create organisation: ${errorMessage}`);
       return null;
     } finally {
       setIsLoading(false);
@@ -247,21 +243,27 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
       } catch (error) {
         console.error('OrganizationContext: Error in fetchCurrentOrganization:', error);
+        
         let errorMessage = 'Failed to load organization data';
         
         if (error instanceof Error) {
-          if (error.message.includes('infinite recursion')) {
-            errorMessage = 'Database configuration issue detected. Please contact support.';
-          } else if (error.message.includes('policy')) {
-            errorMessage = 'Permission denied. Please check your account access.';
+          const errorString = error.message.toLowerCase();
+          
+          if (errorString.includes('infinite recursion')) {
+            errorMessage = 'Database policy error detected. Please contact support if this persists.';
+          } else if (errorString.includes('policy')) {
+            errorMessage = 'Permission denied. Please check your account access or contact support.';
+          } else if (errorString.includes('network') || errorString.includes('fetch')) {
+            errorMessage = 'Network error. Please check your connection and try again.';
           } else {
-            errorMessage = error.message;
+            errorMessage = `Error: ${error.message}`;
           }
         }
         
         setError(errorMessage);
         setOrganizations([]);
         setCurrentOrganization(null);
+        toast.error(errorMessage);
       } finally {
         console.log('OrganizationContext: Finished loading, setting isLoading to false');
         setIsLoading(false);
@@ -272,13 +274,18 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, [user]);
 
   const switchOrganization = async (orgId: string): Promise<boolean> => {
+    console.log('OrganizationContext: Switching to organization:', orgId);
     setIsLoading(true);
     try {
       const targetOrg = organizations.find(org => org.id === orgId);
       if (targetOrg) {
+        console.log('OrganizationContext: Found target organization:', targetOrg);
         setCurrentOrganization(targetOrg);
+        // Clear action plan cache when switching organizations
+        sessionStorage.removeItem('actionPlanInitialized');
         return true;
       }
+      console.warn('OrganizationContext: Target organization not found in user organizations');
       return false;
     } catch (error) {
       console.error('OrganizationContext: Error switching organization:', error);
