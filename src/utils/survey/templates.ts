@@ -1,4 +1,3 @@
-
 import { supabase } from "../../integrations/supabase/client";
 import { SurveyTemplate, SurveyWithResponses } from "../types/survey";
 import { countSurveyResponses } from "./responses";
@@ -68,15 +67,17 @@ export const getRecentSurveys = async (limit: number = 3, organizationId?: strin
   try {
     console.log(`Fetching recent surveys, limit: ${limit}, organizationId: ${organizationId}`);
     
+    if (!organizationId) {
+      console.warn('No organization ID provided for recent surveys');
+      return [];
+    }
+    
     let query = supabase
       .from('survey_templates')
       .select('*')
+      .eq('organization_id', organizationId)
       .order('date', { ascending: false })
       .limit(limit);
-    
-    if (organizationId) {
-      query = query.eq('organization_id', organizationId);
-    }
     
     const { data: templates, error: templatesError } = await query;
     

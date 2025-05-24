@@ -3,9 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { calculateBenchmarkScore } from "./benchmark";
 import { countEmailResponses } from "./responses";
 
-export const getDashboardStats = async () => {
+export const getDashboardStats = async (organizationId?: string) => {
   try {
-    console.log('Fetching dashboard stats');
+    console.log('Fetching dashboard stats for organization:', organizationId);
     
     const { data: { user } } = await supabase.auth.getUser();
     
@@ -14,29 +14,8 @@ export const getDashboardStats = async () => {
       return null;
     }
     
-    const { count: surveyCount, error: surveyError } = await supabase
-      .from('survey_templates')
-      .select('*', { count: 'exact', head: true })
-      .eq('creator_id', user.id);
-    
-    if (surveyError) {
-      console.error('Error counting surveys:', surveyError);
-      return null;
-    }
-    
-    console.log('Total surveys for this user:', surveyCount);
-    
-    const { data: userSurveys, error: userSurveysError } = await supabase
-      .from('survey_templates')
-      .select('id')
-      .eq('creator_id', user.id);
-      
-    if (userSurveysError) {
-      console.error('Error fetching user surveys:', userSurveysError);
-      return null;
-    }
-    
-    if (!userSurveys || userSurveys.length === 0) {
+    if (!organizationId) {
+      console.warn('No organization ID provided for dashboard stats');
       return {
         totalSurveys: 0,
         totalRespondents: 0,
@@ -45,7 +24,38 @@ export const getDashboardStats = async () => {
       };
     }
     
-    const surveyIds = userSurveys.map(survey => survey.id);
+    const { count: surveyCount, error: surveyError } = await supabase
+      .from('survey_templates')
+      .select('*', { count: 'exact', head: true })
+      .eq('organization_id', organizationId);
+    
+    if (surveyError) {
+      console.error('Error counting surveys:', surveyError);
+      return null;
+    }
+    
+    console.log('Total surveys for this organization:', surveyCount);
+    
+    const { data: orgSurveys, error: orgSurveysError } = await supabase
+      .from('survey_templates')
+      .select('id')
+      .eq('organization_id', organizationId);
+      
+    if (orgSurveysError) {
+      console.error('Error fetching organization surveys:', orgSurveysError);
+      return null;
+    }
+    
+    if (!orgSurveys || orgSurveys.length === 0) {
+      return {
+        totalSurveys: 0,
+        totalRespondents: 0,
+        responseRate: "0%",
+        benchmarkScore: "0"
+      };
+    }
+    
+    const surveyIds = orgSurveys.map(survey => survey.id);
     
     // Use countEmailResponses for the email respondents count
     let totalEmailRespondents = 0;
@@ -54,14 +64,14 @@ export const getDashboardStats = async () => {
       totalEmailRespondents += emailResponses;
     }
     
-    console.log('Total email responses for this user\'s surveys:', totalEmailRespondents);
+    console.log('Total email responses for this organization\'s surveys:', totalEmailRespondents);
     
     const benchmarkScore = await calculateBenchmarkScore(surveyIds);
     
     const { data: surveyTemplates, error: templatesFetchError } = await supabase
       .from('survey_templates')
       .select('emails')
-      .eq('creator_id', user.id)
+      .eq('organization_id', organizationId)
       .not('emails', 'is', null)
       .not('emails', 'eq', '')
       .filter('date', 'lt', new Date().toISOString());

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
@@ -10,6 +9,7 @@ import { Button } from '../components/ui/button';
 import { Plus, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
+import { useOrganization } from '../contexts/OrganizationContext';
 import { getDashboardStats, getRecentSurveys, checkForClosedSurveys } from '../utils/surveyUtils';
 import { SurveyWithResponses } from '../utils/surveyUtils';
 import { useIsMobile } from '../hooks/use-mobile';
@@ -25,24 +25,26 @@ const Dashboard = () => {
   const [dataFetchError, setDataFetchError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { user, session, isAuthenticated } = useAuth();
+  const { currentOrganization } = useOrganization();
   const isMobile = useIsMobile();
 
   console.log('Dashboard auth state:', { 
     userId: user?.id, 
     isAuthenticated, 
-    hasSession: !!session
+    hasSession: !!session,
+    organizationId: currentOrganization?.id
   });
 
   useEffect(() => {
-    console.log('Dashboard useEffect - User:', user?.id || 'no user', 'Session:', !!session);
+    console.log('Dashboard useEffect - User:', user?.id || 'no user', 'Session:', !!session, 'Organization:', currentOrganization?.id);
     const fetchDashboardData = async () => {
       setIsLoading(true);
       setDataFetchError(null);
       
       try {
         console.log('Fetching dashboard stats...');
-        // Fetch dashboard stats
-        const stats = await getDashboardStats();
+        // Fetch dashboard stats with organization ID
+        const stats = await getDashboardStats(currentOrganization?.id);
         console.log('Dashboard stats received:', stats);
         
         if (stats) {
@@ -58,8 +60,8 @@ const Dashboard = () => {
         }
 
         console.log('Fetching recent surveys...');
-        // Fetch recent surveys
-        const surveys = await getRecentSurveys(3, user?.id);
+        // Fetch recent surveys with organization ID
+        const surveys = await getRecentSurveys(3, currentOrganization?.id);
         console.log('Recent surveys received:', surveys);
         setRecentSurveys(surveys);
       } catch (error) {
@@ -73,7 +75,7 @@ const Dashboard = () => {
       }
     };
 
-    if (user?.id) {
+    if (user?.id && currentOrganization?.id) {
       fetchDashboardData();
       
       // Check for closed surveys when the dashboard loads
@@ -82,17 +84,17 @@ const Dashboard = () => {
         console.error('Error checking for closed surveys:', err);
       });
     } else {
-      console.log('No user ID available, skipping data fetch');
+      console.log('No user ID or organization available, skipping data fetch');
       if (!isLoading) {
         // Only set loading to false if we've already determined there's no user
         // This prevents flickering when authentication is still being determined
         setIsLoading(false);
       }
     }
-  }, [user, session]);
+  }, [user, session, currentOrganization]);
 
   const handleRetry = () => {
-    if (user?.id) {
+    if (user?.id && currentOrganization?.id) {
       toast.info("Retrying data fetch...");
       // Force re-fetch by creating a new user object reference
       const tempUser = { ...user };
@@ -142,6 +144,18 @@ const Dashboard = () => {
               onClick={() => navigate('/login')}
             >
               Go to login
+            </button>
+          </div>
+        )}
+
+        {!currentOrganization && user && !isLoading && (
+          <div className="bg-blue-50 border border-blue-200 text-blue-700 p-4 rounded-md mb-6">
+            <p>No organisation selected. Please select an organisation to view dashboard data.</p>
+            <button 
+              className="mt-2 text-sm font-medium underline"
+              onClick={() => navigate('/team')}
+            >
+              Manage Organisations
             </button>
           </div>
         )}
