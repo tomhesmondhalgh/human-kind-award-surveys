@@ -1,6 +1,5 @@
 
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { Button } from '../ui/button';
 import { Building, Plus, Search, MoreVertical } from 'lucide-react';
 import { Input } from '../ui/input';
@@ -14,7 +13,6 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
-import { Organization } from '@/types/organizations';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useNavigate } from 'react-router-dom';
@@ -169,11 +167,7 @@ const OrganizationsList = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { organizations, refreshOrganizations } = useOrganization();
-
-  // We'll use the organizations directly from the OrganizationContext
-  // instead of fetching them again
-  const isLoading = false;
+  const { organizations, refreshOrganizations, isLoading, error } = useOrganization();
 
   // Filter organizations based on search term
   const filteredOrganizations = organizations.filter(org => {
@@ -189,16 +183,10 @@ const OrganizationsList = () => {
   );
 
   const handleCreateComplete = (success: boolean) => {
+    setIsCreateDialogOpen(false);
     if (success) {
-      // If organization was created successfully, navigate to team page
-      setIsCreateDialogOpen(false);
-      // We don't need to refetch as the context already has the updated list
-      // and the new org is set as current
-      
-      // Force reload the current page to reflect changes
-      window.location.reload();
-    } else {
-      setIsCreateDialogOpen(false);
+      // Organizations list will be automatically updated through context
+      toast.success('Organisation created and set as current');
     }
   };
 
@@ -223,6 +211,18 @@ const OrganizationsList = () => {
       toast.error('Failed to leave organization');
     }
   };
+
+  if (error) {
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50 p-8 text-center">
+        <h2 className="text-xl font-semibold mb-4 text-red-700">Error Loading Organizations</h2>
+        <p className="text-gray-700 mb-6">{error}</p>
+        <Button onClick={() => refreshOrganizations()} variant="destructive">
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -258,7 +258,18 @@ const OrganizationsList = () => {
         </div>
       ) : paginatedOrganizations.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-500">No organizations found</p>
+          <p className="text-gray-500">
+            {searchTerm ? 'No organizations found matching your search' : 'No organizations found'}
+          </p>
+          {!searchTerm && (
+            <Button 
+              onClick={() => setIsCreateDialogOpen(true)}
+              className="mt-4 bg-brandPurple-500 hover:bg-brandPurple-600"
+            >
+              <Plus size={16} className="mr-2" />
+              Create Your First Organization
+            </Button>
+          )}
         </div>
       ) : (
         <>
@@ -269,6 +280,7 @@ const OrganizationsList = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">URN</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -291,6 +303,17 @@ const OrganizationsList = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {organization.urn || 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                        organization.role === 'admin' 
+                          ? 'bg-green-100 text-green-800' 
+                          : organization.role === 'editor'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {organization.role}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(organization.created_at).toLocaleDateString()}

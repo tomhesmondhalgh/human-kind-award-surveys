@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
@@ -44,7 +45,7 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     console.log('OrganizationContext: Fetching organizations for user:', user.id);
     
     try {
-      // Fetch with organization details using the cleaned data structure
+      // Fetch memberships with organization details using the fixed RLS policies
       const { data: memberships, error } = await supabase
         .from('organization_memberships')
         .select(`
