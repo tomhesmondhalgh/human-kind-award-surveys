@@ -45,43 +45,33 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     console.log('OrganizationContext: Fetching organizations for user:', user.id);
     
     try {
-      // Query memberships and organizations in a single query using join
-      console.log('OrganizationContext: Querying user memberships with organization details...');
-      const { data: membershipData, error: membershipError } = await supabase
-        .from('organization_memberships')
-        .select(`
-          role,
-          organization_id,
-          organizations:organization_id (
-            id,
-            name,
-            address,
-            urn,
-            created_at,
-            updated_at
-          )
-        `)
-        .eq('user_id', user.id);
+      // Use the new security definer function to bypass RLS issues
+      console.log('OrganizationContext: Calling get_user_organizations function...');
+      const { data: organizationsData, error: orgError } = await supabase
+        .rpc('get_user_organizations', { user_uuid: user.id });
 
-      if (membershipError) {
-        console.error('OrganizationContext: Error fetching memberships:', membershipError);
-        throw new Error(`Failed to fetch memberships: ${membershipError.message}`);
+      if (orgError) {
+        console.error('OrganizationContext: Error fetching organizations:', orgError);
+        throw new Error(`Failed to fetch organizations: ${orgError.message}`);
       }
 
-      console.log('OrganizationContext: Raw membership data:', membershipData);
+      console.log('OrganizationContext: Raw organizations data:', organizationsData);
 
-      if (!membershipData || membershipData.length === 0) {
-        console.log('OrganizationContext: No memberships found for user');
+      if (!organizationsData || organizationsData.length === 0) {
+        console.log('OrganizationContext: No organizations found for user');
         return [];
       }
 
-      // Transform the data to include role information
-      const organizations = membershipData
-        .filter(membership => membership.organizations)
-        .map(membership => ({
-          ...membership.organizations,
-          role: membership.role
-        })) as OrganizationWithRole[];
+      // Transform the data to match OrganizationWithRole interface
+      const organizations = organizationsData.map(org => ({
+        id: org.id,
+        name: org.name,
+        address: org.address,
+        urn: org.urn,
+        created_at: org.created_at,
+        updated_at: org.updated_at,
+        role: org.role
+      })) as OrganizationWithRole[];
       
       console.log('OrganizationContext: Processed organizations:', organizations);
       return organizations;

@@ -22,31 +22,23 @@ export const useOrganizations = () => {
       setError(null);
 
       try {
-        const { data: memberships, error: membershipError } = await supabase
-          .from('organization_memberships')
-          .select(`
-            *,
-            organizations:organization_id (
-              id,
-              name,
-              address,
-              urn,
-              created_at,
-              updated_at
-            )
-          `)
-          .eq('user_id', user.id);
+        // Use the new security definer function to bypass RLS issues
+        const { data: organizationsData, error: orgError } = await supabase
+          .rpc('get_user_organizations', { user_uuid: user.id });
 
-        if (membershipError) {
-          throw membershipError;
+        if (orgError) {
+          throw orgError;
         }
 
-        const orgsWithRoles = memberships
-          .filter(membership => membership.organizations)
-          .map(membership => ({
-            ...membership.organizations,
-            role: membership.role
-          })) as OrganizationWithRole[];
+        const orgsWithRoles = organizationsData?.map(org => ({
+          id: org.id,
+          name: org.name,
+          address: org.address,
+          urn: org.urn,
+          created_at: org.created_at,
+          updated_at: org.updated_at,
+          role: org.role
+        })) as OrganizationWithRole[] || [];
 
         setOrganizations(orgsWithRoles);
       } catch (err) {

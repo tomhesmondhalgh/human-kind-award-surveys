@@ -1347,6 +1347,18 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_user_organizations: {
+        Args: { user_uuid: string }
+        Returns: {
+          id: string
+          name: string
+          address: string
+          urn: string
+          created_at: string
+          updated_at: string
+          role: Database["public"]["Enums"]["organization_role"]
+        }[]
+      }
       get_user_subscription: {
         Args: { user_uuid: string }
         Returns: {
