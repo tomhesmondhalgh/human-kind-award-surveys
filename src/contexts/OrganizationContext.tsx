@@ -45,55 +45,43 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     console.log('OrganizationContext: Fetching organizations for user:', user.id);
     
     try {
-      // First, try to get user memberships directly
-      console.log('OrganizationContext: Querying organization_memberships table...');
-      const { data: memberships, error: membershipError } = await supabase
+      // Query memberships and organizations in a single query using join
+      console.log('OrganizationContext: Querying user memberships with organization details...');
+      const { data: membershipData, error: membershipError } = await supabase
         .from('organization_memberships')
-        .select('*')
+        .select(`
+          role,
+          organization_id,
+          organizations:organization_id (
+            id,
+            name,
+            address,
+            urn,
+            created_at,
+            updated_at
+          )
+        `)
         .eq('user_id', user.id);
 
       if (membershipError) {
         console.error('OrganizationContext: Error fetching memberships:', membershipError);
-        throw new Error(`Failed to fetch user memberships: ${membershipError.message}`);
+        throw new Error(`Failed to fetch memberships: ${membershipError.message}`);
       }
 
-      console.log('OrganizationContext: Found memberships:', memberships);
+      console.log('OrganizationContext: Raw membership data:', membershipData);
 
-      if (!memberships || memberships.length === 0) {
+      if (!membershipData || membershipData.length === 0) {
         console.log('OrganizationContext: No memberships found for user');
         return [];
       }
 
-      // Get organization details for the memberships
-      const orgIds = memberships.map(m => m.organization_id);
-      console.log('OrganizationContext: Fetching organization details for IDs:', orgIds);
-      
-      const { data: organizationsData, error: orgsError } = await supabase
-        .from('organizations')
-        .select('*')
-        .in('id', orgIds);
-        
-      if (orgsError) {
-        console.error('OrganizationContext: Error fetching organizations:', orgsError);
-        throw new Error(`Failed to fetch organization details: ${orgsError.message}`);
-      }
-
-      console.log('OrganizationContext: Found organizations:', organizationsData);
-
-      // Combine membership and organization data
-      const organizations = memberships
-        .map(membership => {
-          const org = organizationsData?.find(o => o.id === membership.organization_id);
-          if (!org) {
-            console.warn('OrganizationContext: Organization not found for membership:', membership);
-            return null;
-          }
-          return {
-            ...org,
-            role: membership.role
-          };
-        })
-        .filter(org => org !== null) as OrganizationWithRole[];
+      // Transform the data to include role information
+      const organizations = membershipData
+        .filter(membership => membership.organizations)
+        .map(membership => ({
+          ...membership.organizations,
+          role: membership.role
+        })) as OrganizationWithRole[];
       
       console.log('OrganizationContext: Processed organizations:', organizations);
       return organizations;
@@ -118,20 +106,10 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } catch (error) {
       console.error('OrganizationContext: Error in refreshOrganizations:', error);
       
-      let errorMessage = 'Failed to load organizations';
+      let errorMessage = 'Failed to load organisations';
       
       if (error instanceof Error) {
-        const errorString = error.message.toLowerCase();
-        
-        if (errorString.includes('infinite recursion')) {
-          errorMessage = 'Database policy error detected. Please contact support if this persists.';
-        } else if (errorString.includes('policy')) {
-          errorMessage = 'Permission denied. Please check your account access or contact support.';
-        } else if (errorString.includes('network') || errorString.includes('fetch')) {
-          errorMessage = 'Network error. Please check your connection and try again.';
-        } else {
-          errorMessage = `Error: ${error.message}`;
-        }
+        errorMessage = `Error: ${error.message}`;
       }
       
       setError(errorMessage);
@@ -244,20 +222,10 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       } catch (error) {
         console.error('OrganizationContext: Error in fetchCurrentOrganization:', error);
         
-        let errorMessage = 'Failed to load organization data';
+        let errorMessage = 'Failed to load organisation data';
         
         if (error instanceof Error) {
-          const errorString = error.message.toLowerCase();
-          
-          if (errorString.includes('infinite recursion')) {
-            errorMessage = 'Database policy error detected. Please contact support if this persists.';
-          } else if (errorString.includes('policy')) {
-            errorMessage = 'Permission denied. Please check your account access or contact support.';
-          } else if (errorString.includes('network') || errorString.includes('fetch')) {
-            errorMessage = 'Network error. Please check your connection and try again.';
-          } else {
-            errorMessage = `Error: ${error.message}`;
-          }
+          errorMessage = `Error: ${error.message}`;
         }
         
         setError(errorMessage);

@@ -1389,6 +1389,14 @@ export type Database = {
         Args: { user_uuid: string; org_id: string; required_role: string }
         Returns: boolean
       }
+      user_is_organization_admin: {
+        Args: { user_uuid: string; org_id: string }
+        Returns: boolean
+      }
+      user_is_organization_member: {
+        Args: { user_uuid: string; org_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       accreditation_status:
