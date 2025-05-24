@@ -18,11 +18,18 @@ export const usePaymentHistory = (limit = 10) => {
       try {
         setLoading(true);
         
-        // Simple payment history fetch - can be optimized later
+        // Query payment_history table with subscription details
         const { data, error } = await supabase
-          .from('purchases')
-          .select('*')
-          .eq('user_id', user.id)
+          .from('payment_history')
+          .select(`
+            *,
+            subscriptions!inner(
+              user_id,
+              plan_type,
+              purchase_type
+            )
+          `)
+          .eq('subscriptions.user_id', user.id)
           .order('created_at', { ascending: false })
           .range((page - 1) * limit, page * limit - 1);
 
