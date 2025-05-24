@@ -19,7 +19,7 @@ export type Database = {
           index_number: string | null
           key_actions: string | null
           last_updated: string | null
-          organization_id: string | null
+          organization_id: string
           reference: string
           section: string
           status: Database["public"]["Enums"]["descriptor_status"]
@@ -35,7 +35,7 @@ export type Database = {
           index_number?: string | null
           key_actions?: string | null
           last_updated?: string | null
-          organization_id?: string | null
+          organization_id: string
           reference: string
           section: string
           status?: Database["public"]["Enums"]["descriptor_status"]
@@ -51,7 +51,7 @@ export type Database = {
           index_number?: string | null
           key_actions?: string | null
           last_updated?: string | null
-          organization_id?: string | null
+          organization_id?: string
           reference?: string
           section?: string
           status?: Database["public"]["Enums"]["descriptor_status"]
@@ -113,7 +113,7 @@ export type Database = {
           created_at: string
           id: string
           next_submission_due: string | null
-          organization_id: string | null
+          organization_id: string
           reviewed_at: string | null
           reviewer_notes: string | null
           status: Database["public"]["Enums"]["accreditation_status"]
@@ -127,7 +127,7 @@ export type Database = {
           created_at?: string
           id?: string
           next_submission_due?: string | null
-          organization_id?: string | null
+          organization_id: string
           reviewed_at?: string | null
           reviewer_notes?: string | null
           status?: Database["public"]["Enums"]["accreditation_status"]
@@ -141,7 +141,7 @@ export type Database = {
           created_at?: string
           id?: string
           next_submission_due?: string | null
-          organization_id?: string | null
+          organization_id?: string
           reviewed_at?: string | null
           reviewer_notes?: string | null
           status?: Database["public"]["Enums"]["accreditation_status"]
@@ -165,7 +165,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
-          organization_id: string | null
+          organization_id: string
           updated_at: string
           user_id: string
         }
@@ -173,7 +173,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
-          organization_id?: string | null
+          organization_id: string
           updated_at?: string
           user_id: string
         }
@@ -181,7 +181,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
-          organization_id?: string | null
+          organization_id?: string
           updated_at?: string
           user_id?: string
         }
@@ -1241,33 +1241,33 @@ export type Database = {
         Row: {
           close_date: string | null
           created_at: string
-          creator_id: string | null
           date: string
           emails: string | null
           id: string
           name: string
+          organization_id: string
           status: Database["public"]["Enums"]["survey_status"] | null
           updated_at: string
         }
         Insert: {
           close_date?: string | null
           created_at?: string
-          creator_id?: string | null
           date?: string
           emails?: string | null
           id?: string
           name: string
+          organization_id: string
           status?: Database["public"]["Enums"]["survey_status"] | null
           updated_at?: string
         }
         Update: {
           close_date?: string | null
           created_at?: string
-          creator_id?: string | null
           date?: string
           emails?: string | null
           id?: string
           name?: string
+          organization_id?: string
           status?: Database["public"]["Enums"]["survey_status"] | null
           updated_at?: string
         }

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
@@ -5,8 +6,9 @@ import PageTitle from '../components/ui/PageTitle';
 import SurveyList from '../components/surveys/SurveyList';
 import Pagination from '../components/surveys/Pagination';
 import { toast } from "sonner";
-import { supabase } from '../lib/supabase';
+import { supabase } from '../integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
+import { useOrganization } from '../contexts/OrganizationContext';
 import { useIsMobile } from '../hooks/use-mobile';
 import { sendSurveyReminder } from '../utils/survey/sendReminder';
 
@@ -14,6 +16,7 @@ const SURVEYS_PER_PAGE = 10;
 
 const Surveys = () => {
   const { user } = useAuth();
+  const { currentOrganization } = useOrganization();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [surveys, setSurveys] = useState<any[]>([]);
@@ -24,26 +27,26 @@ const Surveys = () => {
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    setCanCreateSurveys(!!user);
-  }, [user]);
+    setCanCreateSurveys(!!user && !!currentOrganization);
+  }, [user, currentOrganization]);
 
   useEffect(() => {
     const fetchSurveys = async () => {
-      if (!user) {
-        console.log('No user found, skipping survey fetch');
+      if (!user || !currentOrganization) {
+        console.log('No user or organization found, skipping survey fetch');
         setLoading(false);
         return;
       }
 
       try {
-        console.log('Fetching surveys for user:', user.id);
+        console.log('Fetching surveys for organization:', currentOrganization.id);
         setLoading(true);
         
         console.log('Counting surveys excluding Archived ones');
         const { count, error: countError } = await supabase
           .from('survey_templates')
           .select('*', { count: 'exact', head: true })
-          .eq('creator_id', user.id)
+          .eq('organization_id', currentOrganization.id)
           .neq('status', 'Archived');
           
         if (countError) {
@@ -70,7 +73,7 @@ const Surveys = () => {
             status,
             survey_responses(count)
           `)
-          .eq('creator_id', user.id)
+          .eq('organization_id', currentOrganization.id)
           .neq('status', 'Archived')
           .order('created_at', { ascending: false })
           .range(from, to);
@@ -153,7 +156,7 @@ const Surveys = () => {
     };
 
     fetchSurveys();
-  }, [user, currentPage, refreshFlag]);
+  }, [user, currentOrganization, currentPage, refreshFlag]);
 
   const handleSendReminder = async (id: string) => {
     console.log(`Sending reminder for survey ${id}`);
@@ -178,13 +181,32 @@ const Surveys = () => {
 
   const totalPages = Math.ceil(totalSurveys / SURVEYS_PER_PAGE);
 
+  if (!currentOrganization) {
+    return (
+      <MainLayout>
+        <div className="page-container bg-white">
+          <div className="text-center py-12">
+            <h2 className="text-xl font-semibold mb-4">No Organisation Selected</h2>
+            <p className="text-gray-600 mb-6">Please select an organisation to view surveys.</p>
+            <Link 
+              to="/team" 
+              className="bg-brandPurple-500 hover:bg-brandPurple-600 text-white font-medium py-2 px-6 rounded-md transition-all duration-200 inline-block"
+            >
+              Manage Organisations
+            </Link>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
   return (
     <MainLayout>
       <div className="page-container bg-white">
         <div className={`flex ${isMobile ? 'flex-col gap-4' : 'justify-between items-center'} mb-8`}>
           <PageTitle 
             title="Surveys" 
-            subtitle="Manage all your wellbeing surveys in one place"
+            subtitle={`Manage wellbeing surveys for ${currentOrganization.name}`}
             className={`mb-0 ${isMobile ? 'text-center' : 'text-left'}`}
           />
           {user && (
@@ -208,7 +230,7 @@ const Surveys = () => {
             {surveys.length === 0 ? (
               <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-12 text-center">
                 <h2 className="text-xl font-semibold mb-2">No surveys found</h2>
-                <p className="text-gray-500 mb-6">You haven't created any surveys yet.</p>
+                <p className="text-gray-500 mb-6">You haven't created any surveys for this organisation yet.</p>
                 <Link 
                   to="/survey-editor" 
                   className="bg-brandPurple-500 hover:bg-brandPurple-600 text-white font-medium py-2 px-6 rounded-md transition-all duration-200 inline-block"

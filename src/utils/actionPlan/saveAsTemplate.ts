@@ -1,11 +1,12 @@
 
-import { supabase } from "../../lib/supabase";
+import { supabase } from "../../integrations/supabase/client";
 
 /**
  * Save descriptors as a template
  */
 export const saveAsTemplate = async (
   userId: string,
+  organizationId: string,
   section: string,
   templateName: string
 ): Promise<{ success: boolean, error?: string }> => {
@@ -17,6 +18,7 @@ export const saveAsTemplate = async (
       .from('action_plan_templates')
       .insert({
         user_id: userId,
+        organization_id: organizationId,
         name: templateName,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()

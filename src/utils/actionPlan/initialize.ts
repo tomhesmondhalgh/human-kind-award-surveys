@@ -1,5 +1,5 @@
 
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../integrations/supabase/client';
 import { INITIAL_DESCRIPTORS } from '../../lib/supabase/mockData';
 
 export async function initializeActionPlan(organizationId: string): Promise<{ success: boolean; error?: any }> {

@@ -1,3 +1,4 @@
+
 import { supabase } from "../../integrations/supabase/client";
 import { SurveyTemplate, SurveyWithResponses } from "../types/survey";
 import { countSurveyResponses } from "./responses";
@@ -38,12 +39,18 @@ export const getSurveyById = async (id: string): Promise<SurveyTemplate | null> 
   }
 };
 
-export const getAllSurveyTemplates = async (): Promise<SurveyTemplate[]> => {
+export const getAllSurveyTemplates = async (organizationId?: string): Promise<SurveyTemplate[]> => {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('survey_templates')
       .select('*')
       .order('date', { ascending: false });
+    
+    if (organizationId) {
+      query = query.eq('organization_id', organizationId);
+    }
+    
+    const { data, error } = await query;
     
     if (error) {
       console.error('Error fetching survey templates:', error);
@@ -57,9 +64,9 @@ export const getAllSurveyTemplates = async (): Promise<SurveyTemplate[]> => {
   }
 };
 
-export const getRecentSurveys = async (limit: number = 3, userId?: string): Promise<SurveyWithResponses[]> => {
+export const getRecentSurveys = async (limit: number = 3, organizationId?: string): Promise<SurveyWithResponses[]> => {
   try {
-    console.log(`Fetching recent surveys, limit: ${limit}, userId: ${userId}`);
+    console.log(`Fetching recent surveys, limit: ${limit}, organizationId: ${organizationId}`);
     
     let query = supabase
       .from('survey_templates')
@@ -67,8 +74,8 @@ export const getRecentSurveys = async (limit: number = 3, userId?: string): Prom
       .order('date', { ascending: false })
       .limit(limit);
     
-    if (userId) {
-      query = query.eq('creator_id', userId);
+    if (organizationId) {
+      query = query.eq('organization_id', organizationId);
     }
     
     const { data: templates, error: templatesError } = await query;
@@ -116,7 +123,7 @@ export const checkForClosedSurveys = async () => {
         id,
         name,
         close_date,
-        creator_id,
+        organization_id,
         profiles(
           email,
           first_name,
@@ -125,7 +132,7 @@ export const checkForClosedSurveys = async () => {
       `)
       .gte('close_date', todayStart)
       .lte('close_date', todayEnd)
-      .not('creator_id', 'is', null)
+      .not('organization_id', 'is', null)
       .not('close_date', 'is', null);
     
     if (error) {
@@ -137,8 +144,8 @@ export const checkForClosedSurveys = async () => {
     
     if (closedSurveys && closedSurveys.length > 0) {
       for (const survey of closedSurveys) {
-        if (!survey.creator_id || !survey.profiles) {
-          console.log(`Survey ${survey.id} has no creator, skipping notification`);
+        if (!survey.organization_id || !survey.profiles) {
+          console.log(`Survey ${survey.id} has no organization or profiles, skipping notification`);
           continue;
         }
         
@@ -152,7 +159,7 @@ export const checkForClosedSurveys = async () => {
         }
         
         const creator = {
-          id: survey.creator_id,
+          id: survey.organization_id,
           email: creatorProfile.email,
           firstName: creatorProfile.first_name,
           lastName: creatorProfile.last_name
