@@ -11,7 +11,7 @@ interface FeedbackAnalytics {
   responseCount: number;
   avgScore: number;
   negativeFeedbackCount: number;
-  feedbackRatio: number; // Negative feedback as percentage of total responses
+  feedbackRatio: number;
 }
 
 export function useSurveyFeedbackAnalytics(threshold: number = 5) {
@@ -24,17 +24,15 @@ export function useSurveyFeedbackAnalytics(threshold: number = 5) {
       try {
         setIsLoading(true);
         
-        // Get all surveys
+        // Get all surveys with organization and creator information
         const { data: surveys, error: surveyError } = await supabase
           .from('survey_templates')
           .select(`
             id,
             name,
-            creator_id,
-            profiles:creator_id (
-              first_name,
-              last_name,
-              school_name
+            organization_id,
+            organizations:organization_id (
+              name
             )
           `)
           .order('created_at', { ascending: false });
@@ -108,22 +106,22 @@ export function useSurveyFeedbackAnalytics(threshold: number = 5) {
             
             const avgScore = scoreCount > 0 ? totalScore / scoreCount : 0;
             const feedbackRatio = responses.length > 0 ? 
-              (negativeFeedbackCount / (responses.length * 8)) : 0; // 8 wellbeing questions per response
+              (negativeFeedbackCount / (responses.length * 8)) : 0;
             
             // If this survey has significant negative feedback, add it to the results
             if (responses.length >= threshold && (feedbackRatio > 0.25 || avgScore < 6)) {
-              const profile = survey.profiles as any;
+              const organization = survey.organizations as any;
               
               feedbackData.push({
-                userId: survey.creator_id,
-                userName: `${profile.first_name || ''} ${profile.last_name || ''}`.trim(),
-                schoolName: profile.school_name || 'Unknown School',
+                userId: survey.organization_id,
+                userName: 'Organization Admin',
+                schoolName: organization?.name || 'Unknown Organisation',
                 surveyId: survey.id,
                 surveyName: survey.name,
                 responseCount: responses.length,
                 avgScore: Math.round(avgScore * 10) / 10,
                 negativeFeedbackCount,
-                feedbackRatio: Math.round(feedbackRatio * 100) // Convert to percentage
+                feedbackRatio: Math.round(feedbackRatio * 100)
               });
             }
           } catch (err) {

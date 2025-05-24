@@ -11,23 +11,25 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { saveAsTemplate } from '@/utils/actionPlanUtils';
+import { saveAsTemplate } from '@/utils/actionPlan/saveAsTemplate';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 interface SaveTemplateDialogProps {
   userId: string;
   isOpen: boolean;
   onClose: () => void;
-  section?: string; // Add section parameter
+  section?: string;
 }
 
 const SaveTemplateDialog: React.FC<SaveTemplateDialogProps> = ({
   userId,
   isOpen,
   onClose,
-  section = 'General' // Default section if not provided
+  section = 'General'
 }) => {
   const [templateName, setTemplateName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { currentOrganization } = useOrganization();
 
   const handleSubmit = async () => {
     if (!templateName.trim()) {
@@ -39,8 +41,17 @@ const SaveTemplateDialog: React.FC<SaveTemplateDialogProps> = ({
       return;
     }
 
+    if (!currentOrganization) {
+      toast({
+        title: 'Error',
+        description: 'No organisation selected',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     setIsSubmitting(true);
-    const result = await saveAsTemplate(userId, section, templateName);
+    const result = await saveAsTemplate(userId, currentOrganization.id, section, templateName);
     setIsSubmitting(false);
 
     if (result.success) {
@@ -50,6 +61,12 @@ const SaveTemplateDialog: React.FC<SaveTemplateDialogProps> = ({
       });
       setTemplateName('');
       onClose();
+    } else {
+      toast({
+        title: 'Error',
+        description: result.error || 'Failed to save template',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -59,7 +76,7 @@ const SaveTemplateDialog: React.FC<SaveTemplateDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Save as Template</DialogTitle>
           <DialogDescription>
-            Save your current action plan as a template for future use.
+            Save your current action plan as a template for future use in {currentOrganization?.name || 'this organisation'}.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">

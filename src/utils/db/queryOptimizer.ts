@@ -1,195 +1,177 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { SurveyStatus } from '../types/survey';
-import { getCacheItem, setCacheItem } from '../cache/cacheUtils';
+import { SurveyTemplate, SurveyStatus } from '@/utils/types/survey';
 
-/**
- * Optimized survey responses query that uses our new indexes
- * and selects only necessary fields with caching
- */
-export const getSurveyResponsesOptimized = async (surveyId: string) => {
-  console.log('Fetching optimized survey responses for:', surveyId);
-  
-  // Check cache first
-  const cacheKey = `survey_responses_${surveyId}`;
-  const cachedData = getCacheItem<{data: any[], count: number}>(cacheKey);
-  
-  if (cachedData) {
-    console.log('Using cached survey responses');
-    return cachedData;
-  }
-  
-  const { data, error, count } = await supabase
-    .from('survey_responses')
-    .select(`
-      id,
-      role,
-      leadership_prioritize,
-      manageable_workload,
-      work_life_balance,
-      health_state,
-      valued_member,
-      support_access,
-      confidence_in_role,
-      org_pride,
-      recommendation_score,
-      leaving_contemplation,
-      doing_well,
-      improvements,
-      created_at
-    `, { count: 'exact' })
-    .eq('survey_template_id', surveyId)
-    .order('created_at', { ascending: false });
+interface QueryPerformanceMetrics {
+  executionTime: number;
+  rowsReturned: number;
+  cacheHit: boolean;
+}
 
-  if (error) {
-    console.error('Error fetching survey responses:', error);
-    throw error;
-  }
+// Simple cache for frequent queries
+const queryCache = new Map<string, { data: any; timestamp: number; ttl: number }>();
 
-  const result = { data, count };
-  
-  // Cache the result for 5 minutes
-  setCacheItem(cacheKey, result, 300);
-  
-  return result;
+const CACHE_TTL = {
+  SHORT: 30 * 1000,    // 30 seconds
+  MEDIUM: 300 * 1000,  // 5 minutes
+  LONG: 900 * 1000     // 15 minutes
 };
 
 /**
- * Optimized payment history query that leverages our new indexes
- * and includes subscription details in a single query with caching
+ * Generic cache helper
  */
-export const getPaymentHistoryOptimized = async (userId: string, limit = 10, page = 1) => {
-  console.log('Fetching optimized payment history for:', userId);
-  
-  // Check cache first
-  const cacheKey = `payment_history_${userId}_${limit}_${page}`;
-  const cachedData = getCacheItem<any[]>(cacheKey);
-  
-  if (cachedData) {
-    console.log('Using cached payment history');
-    return cachedData;
+function getCachedData<T>(key: string): T | null {
+  const cached = queryCache.get(key);
+  if (cached && Date.now() - cached.timestamp < cached.ttl) {
+    return cached.data as T;
   }
-  
-  const from = (page - 1) * limit;
-  const to = from + limit - 1;
+  queryCache.delete(key);
+  return null;
+}
 
-  const { data: payments, error } = await supabase
-    .from('payment_history')
-    .select(`
-      id,
-      amount,
-      currency,
-      payment_status,
-      payment_method,
-      created_at,
-      subscription_id,
-      billing_school_name,
-      invoice_number,
-      subscriptions (
-        plan_type,
-        purchase_type
-      )
-    `)
-    .order('created_at', { ascending: false })
-    .range(from, to);
-
-  if (error) {
-    console.error('Error fetching payment history:', error);
-    throw error;
-  }
-
-  // Cache the result for 5 minutes
-  setCacheItem(cacheKey, payments, 300);
-  
-  return payments;
-};
+function setCachedData<T>(key: string, data: T, ttl: number): void {
+  queryCache.set(key, {
+    data,
+    timestamp: Date.now(),
+    ttl
+  });
+}
 
 /**
- * Optimized custom questions query that combines related data
- * in a single efficient query with caching
+ * Optimized survey templates query with organization filtering
  */
-export const getCustomQuestionsOptimized = async (surveyId: string) => {
-  console.log('Fetching optimized custom questions for:', surveyId);
-
+export async function getSurveyTemplatesOptimized(
+  organizationId: string,
+  status?: SurveyStatus,
+  limit?: number
+): Promise<SurveyTemplate[]> {
+  const cacheKey = `surveys_${organizationId}_${status || 'all'}_${limit || 'unlimited'}`;
+  
   // Check cache first
-  const cacheKey = `custom_questions_${surveyId}`;
-  const cachedData = getCacheItem<any[]>(cacheKey);
-  
-  if (cachedData) {
-    console.log('Using cached custom questions');
-    return cachedData;
+  const cached = getCachedData<SurveyTemplate[]>(cacheKey);
+  if (cached) {
+    console.log('Cache hit for survey templates');
+    return cached;
   }
-  
-  const { data, error } = await supabase
-    .from('survey_questions')
-    .select(`
-      id,
-      custom_questions:question_id (
+
+  try {
+    console.log('Fetching survey templates from database');
+    
+    let query = supabase
+      .from('survey_templates')
+      .select(`
         id,
-        text,
-        type,
-        options
-      )
-    `)
-    .eq('survey_id', surveyId);
+        name,
+        date,
+        close_date,
+        organization_id,
+        emails,
+        status,
+        created_at,
+        updated_at
+      `)
+      .eq('organization_id', organizationId)
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error('Error fetching custom questions:', error);
-    throw error;
+    if (status) {
+      query = query.eq('status', status);
+    }
+
+    if (limit) {
+      query = query.limit(limit);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error fetching survey templates:', error);
+      throw error;
+    }
+
+    const templates = data as SurveyTemplate[];
+    
+    // Cache successful results
+    setCachedData(cacheKey, templates, CACHE_TTL.MEDIUM);
+    
+    console.log(`Fetched ${templates.length} survey templates`);
+    return templates;
+
+  } catch (error) {
+    console.error('Error in getSurveyTemplatesOptimized:', error);
+    return [];
   }
-
-  const questions = data?.map(item => item.custom_questions) || [];
-  
-  // Cache the result for 10 minutes
-  setCacheItem(cacheKey, questions, 600);
-  
-  return questions;
-};
+}
 
 /**
- * Optimized survey templates query that uses our new compound index
- * on status and date with caching
+ * Optimized survey response count
  */
-export const getSurveyTemplatesOptimized = async (userId: string, status?: SurveyStatus) => {
-  console.log('Fetching optimized survey templates for:', userId);
+export async function getSurveyResponseCountOptimized(surveyId: string): Promise<number> {
+  const cacheKey = `responses_count_${surveyId}`;
   
-  // Check cache first
-  const cacheKey = `survey_templates_${userId}_${status || 'all'}`;
-  const cachedData = getCacheItem<any[]>(cacheKey);
-  
-  if (cachedData) {
-    console.log('Using cached survey templates');
-    return cachedData;
-  }
-  
-  let query = supabase
-    .from('survey_templates')
-    .select(`
-      id,
-      name,
-      date,
-      close_date,
-      status,
-      emails,
-      created_at,
-      survey_responses (count)
-    `)
-    .eq('creator_id', userId)
-    .order('created_at', { ascending: false });
-
-  if (status) {
-    query = query.eq('status', status);
+  const cached = getCachedData<number>(cacheKey);
+  if (cached !== null) {
+    return cached;
   }
 
-  const { data, error } = await query;
+  try {
+    const { count, error } = await supabase
+      .from('survey_responses')
+      .select('*', { count: 'exact', head: true })
+      .eq('survey_template_id', surveyId);
 
-  if (error) {
-    console.error('Error fetching survey templates:', error);
-    throw error;
+    if (error) {
+      console.error('Error counting responses:', error);
+      return 0;
+    }
+
+    const responseCount = count || 0;
+    setCachedData(cacheKey, responseCount, CACHE_TTL.SHORT);
+    
+    return responseCount;
+  } catch (error) {
+    console.error('Error in getSurveyResponseCountOptimized:', error);
+    return 0;
   }
+}
+
+/**
+ * Clear cache for specific organization
+ */
+export function clearOrganizationCache(organizationId: string): void {
+  const keysToDelete = Array.from(queryCache.keys()).filter(key => 
+    key.includes(organizationId)
+  );
   
-  // Cache the result for 2 minutes
-  setCacheItem(cacheKey, data, 120);
-  
-  return data;
-};
+  keysToDelete.forEach(key => queryCache.delete(key));
+  console.log(`Cleared ${keysToDelete.length} cache entries for organization ${organizationId}`);
+}
+
+/**
+ * Clear all cache
+ */
+export function clearAllCache(): void {
+  queryCache.clear();
+  console.log('Cleared all query cache');
+}
+
+/**
+ * Get cache statistics
+ */
+export function getCacheStats() {
+  const now = Date.now();
+  const stats = {
+    totalEntries: queryCache.size,
+    activeEntries: 0,
+    expiredEntries: 0
+  };
+
+  queryCache.forEach((value) => {
+    if (now - value.timestamp < value.ttl) {
+      stats.activeEntries++;
+    } else {
+      stats.expiredEntries++;
+    }
+  });
+
+  return stats;
+}

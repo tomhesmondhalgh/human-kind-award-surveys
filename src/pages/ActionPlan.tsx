@@ -6,19 +6,29 @@ import { initializeActionPlan, getSectionProgressSummary } from '../utils/action
 import { ACTION_PLAN_SECTIONS } from '../types/actionPlan';
 import MainLayout from '../components/layout/MainLayout';
 import PageTitle from '../components/ui/PageTitle';
-import SectionSummary from '../components/action-plan/SectionSummary';
 import DescriptorTable from '../components/action-plan/DescriptorTable';
 import BottomNavigation from '../components/action-plan/BottomNavigation';
 import { Skeleton } from '../components/ui/skeleton';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 
+interface SectionProgress {
+  section: string;
+  totalCount: number;
+  completedCount: number;
+  inProgressCount: number;
+  notStartedCount: number;
+  blockedCount: number;
+  notApplicableCount: number;
+  percentComplete: number;
+}
+
 const ActionPlan = () => {
   const { user } = useAuth();
   const { currentOrganization } = useOrganization();
   const [currentSection, setCurrentSection] = useState(ACTION_PLAN_SECTIONS[0].key);
   const [isInitializing, setIsInitializing] = useState(false);
-  const [summaryData, setSummaryData] = useState<any[]>([]);
+  const [summaryData, setSummaryData] = useState<SectionProgress[]>([]);
   const [isLoadingSummary, setIsLoadingSummary] = useState(true);
 
   const currentSectionData = ACTION_PLAN_SECTIONS.find(s => s.key === currentSection);
@@ -129,11 +139,59 @@ const ActionPlan = () => {
             ))}
           </div>
         ) : (
-          <SectionSummary 
-            summaryData={summaryData}
-            currentSection={currentSection}
-            onSectionChange={setCurrentSection}
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+            {ACTION_PLAN_SECTIONS.map(section => {
+              const sectionData = summaryData.find(s => s.section === section.title);
+              return (
+                <div 
+                  key={section.key}
+                  className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 ${
+                    currentSection === section.key 
+                      ? 'bg-brandPurple-50 border-brandPurple-200 shadow-md' 
+                      : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                  }`}
+                  onClick={() => setCurrentSection(section.key)}
+                >
+                  <h3 className="font-medium text-lg mb-2">{section.title}</h3>
+                  
+                  {sectionData && (
+                    <>
+                      <div className="mb-4">
+                        <div className="w-full bg-gray-200 rounded-full h-2.5">
+                          <div 
+                            className="bg-green-600 h-2.5 rounded-full" 
+                            style={{ width: `${sectionData.percentComplete}%` }}
+                          ></div>
+                        </div>
+                        <div className="mt-1 text-sm text-gray-600">
+                          {sectionData.percentComplete}% Complete
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="flex justify-between px-2 py-1 bg-green-50 rounded">
+                          <span>Completed:</span>
+                          <span className="font-medium">{sectionData.completedCount}</span>
+                        </div>
+                        <div className="flex justify-between px-2 py-1 bg-blue-50 rounded">
+                          <span>In Progress:</span>
+                          <span className="font-medium">{sectionData.inProgressCount}</span>
+                        </div>
+                        <div className="flex justify-between px-2 py-1 bg-gray-50 rounded">
+                          <span>Not Started:</span>
+                          <span className="font-medium">{sectionData.notStartedCount}</span>
+                        </div>
+                        <div className="flex justify-between px-2 py-1 bg-red-50 rounded">
+                          <span>Blocked:</span>
+                          <span className="font-medium">{sectionData.blockedCount}</span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         )}
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
@@ -151,7 +209,6 @@ const ActionPlan = () => {
         </div>
 
         <BottomNavigation
-          sections={ACTION_PLAN_SECTIONS}
           currentSection={currentSection}
           onSectionChange={setCurrentSection}
         />

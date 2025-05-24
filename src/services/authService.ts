@@ -47,7 +47,7 @@ export function clearAuthCache() {
 }
 
 /**
- * Check if current user is the owner of a resource
+ * Check if current user can access a survey resource
  */
 export async function isResourceOwner(resourceId: string): Promise<boolean> {
   try {
@@ -65,10 +65,10 @@ export async function isResourceOwner(resourceId: string): Promise<boolean> {
       return cachedResult;
     }
     
-    // Query for the resource
+    // Query for the resource and check organization membership
     const { data, error: resourceError } = await supabase
       .from('survey_templates')
-      .select('creator_id')
+      .select('organization_id')
       .eq('id', resourceId)
       .single();
     
@@ -76,13 +76,25 @@ export async function isResourceOwner(resourceId: string): Promise<boolean> {
       return false;
     }
     
-    // Check if the user is the owner
-    const isOwner = data.creator_id === user.id;
+    // Check if the user is a member of the organization that owns this resource
+    const { data: membershipData, error: membershipError } = await supabase
+      .from('organization_memberships')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('organization_id', data.organization_id)
+      .single();
+    
+    if (membershipError || !membershipData) {
+      return false;
+    }
+    
+    // User has access if they're a member of the organization
+    const hasAccess = !!membershipData;
     
     // Cache the result
-    setCacheItem(cacheKey, isOwner, CACHE_EXPIRY);
+    setCacheItem(cacheKey, hasAccess, CACHE_EXPIRY);
     
-    return isOwner;
+    return hasAccess;
   } catch (error) {
     console.error('Error checking resource ownership:', error);
     return false;

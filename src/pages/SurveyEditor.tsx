@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useOrganization } from '../contexts/OrganizationContext';
 import SurveyLoading from '../components/survey-form/SurveyLoading';
 import { sendUserToHubspot } from '../utils/auth';
 import ArchiveSurveyDialog from '../components/surveys/ArchiveSurveyDialog';
@@ -24,6 +25,7 @@ const SurveyEditor = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [surveyData, setSurveyData] = useState<SurveyFormData | null>(null);
   const [customQuestionIds, setCustomQuestionIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -131,6 +133,13 @@ const SurveyEditor = () => {
         return null;
       }
 
+      if (!currentOrganization) {
+        toast.error("No organisation selected", {
+          description: "Please select an organisation to create surveys."
+        });
+        return null;
+      }
+
       // Validate emails if this is a send action and using email distribution
       if (action === 'send' && data.distributionMethod === 'email' && data.recipients) {
         const { validEmails, invalidEmails } = validateEmails(data.recipients);
@@ -211,7 +220,7 @@ const SurveyEditor = () => {
             name: data.name,
             date: surveyDate.toISOString(),
             close_date: closeDate ? closeDate.toISOString() : null,
-            creator_id: user.id,
+            organization_id: currentOrganization.id,
             emails: emailsValue,
             status: statusToSave
           })
@@ -452,6 +461,24 @@ const SurveyEditor = () => {
               className="mt-4 px-4 py-2 bg-brand-blue text-white rounded hover:bg-blue-600"
             >
               Back to Surveys
+            </button>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (!currentOrganization) {
+    return (
+      <MainLayout>
+        <div className="page-container">
+          <div className="flex flex-col items-center justify-center min-h-[50vh]">
+            <p className="text-gray-600 mb-4">Please select an organisation to create or edit surveys.</p>
+            <button 
+              onClick={() => navigate('/team')}
+              className="px-4 py-2 bg-brandPurple-500 text-white rounded hover:bg-brandPurple-600"
+            >
+              Manage Organisations
             </button>
           </div>
         </div>
