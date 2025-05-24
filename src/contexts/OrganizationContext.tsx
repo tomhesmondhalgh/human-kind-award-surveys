@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
@@ -45,42 +44,84 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     console.log('OrganizationContext: Fetching organizations for user:', user.id);
     
     try {
-      // Fetch memberships with organization details using the fixed RLS policies
-      const { data: memberships, error } = await supabase
-        .from('organization_memberships')
-        .select(`
-          *,
-          organizations:organization_id (
-            id,
-            name,
-            address,
-            urn,
-            created_at,
-            updated_at
-          )
-        `)
-        .eq('user_id', user.id);
+      // Try using the security definer function first
+      const { data: userMemberships, error: membershipError } = await supabase
+        .rpc('get_user_memberships', { user_uuid: user.id });
 
-      if (error) {
-        console.error('OrganizationContext: Error fetching organizations:', error);
-        throw error;
+      if (membershipError) {
+        console.error('OrganizationContext: Error with get_user_memberships function:', membershipError);
+        // Fallback to direct query if function fails
+        const { data: directMemberships, error: directError } = await supabase
+          .from('organization_memberships')
+          .select('*')
+          .eq('user_id', user.id);
+          
+        if (directError) {
+          console.error('OrganizationContext: Direct query also failed:', directError);
+          throw new Error(`Database query failed: ${directError.message}`);
+        }
+        
+        // Process direct memberships
+        if (!directMemberships || directMemberships.length === 0) {
+          console.log('OrganizationContext: No memberships found for user');
+          return [];
+        }
+        
+        // Get organization details separately
+        const orgIds = directMemberships.map(m => m.organization_id);
+        const { data: organizationsData, error: orgsError } = await supabase
+          .from('organizations')
+          .select('*')
+          .in('id', orgIds);
+          
+        if (orgsError) {
+          throw new Error(`Failed to fetch organization details: ${orgsError.message}`);
+        }
+        
+        const organizations = directMemberships
+          .map(membership => {
+            const org = organizationsData?.find(o => o.id === membership.organization_id);
+            if (!org) return null;
+            return {
+              ...org,
+              role: membership.role
+            };
+          })
+          .filter(org => org !== null) as OrganizationWithRole[];
+        
+        console.log('OrganizationContext: Processed organizations from direct query:', organizations);
+        return organizations;
       }
 
-      console.log('OrganizationContext: Raw memberships data:', memberships);
-
-      if (!memberships || memberships.length === 0) {
-        console.log('OrganizationContext: No memberships found for user');
+      // Process function result
+      if (!userMemberships || userMemberships.length === 0) {
+        console.log('OrganizationContext: No memberships found for user via function');
         return [];
       }
 
-      const organizations = memberships
-        .filter(membership => membership.organizations)
-        .map(membership => ({
-          ...membership.organizations,
-          role: membership.role
-        })) as OrganizationWithRole[];
+      // Get organization details for the memberships
+      const orgIds = userMemberships.map((m: any) => m.organization_id);
+      const { data: organizationsData, error: orgsError } = await supabase
+        .from('organizations')
+        .select('*')
+        .in('id', orgIds);
+        
+      if (orgsError) {
+        throw new Error(`Failed to fetch organization details: ${orgsError.message}`);
+      }
+
+      const organizations = userMemberships
+        .map((membership: any) => {
+          const org = organizationsData?.find((o: any) => o.id === membership.organization_id);
+          if (!org) return null;
+          return {
+            ...org,
+            role: membership.role
+          };
+        })
+        .filter((org: any) => org !== null) as OrganizationWithRole[];
       
-      console.log('OrganizationContext: Processed organizations:', organizations);
+      console.log('OrganizationContext: Processed organizations from function:', organizations);
       return organizations;
     } catch (error) {
       console.error('OrganizationContext: Error in fetchOrganizations:', error);
@@ -99,7 +140,18 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       console.log('OrganizationContext: Organizations refreshed successfully');
     } catch (error) {
       console.error('OrganizationContext: Error in refreshOrganizations:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load organizations';
+      let errorMessage = 'Failed to load organizations';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('infinite recursion')) {
+          errorMessage = 'Database configuration issue detected. Please contact support.';
+        } else if (error.message.includes('policy')) {
+          errorMessage = 'Permission denied. Please check your account access.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       setError(errorMessage);
       console.error('OrganizationContext: Setting error:', errorMessage);
     }
@@ -195,7 +247,18 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
       } catch (error) {
         console.error('OrganizationContext: Error in fetchCurrentOrganization:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Failed to load organization data';
+        let errorMessage = 'Failed to load organization data';
+        
+        if (error instanceof Error) {
+          if (error.message.includes('infinite recursion')) {
+            errorMessage = 'Database configuration issue detected. Please contact support.';
+          } else if (error.message.includes('policy')) {
+            errorMessage = 'Permission denied. Please check your account access.';
+          } else {
+            errorMessage = error.message;
+          }
+        }
+        
         setError(errorMessage);
         setOrganizations([]);
         setCurrentOrganization(null);
