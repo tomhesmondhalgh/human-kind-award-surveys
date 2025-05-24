@@ -35,11 +35,12 @@ export function useTeamMembers(organizationId?: string) {
           throw new Error('Not authenticated');
         }
 
+        // Fixed query syntax: removed :user_id from profiles reference
         const { data, error } = await supabase
           .from('organization_memberships')
           .select(`
             *,
-            profiles:user_id (
+            profiles (
               first_name,
               last_name,
               job_title
@@ -67,6 +68,10 @@ export function useTeamMembers(organizationId?: string) {
     retry: (failureCount, error) => {
       // Don't retry auth errors
       if (error?.message?.includes('Not authenticated')) {
+        return false;
+      }
+      // Don't retry PostgREST syntax errors
+      if (error?.message?.includes('syntax error') || error?.code === 'PGRST116') {
         return false;
       }
       return failureCount < 2;
