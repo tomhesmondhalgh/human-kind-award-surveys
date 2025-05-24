@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -70,8 +69,8 @@ export function useTeamMembers(organizationId?: string) {
       if (error?.message?.includes('Not authenticated')) {
         return false;
       }
-      // Don't retry PostgREST syntax errors
-      if (error?.message?.includes('syntax error') || error?.code === 'PGRST116') {
+      // Don't retry PostgREST syntax errors - properly check for code property
+      if (error?.message?.includes('syntax error') || (error as any)?.code === 'PGRST116') {
         return false;
       }
       return failureCount < 2;
