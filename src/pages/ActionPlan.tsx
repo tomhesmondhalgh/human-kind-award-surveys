@@ -209,8 +209,8 @@ const ActionPlan = () => {
         </div>
 
         <BottomNavigation
-          currentSection={currentSection}
-          onSectionChange={setCurrentSection}
+          activeTab={currentSection}
+          onTabChange={setCurrentSection}
         />
       </div>
     </MainLayout>

@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { getPaymentHistoryOptimized } from '@/utils/db/queryOptimizer';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -17,8 +17,20 @@ export const usePaymentHistory = (limit = 10) => {
       
       try {
         setLoading(true);
-        const data = await getPaymentHistoryOptimized(user.id, limit, page);
-        setPayments(data);
+        
+        // Simple payment history fetch - can be optimized later
+        const { data, error } = await supabase
+          .from('purchases')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .range((page - 1) * limit, page * limit - 1);
+
+        if (error) {
+          throw error;
+        }
+
+        setPayments(data || []);
       } catch (err: any) {
         console.error('Error fetching payments:', err);
         setError(err.message);
