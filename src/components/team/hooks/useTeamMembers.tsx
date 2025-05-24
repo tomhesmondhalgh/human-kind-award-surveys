@@ -21,6 +21,20 @@ export function useTeamMembers(organizationId?: string) {
       if (!organizationId) return [];
       
       try {
+        // Debug: Check current session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        console.log('Team members query - Session check:', {
+          hasSession: !!session,
+          userId: session?.user?.id,
+          organizationId,
+          sessionError
+        });
+
+        if (!session?.user) {
+          console.warn('No authenticated session found when querying team members');
+          throw new Error('Not authenticated');
+        }
+
         const { data, error } = await supabase
           .from('organization_memberships')
           .select(`
@@ -33,7 +47,12 @@ export function useTeamMembers(organizationId?: string) {
           `)
           .eq('organization_id', organizationId);
           
-        if (error) throw error;
+        if (error) {
+          console.error('Team members query error:', error);
+          throw error;
+        }
+        
+        console.log('Team members fetched successfully:', data?.length || 0, 'members');
         
         return (data || []).map(membership => ({
           ...membership,
@@ -44,7 +63,14 @@ export function useTeamMembers(organizationId?: string) {
         throw error;
       }
     },
-    enabled: !!organizationId
+    enabled: !!organizationId,
+    retry: (failureCount, error) => {
+      // Don't retry auth errors
+      if (error?.message?.includes('Not authenticated')) {
+        return false;
+      }
+      return failureCount < 2;
+    }
   });
   
   const sendInvitation = useMutation({
@@ -52,6 +78,14 @@ export function useTeamMembers(organizationId?: string) {
       if (!organizationId) throw new Error('No organization selected');
       
       try {
+        // Check session before making the request
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) {
+          throw new Error('Not authenticated - please log in again');
+        }
+
+        console.log('Sending invitation:', { email, role, organizationId, userId: session.user.id });
+
         const token = crypto.randomUUID();
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
@@ -63,17 +97,18 @@ export function useTeamMembers(organizationId?: string) {
             organization_id: organizationId,
             role: role as any,
             token,
-            invited_by: (await supabase.auth.getUser()).data.user?.id,
+            invited_by: session.user.id,
             expires_at: expiresAt.toISOString()
           })
           .select()
           .single();
           
-        if (error) throw error;
+        if (error) {
+          console.error('Invitation creation error:', error);
+          throw error;
+        }
         
-        // TODO: Send invitation email via edge function
-        console.log('Invitation created:', data);
-        
+        console.log('Invitation created successfully:', data);
         return data;
       } catch (error) {
         console.error('Error sending invitation:', error);
@@ -85,13 +120,24 @@ export function useTeamMembers(organizationId?: string) {
       setIsInviteModalOpen(false);
       queryClient.invalidateQueries({ queryKey: ['organizationMembers', organizationId] });
     },
-    onError: () => {
-      toast.error('Failed to send invitation');
+    onError: (error: any) => {
+      console.error('Invitation mutation error:', error);
+      if (error.message?.includes('Not authenticated')) {
+        toast.error('Authentication required - please refresh the page and log in again');
+      } else {
+        toast.error('Failed to send invitation');
+      }
     }
   });
   
   const removeMember = useMutation({
     mutationFn: async (memberId: string) => {
+      // Check session before making the request
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        throw new Error('Not authenticated - please log in again');
+      }
+
       const { error } = await supabase
         .from('organization_memberships')
         .delete()
@@ -103,8 +149,13 @@ export function useTeamMembers(organizationId?: string) {
       toast.success('Team member removed');
       queryClient.invalidateQueries({ queryKey: ['organizationMembers', organizationId] });
     },
-    onError: () => {
-      toast.error('Failed to remove team member');
+    onError: (error: any) => {
+      console.error('Remove member error:', error);
+      if (error.message?.includes('Not authenticated')) {
+        toast.error('Authentication required - please refresh the page and log in again');
+      } else {
+        toast.error('Failed to remove team member');
+      }
     }
   });
   

@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { Users, UserPlus, Mail, Crown, Edit3, Eye, Trash2, Building } from 'lucide-react';
+import { Users, UserPlus, Mail, Crown, Edit3, Eye, Trash2, Building, AlertCircle } from 'lucide-react';
 import { useTeamMembers } from '../components/team/hooks/useTeamMembers';
 import { useTeamInvitations } from '../components/team/hooks/useTeamInvitations';
 import { Skeleton } from '../components/ui/skeleton';
@@ -15,14 +15,41 @@ import ConfirmDeleteModal from '../components/team/ConfirmDeleteModal';
 import OrganizationsList from '../components/team/OrganizationsList';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { validateAndRefreshSession } from '../utils/auth/sessionUtils';
 
 const Team = () => {
-  const { user } = useAuth();
+  const { user, isAuthenticated, authCheckComplete } = useAuth();
   const { currentOrganization, isLoading: orgLoading, error: orgError } = useOrganization();
   const [memberToDelete, setMemberToDelete] = React.useState<string | null>(null);
   const [activeTab, setActiveTab] = React.useState('members');
+  const [authDebugInfo, setAuthDebugInfo] = React.useState<any>(null);
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Debug authentication status
+  useEffect(() => {
+    const debugAuth = async () => {
+      const { session, error } = await validateAndRefreshSession();
+      const debugInfo = {
+        isAuthenticated,
+        authCheckComplete,
+        hasUser: !!user,
+        userId: user?.id,
+        userEmail: user?.email,
+        hasSession: !!session,
+        sessionError: error?.message,
+        currentOrganization: currentOrganization?.id,
+        timestamp: new Date().toISOString()
+      };
+      
+      console.log('Team page auth debug:', debugInfo);
+      setAuthDebugInfo(debugInfo);
+    };
+
+    if (authCheckComplete) {
+      debugAuth();
+    }
+  }, [isAuthenticated, authCheckComplete, user, currentOrganization]);
 
   // Parse organization ID from URL if present
   useEffect(() => {
@@ -43,6 +70,7 @@ const Team = () => {
   const {
     members,
     isLoading: membersLoading,
+    isError: membersError,
     isInviteModalOpen,
     setIsInviteModalOpen,
     sendInvitation,
@@ -60,7 +88,7 @@ const Team = () => {
     return;
   };
 
-  if (orgLoading) {
+  if (orgLoading || !authCheckComplete) {
     return (
       <MainLayout>
         <div className="container mx-auto px-4 py-8">
@@ -74,8 +102,36 @@ const Team = () => {
     );
   }
 
+  // Show authentication error if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <MainLayout>
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center py-12">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-4">Authentication Required</h2>
+            <p className="text-gray-600 mb-6">Please log in to access team management.</p>
+            <Button onClick={() => navigate('/login')} className="bg-brandPurple-500 hover:bg-brandPurple-600">
+              Log In
+            </Button>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
   const currentUserMembership = members?.find(m => m.user_id === user?.id);
   const canManageTeam = currentUserMembership?.role === 'admin';
+
+  // Debug logging for team management permissions
+  console.log('Team management debug:', {
+    currentUserMembership,
+    canManageTeam,
+    membersCount: members?.length || 0,
+    hasCurrentOrganization: !!currentOrganization,
+    membersError,
+    authDebugInfo
+  });
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
@@ -117,6 +173,17 @@ const Team = () => {
                   ? `Manage members and permissions for ${currentOrganization.name}`
                   : 'Create or select an organisation to manage team members'}
               </p>
+              
+              {/* Debug info when members error occurs */}
+              {membersError && (
+                <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+                  <div className="font-medium">Debug Info:</div>
+                  <div>Can manage team: {canManageTeam ? 'Yes' : 'No'}</div>
+                  <div>Current org: {currentOrganization?.id || 'None'}</div>
+                  <div>User role: {currentUserMembership?.role || 'None'}</div>
+                  <div>Auth status: {isAuthenticated ? 'Authenticated' : 'Not authenticated'}</div>
+                </div>
+              )}
             </div>
 
             {currentOrganization && canManageTeam && (
@@ -127,6 +194,13 @@ const Team = () => {
                 <UserPlus size={16} />
                 Invite Member
               </Button>
+            )}
+
+            {/* Show why invite button isn't visible */}
+            {currentOrganization && !canManageTeam && (
+              <div className="text-sm text-gray-500 bg-gray-50 p-2 rounded">
+                Invite button hidden: Role '{currentUserMembership?.role || 'none'}' (need admin)
+              </div>
             )}
           </div>
 
@@ -154,6 +228,29 @@ const Team = () => {
             <TabsContent value="members">
               {currentOrganization ? (
                 <>
+                  {/* Show error state for members loading */}
+                  {membersError && (
+                    <Card className="mb-6 border-red-200 bg-red-50">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 text-red-700">
+                          <AlertCircle size={16} />
+                          <span className="font-medium">Failed to load team members</span>
+                        </div>
+                        <p className="text-sm text-red-600 mt-1">
+                          This might be due to authentication issues. Try refreshing the page.
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="mt-3"
+                          onClick={() => window.location.reload()}
+                        >
+                          Refresh Page
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )}
+
                   {/* Stats Cards */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <Card>
