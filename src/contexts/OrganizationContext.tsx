@@ -34,24 +34,35 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [organizations, setOrganizations] = useState<OrganizationWithRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   const fetchOrganizations = async () => {
-    if (!user) {
-      console.log('OrganizationContext: No user found, returning empty organizations');
+    if (!user || !isAuthenticated) {
+      console.log('OrganizationContext: No authenticated user, returning empty organizations');
       return [];
     }
     
     console.log('OrganizationContext: Fetching organizations for user:', user.id);
     
     try {
-      // Use the new security definer function to bypass RLS issues
+      // First verify session is valid
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        console.error('OrganizationContext: Invalid session:', sessionError);
+        throw new Error('Authentication session invalid');
+      }
+
+      // Use the security definer function to get user organizations
       console.log('OrganizationContext: Calling get_user_organizations function...');
       const { data: organizationsData, error: orgError } = await supabase
         .rpc('get_user_organizations', { user_uuid: user.id });
 
       if (orgError) {
         console.error('OrganizationContext: Error fetching organizations:', orgError);
+        // If it's an RLS error, provide more helpful context
+        if (orgError.code === 'PGRST116' || orgError.message?.includes('RLS')) {
+          throw new Error('Access permissions issue - please contact support');
+        }
         throw new Error(`Failed to fetch organizations: ${orgError.message}`);
       }
 
@@ -82,8 +93,8 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   const refreshOrganizations = async () => {
-    if (!user) {
-      console.log('OrganizationContext: No user for refresh, skipping');
+    if (!user || !isAuthenticated) {
+      console.log('OrganizationContext: No authenticated user for refresh, skipping');
       return;
     }
     
@@ -99,24 +110,34 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       let errorMessage = 'Failed to load organisations';
       
       if (error instanceof Error) {
-        errorMessage = `Error: ${error.message}`;
+        errorMessage = error.message;
       }
       
       setError(errorMessage);
       setOrganizations([]);
-      toast.error(errorMessage);
+      
+      // Only show toast for non-auth errors to avoid spam
+      if (!errorMessage.includes('Authentication')) {
+        toast.error(errorMessage);
+      }
     }
   };
 
   const createOrganization = async (name: string, address?: string, urn?: string): Promise<OrganizationWithRole | null> => {
-    if (!user) {
-      console.error('OrganizationContext: No user found for organization creation');
+    if (!user || !isAuthenticated) {
+      console.error('OrganizationContext: No authenticated user for organization creation');
       return null;
     }
     
     setIsLoading(true);
     try {
       console.log('OrganizationContext: Creating organization:', { name, address, urn });
+      
+      // Verify session before creating
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Authentication session invalid');
+      }
       
       // Create the organization
       const { data: orgData, error: orgError } = await supabase
@@ -179,15 +200,17 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   useEffect(() => {
     const fetchCurrentOrganization = async () => {
-      console.log('OrganizationContext: Starting fetchCurrentOrganization, user:', user?.id);
+      console.log('OrganizationContext: Starting fetchCurrentOrganization, user:', user?.id, 'authenticated:', isAuthenticated);
       setIsLoading(true);
       setError(null);
       
       // Clear any cached state
-      sessionStorage.removeItem('actionPlanInitialized');
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem('actionPlanInitialized');
+      }
       
       try {
-        if (user) {
+        if (user && isAuthenticated) {
           console.log('OrganizationContext: User authenticated, fetching organizations');
           const orgs = await fetchOrganizations();
           setOrganizations(orgs);
@@ -205,7 +228,7 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             setCurrentOrganization(primaryOrg);
           }
         } else {
-          console.log('OrganizationContext: No user, clearing organizations');
+          console.log('OrganizationContext: No authenticated user, clearing organizations');
           setOrganizations([]);
           setCurrentOrganization(null);
         }
@@ -215,21 +238,28 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         let errorMessage = 'Failed to load organisation data';
         
         if (error instanceof Error) {
-          errorMessage = `Error: ${error.message}`;
+          errorMessage = error.message;
         }
         
         setError(errorMessage);
         setOrganizations([]);
         setCurrentOrganization(null);
-        toast.error(errorMessage);
+        
+        // Only show toast for non-auth errors
+        if (!errorMessage.includes('Authentication')) {
+          toast.error(errorMessage);
+        }
       } finally {
         console.log('OrganizationContext: Finished loading, setting isLoading to false');
         setIsLoading(false);
       }
     };
 
-    fetchCurrentOrganization();
-  }, [user]);
+    // Only fetch if we have a definitive auth state (not still loading)
+    if (user !== undefined) {
+      fetchCurrentOrganization();
+    }
+  }, [user, isAuthenticated]);
 
   const switchOrganization = async (orgId: string): Promise<boolean> => {
     console.log('OrganizationContext: Switching to organization:', orgId);
@@ -240,7 +270,9 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         console.log('OrganizationContext: Found target organization:', targetOrg);
         setCurrentOrganization(targetOrg);
         // Clear action plan cache when switching organizations
-        sessionStorage.removeItem('actionPlanInitialized');
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.removeItem('actionPlanInitialized');
+        }
         return true;
       }
       console.warn('OrganizationContext: Target organization not found in user organizations');

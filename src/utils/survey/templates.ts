@@ -13,7 +13,15 @@ export const getSurveyById = async (id: string): Promise<SurveyTemplate | null> 
       throw new Error('Database connection error');
     }
     
-    // Use a consistent client from integrations/supabase/client
+    // Verify session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session?.user) {
+      console.error('No valid session for survey fetch:', sessionError);
+      throw new Error('Authentication required');
+    }
+    
+    // Fetch the survey
     const { data, error } = await supabase
       .from('survey_templates')
       .select('*')
@@ -30,6 +38,20 @@ export const getSurveyById = async (id: string): Promise<SurveyTemplate | null> 
       return null;
     }
     
+    // Check if user has access to this survey through organization membership
+    if (data.organization_id) {
+      const { data: hasAccess, error: accessError } = await supabase
+        .rpc('user_is_organization_member', { 
+          user_uuid: session.user.id, 
+          org_id: data.organization_id 
+        });
+      
+      if (accessError || !hasAccess) {
+        console.error('User does not have access to this survey:', id);
+        return null;
+      }
+    }
+    
     console.log('Survey template found:', data);
     return data as SurveyTemplate;
   } catch (error) {
@@ -40,12 +62,32 @@ export const getSurveyById = async (id: string): Promise<SurveyTemplate | null> 
 
 export const getAllSurveyTemplates = async (organizationId?: string): Promise<SurveyTemplate[]> => {
   try {
+    // Verify authentication
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session?.user) {
+      console.error('No valid session for survey templates fetch:', sessionError);
+      return [];
+    }
+    
     let query = supabase
       .from('survey_templates')
       .select('*')
-      .order('date', { ascending: false });
+      .order('created_at', { ascending: false });
     
     if (organizationId) {
+      // Verify user has access to this organization
+      const { data: hasAccess, error: accessError } = await supabase
+        .rpc('user_is_organization_member', { 
+          user_uuid: session.user.id, 
+          org_id: organizationId 
+        });
+      
+      if (accessError || !hasAccess) {
+        console.error('User does not have access to organization:', organizationId);
+        return [];
+      }
+      
       query = query.eq('organization_id', organizationId);
     }
     
@@ -67,19 +109,38 @@ export const getRecentSurveys = async (limit: number = 3, organizationId?: strin
   try {
     console.log(`Fetching recent surveys, limit: ${limit}, organizationId: ${organizationId}`);
     
+    // Verify authentication
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session?.user) {
+      console.error('No valid session for recent surveys fetch:', sessionError);
+      return [];
+    }
+    
     if (!organizationId) {
       console.warn('No organization ID provided for recent surveys');
       return [];
     }
     
-    let query = supabase
+    // Verify user has access to this organization
+    const { data: hasAccess, error: accessError } = await supabase
+      .rpc('user_is_organization_member', { 
+        user_uuid: session.user.id, 
+        org_id: organizationId 
+      });
+    
+    if (accessError || !hasAccess) {
+      console.error('User does not have access to organization:', organizationId);
+      return [];
+    }
+    
+    const { data: templates, error: templatesError } = await supabase
       .from('survey_templates')
       .select('*')
       .eq('organization_id', organizationId)
-      .order('date', { ascending: false })
+      .neq('status', 'Archived')
+      .order('created_at', { ascending: false })
       .limit(limit);
-    
-    const { data: templates, error: templatesError } = await query;
     
     if (templatesError) {
       console.error('Error fetching recent surveys:', templatesError);

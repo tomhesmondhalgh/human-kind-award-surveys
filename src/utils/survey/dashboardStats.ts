@@ -7,10 +7,11 @@ export const getDashboardStats = async (organizationId?: string) => {
   try {
     console.log('Fetching dashboard stats for organization:', organizationId);
     
-    const { data: { user } } = await supabase.auth.getUser();
+    // Verify authentication
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
-    if (!user) {
-      console.error('No authenticated user found when fetching dashboard stats');
+    if (sessionError || !session?.user) {
+      console.error('No valid session found when fetching dashboard stats:', sessionError);
       return null;
     }
     
@@ -24,10 +25,24 @@ export const getDashboardStats = async (organizationId?: string) => {
       };
     }
     
+    // Verify user has access to this organization
+    const { data: membershipCheck, error: membershipError } = await supabase
+      .rpc('user_is_organization_member', { 
+        user_uuid: session.user.id, 
+        org_id: organizationId 
+      });
+    
+    if (membershipError || !membershipCheck) {
+      console.error('User does not have access to organization:', organizationId);
+      return null;
+    }
+    
+    // Count surveys for this organization
     const { count: surveyCount, error: surveyError } = await supabase
       .from('survey_templates')
       .select('*', { count: 'exact', head: true })
-      .eq('organization_id', organizationId);
+      .eq('organization_id', organizationId)
+      .neq('status', 'Archived');
     
     if (surveyError) {
       console.error('Error counting surveys:', surveyError);
@@ -36,10 +51,12 @@ export const getDashboardStats = async (organizationId?: string) => {
     
     console.log('Total surveys for this organization:', surveyCount);
     
+    // Get all survey IDs for this organization
     const { data: orgSurveys, error: orgSurveysError } = await supabase
       .from('survey_templates')
       .select('id')
-      .eq('organization_id', organizationId);
+      .eq('organization_id', organizationId)
+      .neq('status', 'Archived');
       
     if (orgSurveysError) {
       console.error('Error fetching organization surveys:', orgSurveysError);
@@ -57,42 +74,45 @@ export const getDashboardStats = async (organizationId?: string) => {
     
     const surveyIds = orgSurveys.map(survey => survey.id);
     
-    // Use countEmailResponses for the email respondents count
-    let totalEmailRespondents = 0;
+    // Count total responses across all surveys
+    let totalResponses = 0;
     for (const surveyId of surveyIds) {
-      const emailResponses = await countEmailResponses(surveyId);
-      totalEmailRespondents += emailResponses;
+      const responses = await countEmailResponses(surveyId);
+      totalResponses += responses;
     }
     
-    console.log('Total email responses for this organization\'s surveys:', totalEmailRespondents);
+    console.log('Total responses for this organization\'s surveys:', totalResponses);
     
+    // Calculate benchmark score
     const benchmarkScore = await calculateBenchmarkScore(surveyIds);
     
-    const { data: surveyTemplates, error: templatesFetchError } = await supabase
+    // Get sent surveys to calculate response rate
+    const { data: sentSurveys, error: sentSurveysError } = await supabase
       .from('survey_templates')
       .select('emails')
       .eq('organization_id', organizationId)
+      .in('status', ['Sent', 'Completed'])
       .not('emails', 'is', null)
-      .not('emails', 'eq', '')
-      .filter('date', 'lt', new Date().toISOString());
+      .not('emails', 'eq', '');
     
-    if (templatesFetchError) {
-      console.error('Error fetching templates for response rate:', templatesFetchError);
+    if (sentSurveysError) {
+      console.error('Error fetching sent surveys for response rate:', sentSurveysError);
       return {
         totalSurveys: surveyCount || 0,
-        totalRespondents: totalEmailRespondents,
+        totalRespondents: totalResponses,
         responseRate: "0%",
         benchmarkScore: benchmarkScore
       };
     }
     
+    // Calculate total recipients from sent surveys
     let totalRecipients = 0;
-    if (surveyTemplates && surveyTemplates.length > 0) {
+    if (sentSurveys && sentSurveys.length > 0) {
       console.log('Calculating total recipients from sent surveys');
       
-      surveyTemplates.forEach(template => {
-        if (template.emails) {
-          const emailsArray = template.emails
+      sentSurveys.forEach(survey => {
+        if (survey.emails) {
+          const emailsArray = survey.emails
             .split(',')
             .map(email => email.trim())
             .filter(email => email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
@@ -104,16 +124,17 @@ export const getDashboardStats = async (organizationId?: string) => {
     
     console.log('Total email recipients:', totalRecipients);
     
+    // Calculate response rate
     let responseRate = 0;
     if (totalRecipients > 0) {
-      responseRate = Math.round((totalEmailRespondents / totalRecipients) * 100);
+      responseRate = Math.round((totalResponses / totalRecipients) * 100);
     }
     
-    console.log('Calculated email response rate:', responseRate);
+    console.log('Calculated response rate:', responseRate);
     
     return {
       totalSurveys: surveyCount || 0,
-      totalRespondents: totalEmailRespondents,
+      totalRespondents: totalResponses,
       responseRate: `${responseRate}%`,
       benchmarkScore: benchmarkScore
     };

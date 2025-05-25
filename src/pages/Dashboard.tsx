@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
@@ -25,26 +26,61 @@ const Dashboard = () => {
   const [dataFetchError, setDataFetchError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { user, session, isAuthenticated } = useAuth();
-  const { currentOrganization } = useOrganization();
+  const { currentOrganization, isLoading: orgLoading, error: orgError } = useOrganization();
   const isMobile = useIsMobile();
 
   console.log('Dashboard auth state:', { 
     userId: user?.id, 
     isAuthenticated, 
     hasSession: !!session,
-    organizationId: currentOrganization?.id
+    organizationId: currentOrganization?.id,
+    orgLoading,
+    orgError
   });
 
   useEffect(() => {
     console.log('Dashboard useEffect - User:', user?.id || 'no user', 'Session:', !!session, 'Organization:', currentOrganization?.id);
+    
     const fetchDashboardData = async () => {
+      // Don't start loading if we're still waiting for org context
+      if (orgLoading) {
+        console.log('Still loading organization context, waiting...');
+        return;
+      }
+      
       setIsLoading(true);
       setDataFetchError(null);
       
       try {
+        // Check for authentication issues first
+        if (!isAuthenticated || !user) {
+          console.log('User not authenticated, skipping data fetch');
+          setIsLoading(false);
+          return;
+        }
+        
+        // Check for organization issues
+        if (orgError) {
+          console.error('Organization context error:', orgError);
+          setDataFetchError(`Organization error: ${orgError}`);
+          setIsLoading(false);
+          return;
+        }
+        
+        if (!currentOrganization) {
+          console.log('No current organization, showing empty state');
+          setTotalSurveys(0);
+          setTotalRespondents(0);
+          setResponseRate("0%");
+          setBenchmarkScore("0");
+          setRecentSurveys([]);
+          setIsLoading(false);
+          return;
+        }
+        
         console.log('Fetching dashboard stats...');
         // Fetch dashboard stats with organization ID
-        const stats = await getDashboardStats(currentOrganization?.id);
+        const stats = await getDashboardStats(currentOrganization.id);
         console.log('Dashboard stats received:', stats);
         
         if (stats) {
@@ -54,16 +90,25 @@ const Dashboard = () => {
           setBenchmarkScore(stats.benchmarkScore);
         } else {
           console.warn('No dashboard stats returned');
-          toast.error("Failed to load dashboard stats", {
-            description: "Please try again later."
-          });
+          // Set default values instead of showing error
+          setTotalSurveys(0);
+          setTotalRespondents(0);
+          setResponseRate("0%");
+          setBenchmarkScore("0");
         }
 
         console.log('Fetching recent surveys...');
         // Fetch recent surveys with organization ID
-        const surveys = await getRecentSurveys(3, currentOrganization?.id);
+        const surveys = await getRecentSurveys(3, currentOrganization.id);
         console.log('Recent surveys received:', surveys);
         setRecentSurveys(surveys);
+        
+        // Check for closed surveys when the dashboard loads
+        console.log('Checking for closed surveys...');
+        checkForClosedSurveys().catch(err => {
+          console.error('Error checking for closed surveys:', err);
+        });
+        
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
         setDataFetchError('Failed to load dashboard data. Please check your connection.');
@@ -75,34 +120,31 @@ const Dashboard = () => {
       }
     };
 
-    if (user?.id && currentOrganization?.id) {
-      fetchDashboardData();
-      
-      // Check for closed surveys when the dashboard loads
-      console.log('Checking for closed surveys...');
-      checkForClosedSurveys().catch(err => {
-        console.error('Error checking for closed surveys:', err);
-      });
-    } else {
-      console.log('No user ID or organization available, skipping data fetch');
-      if (!isLoading) {
-        // Only set loading to false if we've already determined there's no user
-        // This prevents flickering when authentication is still being determined
-        setIsLoading(false);
-      }
-    }
-  }, [user, session, currentOrganization]);
+    fetchDashboardData();
+  }, [user, session, isAuthenticated, currentOrganization, orgLoading, orgError]);
 
   const handleRetry = () => {
     if (user?.id && currentOrganization?.id) {
       toast.info("Retrying data fetch...");
-      // Force re-fetch by creating a new user object reference
-      const tempUser = { ...user };
-      // @ts-ignore - Intentionally triggering re-render
-      window.dashboardRefetchTrigger = tempUser;
+      // Force re-fetch by updating a state
+      setDataFetchError(null);
       window.location.reload();
     }
   };
+
+  // Show loading state while organization context is loading
+  if (orgLoading) {
+    return (
+      <MainLayout>
+        <div className="page-container">
+          <div className="text-center py-12" aria-live="polite" aria-busy="true">
+            <div className="animate-spin h-8 w-8 border-4 border-brandPurple-500 border-t-transparent rounded-full mx-auto" role="progressbar"></div>
+            <p className="mt-4 text-gray-600">Loading organisation data...</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -117,6 +159,7 @@ const Dashboard = () => {
           <Button 
             onClick={() => navigate('/new-survey')}
             className={isMobile ? "w-full py-3" : ""}
+            disabled={!currentOrganization}
           >
             <Plus className="mr-2 h-4 w-4" />
             New Survey
@@ -136,7 +179,7 @@ const Dashboard = () => {
           </div>
         )}
 
-        {!user && !isLoading && (
+        {!isAuthenticated && !isLoading && (
           <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 p-4 rounded-md mb-6">
             <p>Authentication issue detected. Please try signing out and back in.</p>
             <button 
@@ -148,7 +191,7 @@ const Dashboard = () => {
           </div>
         )}
 
-        {!currentOrganization && user && !isLoading && (
+        {isAuthenticated && !currentOrganization && !isLoading && !orgError && (
           <div className="bg-blue-50 border border-blue-200 text-blue-700 p-4 rounded-md mb-6">
             <p>No organisation selected. Please select an organisation to view dashboard data.</p>
             <button 
@@ -156,6 +199,18 @@ const Dashboard = () => {
               onClick={() => navigate('/team')}
             >
               Manage Organisations
+            </button>
+          </div>
+        )}
+
+        {orgError && (
+          <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-md mb-6">
+            <p>Organisation loading error: {orgError}</p>
+            <button 
+              className="mt-2 text-sm font-medium underline"
+              onClick={() => window.location.reload()}
+            >
+              Reload page
             </button>
           </div>
         )}
