@@ -7,7 +7,7 @@ import RecentSurveysList from '../components/dashboard/RecentSurveysList';
 import GettingStartedGuide from '../components/dashboard/GettingStartedGuide';
 import PageTitle from '../components/ui/PageTitle';
 import { Button } from '../components/ui/button';
-import { Plus, RotateCcw } from 'lucide-react';
+import { Plus, RotateCcw, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
@@ -62,7 +62,7 @@ const Dashboard = () => {
         // Check for organization issues
         if (orgError) {
           console.error('Organization context error:', orgError);
-          setDataFetchError(`Organization error: ${orgError}`);
+          setDataFetchError(`Organisation error: ${orgError}`);
           setIsLoading(false);
           return;
         }
@@ -168,50 +168,77 @@ const Dashboard = () => {
 
         {dataFetchError && (
           <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-md mb-6">
-            <p>{dataFetchError}</p>
-            <button 
-              className="mt-2 text-sm font-medium flex items-center gap-2 text-red-700 hover:text-red-800"
-              onClick={handleRetry}
-            >
-              <RotateCcw size={16} />
-              Retry
-            </button>
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="font-medium">Data Loading Error</p>
+                <p className="text-sm mt-1">{dataFetchError}</p>
+                <button 
+                  className="mt-2 text-sm font-medium flex items-center gap-2 text-red-700 hover:text-red-800"
+                  onClick={handleRetry}
+                >
+                  <RotateCcw size={16} />
+                  Retry
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
         {!isAuthenticated && !isLoading && (
           <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 p-4 rounded-md mb-6">
-            <p>Authentication issue detected. Please try signing out and back in.</p>
-            <button 
-              className="mt-2 text-sm font-medium underline"
-              onClick={() => navigate('/login')}
-            >
-              Go to login
-            </button>
-          </div>
-        )}
-
-        {isAuthenticated && !currentOrganization && !isLoading && !orgError && (
-          <div className="bg-blue-50 border border-blue-200 text-blue-700 p-4 rounded-md mb-6">
-            <p>No organisation selected. Please select an organisation to view dashboard data.</p>
-            <button 
-              className="mt-2 text-sm font-medium underline"
-              onClick={() => navigate('/team')}
-            >
-              Manage Organisations
-            </button>
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium">Authentication Required</p>
+                <p className="text-sm mt-1">Please sign in to view your dashboard.</p>
+                <button 
+                  className="mt-2 text-sm font-medium underline"
+                  onClick={() => navigate('/login')}
+                >
+                  Go to login
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
         {orgError && (
           <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-md mb-6">
-            <p>Organisation loading error: {orgError}</p>
-            <button 
-              className="mt-2 text-sm font-medium underline"
-              onClick={() => window.location.reload()}
-            >
-              Reload page
-            </button>
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium">Organisation Loading Error</p>
+                <p className="text-sm mt-1">{orgError}</p>
+                {orgError.includes('Database configuration') && (
+                  <p className="text-sm mt-2 italic">This appears to be a system configuration issue. Please contact support if this persists.</p>
+                )}
+                <button 
+                  className="mt-2 text-sm font-medium underline"
+                  onClick={() => window.location.reload()}
+                >
+                  Reload page
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isAuthenticated && !currentOrganization && !isLoading && !orgError && (
+          <div className="bg-blue-50 border border-blue-200 text-blue-700 p-4 rounded-md mb-6">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium">No Organisation Selected</p>
+                <p className="text-sm mt-1">Please select an organisation to view dashboard data.</p>
+                <button 
+                  className="mt-2 text-sm font-medium underline"
+                  onClick={() => navigate('/team')}
+                >
+                  Manage Organisations
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

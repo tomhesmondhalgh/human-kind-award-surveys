@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
@@ -11,12 +10,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { useIsMobile } from '../hooks/use-mobile';
 import { sendSurveyReminder } from '../utils/survey/sendReminder';
+import { AlertCircle } from 'lucide-react';
 
 const SURVEYS_PER_PAGE = 10;
 
 const Surveys = () => {
   const { user } = useAuth();
-  const { currentOrganization } = useOrganization();
+  const { currentOrganization, isLoading: orgLoading, error: orgError } = useOrganization();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [surveys, setSurveys] = useState<any[]>([]);
@@ -24,6 +24,7 @@ const Surveys = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [canCreateSurveys, setCanCreateSurveys] = useState(true);
   const [refreshFlag, setRefreshFlag] = useState(0);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -32,6 +33,12 @@ const Surveys = () => {
 
   useEffect(() => {
     const fetchSurveys = async () => {
+      // Don't fetch if org context is still loading
+      if (orgLoading) {
+        console.log('Organization context still loading, waiting...');
+        return;
+      }
+
       if (!user || !currentOrganization) {
         console.log('No user or organization found, skipping survey fetch');
         setLoading(false);
@@ -41,6 +48,7 @@ const Surveys = () => {
       try {
         console.log('Fetching surveys for organization:', currentOrganization.id);
         setLoading(true);
+        setFetchError(null);
         
         console.log('Counting surveys excluding Archived ones');
         const { count, error: countError } = await supabase
@@ -135,28 +143,31 @@ const Surveys = () => {
       } catch (error: any) {
         console.error('Error fetching surveys:', error);
         
+        let errorMessage = 'Failed to load surveys';
+        
         if (error.code === '42883') {
           console.error('Database function error: The application is trying to use a database function that does not exist');
-          toast.error("Failed to load surveys", {
-            description: "Database configuration issue. Please contact support."
-          });
+          errorMessage = "Database configuration issue. Please contact support.";
         } else if (error.code && error.code.startsWith('PGRST')) {
           console.error('PostgREST error:', error);
-          toast.error("Failed to load surveys", {
-            description: "API configuration issue. Please try again later."
-          });
+          errorMessage = "API configuration issue. Please try again later.";
+        } else if (error.message?.includes('infinite recursion') || error.message?.includes('recursion')) {
+          errorMessage = "Database configuration issue detected - please contact support.";
         } else {
-          toast.error("Failed to load surveys", {
-            description: "Please try refreshing the page."
-          });
+          errorMessage = `Failed to load surveys: ${error.message || 'Unknown error'}`;
         }
+        
+        setFetchError(errorMessage);
+        toast.error("Failed to load surveys", {
+          description: "Please try refreshing the page."
+        });
       } finally {
         setLoading(false);
       }
     };
 
     fetchSurveys();
-  }, [user, currentOrganization, currentPage, refreshFlag]);
+  }, [user, currentOrganization, currentPage, refreshFlag, orgLoading]);
 
   const handleSendReminder = async (id: string) => {
     console.log(`Sending reminder for survey ${id}`);
@@ -180,6 +191,47 @@ const Surveys = () => {
   };
 
   const totalPages = Math.ceil(totalSurveys / SURVEYS_PER_PAGE);
+
+  // Show loading state while organization context is loading
+  if (orgLoading) {
+    return (
+      <MainLayout>
+        <div className="page-container bg-white">
+          <div className="text-center py-12" aria-live="polite" aria-busy="true">
+            <div className="animate-spin h-8 w-8 border-4 border-brandPurple-500 border-t-transparent rounded-full mx-auto" role="progressbar"></div>
+            <p className="mt-4 text-gray-600">Loading organisation data...</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (orgError) {
+    return (
+      <MainLayout>
+        <div className="page-container bg-white">
+          <div className="bg-red-50 border border-red-200 text-red-600 p-6 rounded-md">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+              <div>
+                <h2 className="text-lg font-semibold mb-2">Organisation Loading Error</h2>
+                <p className="mb-4">{orgError}</p>
+                {orgError.includes('Database configuration') && (
+                  <p className="text-sm italic mb-4">This appears to be a system configuration issue. Please contact support if this persists.</p>
+                )}
+                <button 
+                  className="text-sm font-medium underline"
+                  onClick={() => window.location.reload()}
+                >
+                  Reload page
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   if (!currentOrganization) {
     return (
@@ -220,6 +272,27 @@ const Surveys = () => {
           )}
         </div>
 
+        {fetchError && (
+          <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-md mb-6">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium">Survey Loading Error</p>
+                <p className="text-sm mt-1">{fetchError}</p>
+                <button 
+                  className="mt-2 text-sm font-medium underline"
+                  onClick={() => {
+                    setFetchError(null);
+                    setRefreshFlag(prev => prev + 1);
+                  }}
+                >
+                  Try again
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="text-center py-12" aria-live="polite" aria-busy="true">
             <div className="animate-spin h-8 w-8 border-4 border-brandPurple-500 border-t-transparent rounded-full mx-auto" role="progressbar"></div>
@@ -227,7 +300,7 @@ const Surveys = () => {
           </div>
         ) : (
           <>
-            {surveys.length === 0 ? (
+            {surveys.length === 0 && !fetchError ? (
               <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-12 text-center">
                 <h2 className="text-xl font-semibold mb-2">No surveys found</h2>
                 <p className="text-gray-500 mb-6">You haven't created any surveys for this organisation yet.</p>

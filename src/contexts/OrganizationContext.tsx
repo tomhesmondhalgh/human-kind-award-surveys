@@ -58,11 +58,19 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         .rpc('get_user_organizations', { user_uuid: user.id });
 
       if (orgError) {
-        console.error('OrganizationContext: Error fetching organizations:', orgError);
-        // If it's an RLS error, provide more helpful context
-        if (orgError.code === 'PGRST116' || orgError.message?.includes('RLS')) {
-          throw new Error('Access permissions issue - please contact support');
+        console.error('OrganizationContext: Error calling get_user_organizations:', orgError);
+        console.error('OrganizationContext: Error details:', {
+          code: orgError.code,
+          message: orgError.message,
+          details: orgError.details,
+          hint: orgError.hint
+        });
+        
+        // Check for specific RLS recursion errors
+        if (orgError.message?.includes('infinite recursion') || orgError.message?.includes('recursion')) {
+          throw new Error('Database configuration issue detected - please contact support');
         }
+        
         throw new Error(`Failed to fetch organizations: ${orgError.message}`);
       }
 
@@ -84,7 +92,7 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         role: org.role
       })) as OrganizationWithRole[];
       
-      console.log('OrganizationContext: Processed organizations:', organizations);
+      console.log('OrganizationContext: Processed organizations successfully:', organizations.length, 'organizations');
       return organizations;
     } catch (error) {
       console.error('OrganizationContext: Error in fetchOrganizations:', error);
