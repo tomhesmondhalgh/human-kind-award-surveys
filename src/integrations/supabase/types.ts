@@ -1382,6 +1382,14 @@ export type Database = {
         }
         Returns: Json
       }
+      user_can_access_progress_note: {
+        Args: { user_uuid: string; note_descriptor_id: string }
+        Returns: boolean
+      }
+      user_can_edit_progress_note: {
+        Args: { user_uuid: string; note_descriptor_id: string }
+        Returns: boolean
+      }
       user_can_edit_survey: {
         Args: { user_uuid: string; template_id: string }
         Returns: boolean
