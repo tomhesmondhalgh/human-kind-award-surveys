@@ -97,7 +97,17 @@ const Improve = () => {
       }
     } catch (error) {
       console.error("Error initializing action plan:", error);
-      setInitError(`Initialization error: ${error instanceof Error ? error.message : String(error)}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      // Check for specific RLS-related errors and provide helpful messages
+      if (errorMessage.includes('row-level security') || errorMessage.includes('RLS')) {
+        setInitError('Database access error. Please refresh the page and try again. If the issue persists, contact support.');
+      } else if (errorMessage.includes('organization')) {
+        setInitError('Organization access error. Please ensure you have proper access to this organization.');
+      } else {
+        setInitError(`Initialization error: ${errorMessage}`);
+      }
+      
       toast.error("Failed to initialize action plan");
     } finally {
       setIsLoading(false);
@@ -119,7 +129,14 @@ const Improve = () => {
       }
     } catch (error) {
       console.error('Error fetching summary data:', error);
-      toast.error('Failed to load summary data');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      // Provide more specific error messages for common issues
+      if (errorMessage.includes('row-level security') || errorMessage.includes('RLS')) {
+        toast.error('Data access error. Please refresh the page and try again.');
+      } else {
+        toast.error('Failed to load summary data');
+      }
     }
   };
 
@@ -261,9 +278,14 @@ const Improve = () => {
           <div className="mt-8 rounded-lg border border-red-200 bg-red-50 p-8 text-center">
             <h2 className="text-xl font-semibold mb-4 text-red-700">Error Loading Action Plan</h2>
             <p className="text-gray-700 mb-6">{initError}</p>
-            <Button onClick={handleRetryInitialization} variant="destructive">
-              Retry
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button onClick={handleRetryInitialization} variant="destructive">
+                Retry Initialization
+              </Button>
+              <Button onClick={() => navigate('/team')} variant="outline">
+                Check Organisation Access
+              </Button>
+            </div>
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
