@@ -1405,6 +1405,10 @@ export type Database = {
         Args: { user_uuid: string; template_id: string }
         Returns: boolean
       }
+      user_can_manage_org_membership: {
+        Args: { user_uuid: string; org_id: string }
+        Returns: boolean
+      }
       user_can_view_survey: {
         Args: { user_uuid: string; template_id: string }
         Returns: boolean
