@@ -1,5 +1,5 @@
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+
+import { supabase } from '../integrations/supabase/client';
 
 // Type definitions
 export interface SurveyOption {
@@ -24,6 +24,13 @@ export interface CustomQuestionResponse {
   responses: string[];
 }
 
+// Add explicit type for database survey response
+interface DatabaseSurvey {
+  id: string;
+  name: string;
+  date: string;
+}
+
 // Function to get survey options
 export const getSurveyOptions = async (userId?: string): Promise<SurveyOption[]> => {
   try {
@@ -35,12 +42,31 @@ export const getSurveyOptions = async (userId?: string): Promise<SurveyOption[]>
     
     console.log(`Fetching surveys for user ID: ${userId}`);
     
-    // Try to get data from Supabase with user filter
+    // Get user's organizations first
+    const { data: memberships, error: membershipError } = await supabase
+      .from('organization_memberships')
+      .select('organization_id')
+      .eq('user_id', userId);
+    
+    if (membershipError) {
+      console.error('Error fetching user organizations:', membershipError);
+      throw membershipError;
+    }
+    
+    if (!memberships || memberships.length === 0) {
+      console.log('User has no organization memberships');
+      return [];
+    }
+    
+    const orgIds = memberships.map(m => m.organization_id);
+    
+    // Get surveys from user's organizations with explicit typing
     const { data, error } = await supabase
       .from('survey_templates')
       .select('id, name, date')
-      .eq('creator_id', userId)
-      .order('date', { ascending: false });
+      .in('organization_id', orgIds)
+      .order('date', { ascending: false })
+      .returns<DatabaseSurvey[]>();
     
     if (error) {
       console.error('Error fetching surveys:', error);
@@ -49,12 +75,14 @@ export const getSurveyOptions = async (userId?: string): Promise<SurveyOption[]>
     
     console.log('Survey data from database:', data);
     
-    // Return the actual data, even if empty
-    return data?.map(survey => ({
+    // Return with explicit type mapping
+    const surveyOptions: SurveyOption[] = data?.map((survey: DatabaseSurvey) => ({
       id: survey.id,
       name: survey.name,
       date: new Date(survey.date).toLocaleDateString(),
     })) || [];
+    
+    return surveyOptions;
     
   } catch (error) {
     console.error('Error in getSurveyOptions:', error);
