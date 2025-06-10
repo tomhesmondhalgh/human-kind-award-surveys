@@ -1386,6 +1386,10 @@ export type Database = {
         Args: { user_uuid: string; note_descriptor_id: string }
         Returns: boolean
       }
+      user_can_access_survey_response: {
+        Args: { user_uuid: string; template_id: string }
+        Returns: boolean
+      }
       user_can_edit_progress_note: {
         Args: { user_uuid: string; note_descriptor_id: string }
         Returns: boolean
