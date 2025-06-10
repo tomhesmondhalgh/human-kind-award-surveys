@@ -6,7 +6,8 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { CustomQuestion } from '../../types/customQuestions';
 import { AlertCircle } from 'lucide-react';
-import { toValidQuestionType, createDbQuestionPayload } from '../../utils/questionTypeUtils';
+import { createDbQuestionPayload } from '../../utils/questionTypeUtils';
+import { useOrganization } from '../../contexts/OrganizationContext';
 
 interface QuestionModalProps {
   open: boolean;
@@ -24,6 +25,7 @@ export default function QuestionModal({
   const [questionText, setQuestionText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const { currentOrganization } = useOrganization();
 
   useEffect(() => {
     if (open && initialData) {
@@ -51,7 +53,7 @@ export default function QuestionModal({
       const questionPayload = createDbQuestionPayload({
         text: questionText,
         type: 'text'
-      });
+      }, currentOrganization?.id);
       
       await onSave(questionPayload);
       onOpenChange(false);
@@ -71,7 +73,10 @@ export default function QuestionModal({
             {initialData ? 'Edit Question' : 'Create Question'}
           </DialogTitle>
           <DialogDescription>
-            Create a custom question for your surveys
+            {currentOrganization 
+              ? `Create a custom question for ${currentOrganization.name}` 
+              : 'Create a global custom question'
+            }
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">

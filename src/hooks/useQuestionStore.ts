@@ -3,30 +3,43 @@ import { useState } from 'react';
 import { CustomQuestion, convertToCustomQuestion, convertToCustomQuestions } from '../types/customQuestions';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/services/toastService';
+import { useOrganization } from '../contexts/OrganizationContext';
 
 // Helper function to create a DB question payload
-const createDbQuestionPayload = (question: Partial<CustomQuestion>) => {
+const createDbQuestionPayload = (question: Partial<CustomQuestion>, organizationId?: string) => {
   return {
     text: question.text || '',
     type: question.type || 'text',
-    options: question.options || null
+    options: question.options || null,
+    organization_id: organizationId || null
   };
 };
 
 export function useQuestionStore() {
   const [questions, setQuestions] = useState<CustomQuestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { currentOrganization } = useOrganization();
 
   const fetchQuestions = async (showArchived: boolean = false) => {
     try {
       setIsLoading(true);
-      console.log(`Fetching questions (showArchived=${showArchived})`);
+      console.log(`Fetching questions (showArchived=${showArchived}) for organization:`, currentOrganization?.id);
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('custom_questions')
         .select('*')
         .eq('archived', showArchived)
         .order('created_at', { ascending: false });
+
+      // Filter by current organization or global questions (organization_id is null)
+      if (currentOrganization?.id) {
+        query = query.or(`organization_id.is.null,organization_id.eq.${currentOrganization.id}`);
+      } else {
+        // If no organization, only show global questions
+        query = query.is('organization_id', null);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching questions:', error);
@@ -58,7 +71,7 @@ export function useQuestionStore() {
       }
       
       const dbQuestion = {
-        ...createDbQuestionPayload(question),
+        ...createDbQuestionPayload(question, currentOrganization?.id),
         creator_id: user.id,
         archived: false
       };

@@ -241,6 +241,7 @@ export type Database = {
           creator_id: string
           id: string
           options: string[] | null
+          organization_id: string | null
           text: string
           type: string
         }
@@ -250,6 +251,7 @@ export type Database = {
           creator_id: string
           id?: string
           options?: string[] | null
+          organization_id?: string | null
           text: string
           type: string
         }
@@ -259,6 +261,7 @@ export type Database = {
           creator_id?: string
           id?: string
           options?: string[] | null
+          organization_id?: string | null
           text?: string
           type?: string
         }
@@ -1381,6 +1384,10 @@ export type Database = {
           plan: Database["public"]["Enums"]["plan_type"]
         }
         Returns: Json
+      }
+      user_can_access_custom_question_response: {
+        Args: { user_uuid: string; question_uuid: string }
+        Returns: boolean
       }
       user_can_access_progress_note: {
         Args: { user_uuid: string; note_descriptor_id: string }
