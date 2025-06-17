@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { createEmailTemplate } from "../_shared/emailTemplate.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
@@ -23,7 +24,6 @@ interface EmailAnalysisRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -37,7 +37,6 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Missing required fields");
     }
 
-    // Validate email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(to)) {
       throw new Error("Invalid email address");
@@ -45,11 +44,28 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Sending analysis email to ${to} for survey ${surveyName}`);
 
+    const content = `
+      <p>Please find attached your survey analysis report for "${surveyName}".</p>
+      
+      <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin: 25px 0;">
+        ${htmlContent}
+      </div>
+      
+      <p>This analysis provides insights into the responses collected from your wellbeing survey. Use these findings to better understand and support staff wellbeing in your organisation.</p>
+    `;
+
+    const html = createEmailTemplate({
+      title: "Survey Analysis Report",
+      preheader: `Analysis report for ${surveyName} survey`,
+      content,
+      footerText: "Survey Analysis Team"
+    });
+
     const emailResponse = await resend.emails.send({
       from: "Human Kind <contact@humankindaward.com>",
       to: [to],
       subject: subject || `Survey Analysis Report: ${surveyName}`,
-      html: htmlContent,
+      html: html,
     });
 
     console.log("Email sent successfully:", emailResponse);

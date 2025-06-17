@@ -1,6 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { createEmailTemplate } from "../_shared/emailTemplate.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -22,7 +23,6 @@ interface AdminNotificationData {
 const handler = async (req: Request): Promise<Response> => {
   console.log("Admin notification function called");
   
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -55,25 +55,54 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Preparing to send admin notification about new user: ${email}`);
 
+    const content = `
+      <p>A new user has registered for Staff Wellbeing Surveys:</p>
+      
+      <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin: 25px 0; border: 1px solid #e9ecef;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr style="border-bottom: 1px solid #e9ecef;">
+            <td style="padding: 8px 0; font-weight: 600; color: #3c3c3c; width: 30%;">Name:</td>
+            <td style="padding: 8px 0; color: #6c757d;">${firstName} ${lastName || ''}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e9ecef;">
+            <td style="padding: 8px 0; font-weight: 600; color: #3c3c3c;">Email:</td>
+            <td style="padding: 8px 0; color: #6c757d;">${email}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e9ecef;">
+            <td style="padding: 8px 0; font-weight: 600; color: #3c3c3c;">Job Title:</td>
+            <td style="padding: 8px 0; color: #6c757d;">${jobTitle || 'Not provided'}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e9ecef;">
+            <td style="padding: 8px 0; font-weight: 600; color: #3c3c3c;">School/College:</td>
+            <td style="padding: 8px 0; color: #6c757d;">${schoolName || 'Not provided'}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; font-weight: 600; color: #3c3c3c;">Address:</td>
+            <td style="padding: 8px 0; color: #6c757d;">${schoolAddress || 'Not provided'}</td>
+          </tr>
+        </table>
+      </div>
+      
+      <p>You can log in to the admin portal to view more details about this user.</p>
+    `;
+
+    const baseUrl = Deno.env.get("SITE_URL") || 'https://wellbeing-surveys.creativeeducation.co.uk';
+    const adminUrl = `${baseUrl}/admin`;
+
+    const html = createEmailTemplate({
+      title: "New User Registration",
+      preheader: `New registration from ${firstName} ${lastName || ''}`,
+      content,
+      buttonText: "View in Admin Portal",
+      buttonUrl: adminUrl,
+    });
+
     console.log("Sending email via Resend");
     const emailResponse = await resend.emails.send({
       from: "Human Kind <contact@humankindaward.com>",
       to: ["tom.hesmondhalgh@creativeeducation.co.uk"],
       subject: "New Registration",
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-          <h1 style="color: #6d28d9; margin-bottom: 20px;">New User Registration</h1>
-          <p>A new user has registered for Wellbeing Surveys:</p>
-          <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
-            <p><strong>Name:</strong> ${firstName} ${lastName || ''}</p>
-            <p><strong>Email:</strong> ${email}</p>
-            <p><strong>Job Title:</strong> ${jobTitle || 'Not provided'}</p>
-            <p><strong>School/College:</strong> ${schoolName || 'Not provided'}</p>
-            <p><strong>School Address:</strong> ${schoolAddress || 'Not provided'}</p>
-          </div>
-          <p>You can login to the admin portal to view more details about this user.</p>
-        </div>
-      `,
+      html: html,
     });
 
     console.log("Admin notification email sent successfully:", emailResponse);

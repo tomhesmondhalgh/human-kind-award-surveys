@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { Resend } from "npm:resend@2.0.0";
+import { createEmailTemplate } from "../_shared/emailTemplate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,7 +19,6 @@ interface NotificationRequest {
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -28,12 +28,10 @@ const handler = async (req: Request): Promise<Response> => {
     
     const { submissionId, submitterName, schoolName, submissionData }: NotificationRequest = await req.json();
 
-    // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch admin users
     console.log('Fetching admin users...');
     const { data: adminUsers, error: adminError } = await supabase
       .from('profiles')
@@ -53,7 +51,6 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Get admin email addresses from auth.users table
     console.log('Fetching admin email addresses...');
     const adminUserIds = adminUsers.map(user => user.id);
     const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
@@ -76,7 +73,6 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Create summary of submission data
     const getSummary = () => {
       if (!submissionData || submissionData.length === 0) {
         return 'No submission data available';
@@ -84,57 +80,67 @@ const handler = async (req: Request): Promise<Response> => {
       
       return submissionData.map(section => 
         `• ${section.title}: ${section.completedCount || 0} completed, ${section.notApplicableCount || 0} not applicable`
-      ).join('\n');
+      ).join('<br>');
     };
 
     const summary = getSummary();
     const baseUrl = Deno.env.get('FRONTEND_URL') || 'https://staffwellbeingsurveys.com';
     const reviewUrl = `${baseUrl}/admin`;
 
-    // Send email to all admin users
-    console.log(`Sending notification emails to ${adminEmails.length} admin(s)...`);
-    
-    const emailResponse = await resend.emails.send({
-      from: "Staff Wellbeing Surveys <notifications@staffwellbeingsurveys.com>",
-      to: adminEmails,
-      subject: "New Action Plan Accreditation Submission",
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #7c3aed; margin-bottom: 20px;">New Accreditation Submission</h2>
-          
-          <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-            <h3 style="margin-top: 0; color: #1f2937;">Submission Details</h3>
-            <p><strong>Submitter:</strong> ${submitterName}</p>
-            <p><strong>School:</strong> ${schoolName || 'Not specified'}</p>
-            <p><strong>Submission ID:</strong> ${submissionId}</p>
-            <p><strong>Submitted:</strong> ${new Date().toLocaleDateString('en-GB', {
+    const content = `
+      <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin: 25px 0; border: 1px solid #e9ecef;">
+        <h3 style="font-family: 'League Spartan', sans-serif; color: #3c3c3c; margin-top: 0;">Submission Details</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr style="border-bottom: 1px solid #e9ecef;">
+            <td style="padding: 8px 0; font-weight: 600; color: #3c3c3c; width: 30%;">Submitter:</td>
+            <td style="padding: 8px 0; color: #6c757d;">${submitterName}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e9ecef;">
+            <td style="padding: 8px 0; font-weight: 600; color: #3c3c3c;">School:</td>
+            <td style="padding: 8px 0; color: #6c757d;">${schoolName || 'Not specified'}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e9ecef;">
+            <td style="padding: 8px 0; font-weight: 600; color: #3c3c3c;">Submission ID:</td>
+            <td style="padding: 8px 0; color: #6c757d;">${submissionId}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; font-weight: 600; color: #3c3c3c;">Submitted:</td>
+            <td style="padding: 8px 0; color: #6c757d;">${new Date().toLocaleDateString('en-GB', {
               day: 'numeric',
               month: 'long',
               year: 'numeric',
               hour: '2-digit',
               minute: '2-digit'
-            })}</p>
-          </div>
+            })}</td>
+          </tr>
+        </table>
+      </div>
 
-          <div style="margin-bottom: 20px;">
-            <h3 style="color: #1f2937;">Action Plan Summary</h3>
-            <div style="background-color: #f1f5f9; padding: 15px; border-radius: 6px;">
-              <pre style="font-family: Arial, sans-serif; white-space: pre-line; margin: 0;">${summary}</pre>
-            </div>
-          </div>
-
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${reviewUrl}" 
-               style="background-color: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
-              Review Submission
-            </a>
-          </div>
-
-          <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
-            This submission requires your review for accreditation approval. Please log in to the admin panel to review and process this submission.
-          </p>
+      <div style="margin-bottom: 20px;">
+        <h3 style="font-family: 'League Spartan', sans-serif; color: #3c3c3c;">Action Plan Summary</h3>
+        <div style="background-color: #f1f5f9; padding: 15px; border-radius: 6px;">
+          ${summary}
         </div>
-      `,
+      </div>
+
+      <p>This submission requires your review for accreditation approval. Please log in to the admin panel to review and process this submission.</p>
+    `;
+
+    const html = createEmailTemplate({
+      title: "New Action Plan Accreditation Submission",
+      preheader: `New submission from ${submitterName} at ${schoolName || 'a school'}`,
+      content,
+      buttonText: "Review Submission",
+      buttonUrl: reviewUrl,
+    });
+
+    console.log(`Sending notification emails to ${adminEmails.length} admin(s)...`);
+    
+    const emailResponse = await resend.emails.send({
+      from: "Human Kind <contact@humankindaward.com>",
+      to: adminEmails,
+      subject: "New Action Plan Accreditation Submission",
+      html: html,
     });
 
     console.log("Notification emails sent successfully:", emailResponse);
