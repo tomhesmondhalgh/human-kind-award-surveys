@@ -50,15 +50,22 @@ export function createEmailTemplate(options: EmailTemplateOptions): string {
         }
         
         .email-header {
-          background: linear-gradient(135deg, #bc9c22 0%, #832232 100%);
-          padding: 30px 20px;
+          background-color: #ffffff;
+          padding: 40px 20px 20px 20px;
           text-align: center;
+          border-bottom: 4px solid #bc9c22;
         }
         
         .logo {
-          max-width: 200px;
+          max-width: 250px;
           height: auto;
-          margin-bottom: 10px;
+          margin-bottom: 20px;
+        }
+        
+        .title-section {
+          background-color: #bc9c22;
+          padding: 25px 20px;
+          text-align: center;
         }
         
         .email-title {
@@ -66,8 +73,7 @@ export function createEmailTemplate(options: EmailTemplateOptions): string {
           font-size: 28px;
           font-weight: 700;
           color: #ffffff;
-          margin: 15px 0 0 0;
-          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+          margin: 0;
         }
         
         .email-content {
@@ -95,7 +101,7 @@ export function createEmailTemplate(options: EmailTemplateOptions): string {
         
         .cta-button {
           display: inline-block;
-          background: linear-gradient(135deg, #bc9c22 0%, #832232 100%);
+          background-color: #832232;
           color: #ffffff !important;
           text-decoration: none;
           padding: 15px 30px;
@@ -105,18 +111,25 @@ export function createEmailTemplate(options: EmailTemplateOptions): string {
           font-size: 16px;
           text-align: center;
           margin: 20px 0;
-          box-shadow: 0 3px 6px rgba(188, 156, 34, 0.3);
-          transition: transform 0.2s ease;
+          box-shadow: 0 3px 6px rgba(131, 34, 50, 0.2);
+          transition: all 0.2s ease;
         }
         
         .cta-button:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 5px 12px rgba(188, 156, 34, 0.4);
+          background-color: #6d1d2a;
+          transform: translateY(-1px);
+          box-shadow: 0 5px 12px rgba(131, 34, 50, 0.3);
         }
         
         .button-container {
           text-align: center;
           margin: 30px 0;
+        }
+        
+        .accent-bar {
+          height: 4px;
+          background-color: #832232;
+          margin: 20px 0;
         }
         
         .email-footer {
@@ -162,11 +175,15 @@ export function createEmailTemplate(options: EmailTemplateOptions): string {
           }
           
           .email-header {
-            padding: 25px 20px;
+            padding: 30px 20px 15px 20px;
+          }
+          
+          .title-section {
+            padding: 20px 15px;
           }
           
           .logo {
-            max-width: 150px;
+            max-width: 200px;
           }
           
           .email-title {
@@ -193,6 +210,9 @@ export function createEmailTemplate(options: EmailTemplateOptions): string {
           <img src="https://www.humankindaward.com/wp-content/uploads/2025/06/Human-Kind-Logo-Colour-Horizontal-Transparent.png" 
                alt="Human Kind Award" 
                class="logo">
+        </div>
+        
+        <div class="title-section">
           <h1 class="email-title">${title}</h1>
         </div>
         
@@ -204,6 +224,8 @@ export function createEmailTemplate(options: EmailTemplateOptions): string {
           </div>
           
           ${buttonText && buttonUrl ? `
+            <div class="accent-bar"></div>
+            
             <div class="button-container">
               <a href="${buttonUrl}" class="cta-button">${buttonText}</a>
             </div>
