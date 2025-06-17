@@ -387,6 +387,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_organization_invitations_invited_by"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_organization_invitations_organization_id"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "organization_invitations_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
@@ -421,6 +435,20 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_organization_memberships_organization_id"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_organization_memberships_user_id"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "organization_memberships_organization_id_fkey"
             columns: ["organization_id"]
@@ -1338,6 +1366,10 @@ export type Database = {
           profile_school_address: string
         }
         Returns: undefined
+      }
+      get_current_user_email: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       get_user_memberships: {
         Args: { user_uuid: string }

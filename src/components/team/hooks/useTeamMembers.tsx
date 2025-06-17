@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,12 +35,12 @@ export function useTeamMembers(organizationId?: string) {
           throw new Error('Not authenticated');
         }
 
-        // Fixed query syntax: removed :user_id from profiles reference
+        // Updated query to work with the new foreign key constraints
         const { data, error } = await supabase
           .from('organization_memberships')
           .select(`
             *,
-            profiles (
+            profiles!fk_organization_memberships_user_id (
               first_name,
               last_name,
               job_title

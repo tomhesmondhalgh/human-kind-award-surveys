@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { Users, UserPlus, Mail, Crown, Edit3, Eye, Trash2, Building, AlertCircle } from 'lucide-react';
+import { Users, UserPlus, Mail, Crown, Edit3, Eye, Trash2, Building, AlertCircle, RefreshCw } from 'lucide-react';
 import { useTeamMembers } from '../components/team/hooks/useTeamMembers';
 import { useTeamInvitations } from '../components/team/hooks/useTeamInvitations';
 import { Skeleton } from '../components/ui/skeleton';
@@ -22,34 +22,8 @@ const Team = () => {
   const { currentOrganization, isLoading: orgLoading, error: orgError } = useOrganization();
   const [memberToDelete, setMemberToDelete] = React.useState<string | null>(null);
   const [activeTab, setActiveTab] = React.useState('members');
-  const [authDebugInfo, setAuthDebugInfo] = React.useState<any>(null);
   const location = useLocation();
   const navigate = useNavigate();
-
-  // Debug authentication status
-  useEffect(() => {
-    const debugAuth = async () => {
-      const { session, error } = await validateAndRefreshSession();
-      const debugInfo = {
-        isAuthenticated,
-        authCheckComplete,
-        hasUser: !!user,
-        userId: user?.id,
-        userEmail: user?.email,
-        hasSession: !!session,
-        sessionError: error?.message,
-        currentOrganization: currentOrganization?.id,
-        timestamp: new Date().toISOString()
-      };
-      
-      console.log('Team page auth debug:', debugInfo);
-      setAuthDebugInfo(debugInfo);
-    };
-
-    if (authCheckComplete) {
-      debugAuth();
-    }
-  }, [isAuthenticated, authCheckComplete, user, currentOrganization]);
 
   // Parse organization ID from URL if present
   useEffect(() => {
@@ -71,6 +45,8 @@ const Team = () => {
     members,
     isLoading: membersLoading,
     isError: membersError,
+    error: membersErrorDetails,
+    refetch: refetchMembers,
     isInviteModalOpen,
     setIsInviteModalOpen,
     sendInvitation,
@@ -130,7 +106,7 @@ const Team = () => {
     membersCount: members?.length || 0,
     hasCurrentOrganization: !!currentOrganization,
     membersError,
-    authDebugInfo
+    membersErrorDetails: membersErrorDetails?.message
   });
 
   const getRoleBadgeVariant = (role: string) => {
@@ -160,6 +136,10 @@ const Team = () => {
     }
   };
 
+  const handleRetryLoadingMembers = () => {
+    refetchMembers();
+  };
+
   return (
     <MainLayout>
       <div className="container mx-auto px-4 py-8">
@@ -173,17 +153,6 @@ const Team = () => {
                   ? `Manage members and permissions for ${currentOrganization.name}`
                   : 'Create or select an organisation to manage team members'}
               </p>
-              
-              {/* Debug info when members error occurs */}
-              {membersError && (
-                <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
-                  <div className="font-medium">Debug Info:</div>
-                  <div>Can manage team: {canManageTeam ? 'Yes' : 'No'}</div>
-                  <div>Current org: {currentOrganization?.id || 'None'}</div>
-                  <div>User role: {currentUserMembership?.role || 'None'}</div>
-                  <div>Auth status: {isAuthenticated ? 'Authenticated' : 'Not authenticated'}</div>
-                </div>
-              )}
             </div>
 
             {currentOrganization && canManageTeam && (
@@ -194,13 +163,6 @@ const Team = () => {
                 <UserPlus size={16} />
                 Invite Member
               </Button>
-            )}
-
-            {/* Show why invite button isn't visible */}
-            {currentOrganization && !canManageTeam && (
-              <div className="text-sm text-gray-500 bg-gray-50 p-2 rounded">
-                Invite button hidden: Role '{currentUserMembership?.role || 'none'}' (need admin)
-              </div>
             )}
           </div>
 
@@ -228,7 +190,7 @@ const Team = () => {
             <TabsContent value="members">
               {currentOrganization ? (
                 <>
-                  {/* Show error state for members loading */}
+                  {/* Show error state for members loading with retry option */}
                   {membersError && (
                     <Card className="mb-6 border-red-200 bg-red-50">
                       <CardContent className="p-4">
@@ -237,16 +199,37 @@ const Team = () => {
                           <span className="font-medium">Failed to load team members</span>
                         </div>
                         <p className="text-sm text-red-600 mt-1">
-                          This might be due to authentication issues. Try refreshing the page.
+                          {membersErrorDetails?.message || 'There was an error loading the team members. Please try again.'}
                         </p>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="mt-3"
-                          onClick={() => window.location.reload()}
-                        >
-                          Refresh Page
-                        </Button>
+                        <div className="flex gap-2 mt-3">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-red-700 border-red-300 hover:bg-red-100"
+                            onClick={handleRetryLoadingMembers}
+                            disabled={membersLoading}
+                          >
+                            {membersLoading ? (
+                              <>
+                                <RefreshCw size={12} className="mr-1 animate-spin" />
+                                Retrying...
+                              </>
+                            ) : (
+                              <>
+                                <RefreshCw size={12} className="mr-1" />
+                                Retry
+                              </>
+                            )}
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-red-700 border-red-300 hover:bg-red-100"
+                            onClick={() => window.location.reload()}
+                          >
+                            Refresh Page
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                   )}
@@ -313,7 +296,11 @@ const Team = () => {
                         </div>
                       ) : members?.length === 0 ? (
                         <div className="text-center py-12">
-                          <p className="text-gray-500">No team members found</p>
+                          <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                          <p className="text-gray-500 mb-2">No team members found</p>
+                          <p className="text-sm text-gray-400">
+                            {canManageTeam ? 'Click "Invite Member" to add your first team member.' : 'Contact an administrator to invite team members.'}
+                          </p>
                         </div>
                       ) : (
                         <div className="space-y-4">
@@ -393,7 +380,8 @@ const Team = () => {
                 </>
               ) : (
                 <div className="text-center py-12 bg-gray-50 rounded-lg">
-                  <p className="text-gray-500">Please select or create an organisation to manage team members.</p>
+                  <Building className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500 mb-2">Please select or create an organisation to manage team members.</p>
                   <Button 
                     onClick={() => setActiveTab('organizations')} 
                     variant="outline" 
