@@ -108,11 +108,7 @@ export function useTeamMembers(organizationId?: string) {
           })
           .select(`
             *,
-            organizations!organization_invitations_organization_id_fkey (name),
-            profiles!organization_invitations_invited_by_fkey (
-              first_name,
-              last_name
-            )
+            organizations!organization_invitations_organization_id_fkey (name)
           `)
           .single();
           
@@ -123,9 +119,16 @@ export function useTeamMembers(organizationId?: string) {
         
         console.log('Invitation created successfully:', invitation);
 
+        // Get inviter profile separately
+        const { data: inviterProfile } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', session.user.id)
+          .single();
+
         // Send the invitation email
-        const inviterName = invitation.profiles 
-          ? `${invitation.profiles.first_name || ''} ${invitation.profiles.last_name || ''}`.trim() || 'A colleague'
+        const inviterName = inviterProfile 
+          ? `${inviterProfile.first_name || ''} ${inviterProfile.last_name || ''}`.trim() || 'A colleague'
           : 'A colleague';
 
         const { error: emailError } = await supabase.functions.invoke('send-team-invitation', {
@@ -181,19 +184,22 @@ export function useTeamMembers(organizationId?: string) {
         .from('organization_invitations')
         .select(`
           *,
-          organizations!organization_invitations_organization_id_fkey (name),
-          profiles!organization_invitations_invited_by_fkey (
-            first_name,
-            last_name
-          )
+          organizations!organization_invitations_organization_id_fkey (name)
         `)
         .eq('id', invitationId)
         .single();
 
       if (error) throw error;
 
-      const inviterName = invitation.profiles 
-        ? `${invitation.profiles.first_name || ''} ${invitation.profiles.last_name || ''}`.trim() || 'A colleague'
+      // Get inviter profile separately
+      const { data: inviterProfile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', invitation.invited_by)
+        .single();
+
+      const inviterName = inviterProfile 
+        ? `${inviterProfile.first_name || ''} ${inviterProfile.last_name || ''}`.trim() || 'A colleague'
         : 'A colleague';
 
       // Send the invitation email
