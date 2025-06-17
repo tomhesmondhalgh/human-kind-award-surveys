@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,6 +21,7 @@ const AcceptInvitation = () => {
 
   useEffect(() => {
     if (!token) {
+      console.log('No token provided in URL');
       setStatus('not-found');
       return;
     }
@@ -33,39 +33,57 @@ const AcceptInvitation = () => {
     try {
       console.log('Fetching invitation with token:', token);
       
-      const { data, error } = await supabase
+      // First, get the invitation
+      const { data: invitationData, error: invitationError } = await supabase
         .from('organization_invitations')
-        .select(`
-          *,
-          organizations (
-            id,
-            name
-          )
-        `)
+        .select('*')
         .eq('token', token)
         .is('accepted_at', null)
-        .single();
+        .maybeSingle();
 
-      if (error) {
-        console.error('Error fetching invitation:', error);
+      if (invitationError) {
+        console.error('Error fetching invitation:', invitationError);
+        setStatus('error');
+        return;
+      }
+
+      if (!invitationData) {
+        console.log('No invitation found for token:', token);
         setStatus('not-found');
         return;
       }
 
-      if (!data) {
-        setStatus('not-found');
-        return;
-      }
+      console.log('Invitation found:', invitationData);
 
       // Check if invitation has expired
-      if (new Date(data.expires_at) < new Date()) {
+      if (new Date(invitationData.expires_at) < new Date()) {
+        console.log('Invitation has expired');
         setStatus('expired');
         return;
       }
 
-      setInvitation(data);
+      // Now get the organization details separately
+      const { data: organizationData, error: organizationError } = await supabase
+        .from('organizations')
+        .select('id, name')
+        .eq('id', invitationData.organization_id)
+        .single();
+
+      if (organizationError) {
+        console.error('Error fetching organization:', organizationError);
+        setStatus('error');
+        return;
+      }
+
+      // Combine the data
+      const combinedInvitation = {
+        ...invitationData,
+        organizations: organizationData
+      };
+
+      setInvitation(combinedInvitation);
       setStatus('success');
-      console.log('Invitation found:', data);
+      console.log('Combined invitation data:', combinedInvitation);
     } catch (error) {
       console.error('Error in fetchInvitation:', error);
       setStatus('error');
@@ -99,18 +117,21 @@ const AcceptInvitation = () => {
         return;
       }
 
-      // Mark invitation as accepted
+      console.log('Membership created successfully');
+
+      // Mark invitation as accepted (only update accepted_at, not accepted_by)
       const { error: invitationError } = await supabase
         .from('organization_invitations')
         .update({ 
-          accepted_at: new Date().toISOString(),
-          accepted_by: user.id
+          accepted_at: new Date().toISOString()
         })
         .eq('id', invitation.id);
 
       if (invitationError) {
         console.error('Error updating invitation:', invitationError);
         // Don't fail here as the membership was created successfully
+      } else {
+        console.log('Invitation marked as accepted');
       }
 
       // Refresh organizations to include the new one
