@@ -30,7 +30,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Sending team invitation email:', { email, organizationName, role, inviterName });
 
-    const acceptUrl = `${Deno.env.get('SITE_URL') || 'http://localhost:5173'}/accept-invitation?token=${invitationToken}`;
+    // Fix URL construction to handle trailing slashes properly
+    const siteUrl = Deno.env.get('SITE_URL') || 'http://localhost:5173';
+    const baseUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
+    const acceptUrl = `${baseUrl}/accept-invitation?token=${invitationToken}`;
 
     const roleDescriptions = {
       'admin': 'Full access including team management',

@@ -35,6 +35,7 @@ import CustomQuestions from './pages/CustomQuestions';
 import Upgrade from './pages/Upgrade';
 import NotFound from './pages/NotFound';
 import Accredit from './pages/Accredit';
+import AcceptInvitation from './pages/AcceptInvitation';
 
 // Create a query client
 const queryClient = new QueryClient({
@@ -68,6 +69,7 @@ function App() {
                         <Route path="/survey/:id" element={<PublicSurveyForm />} />
                         <Route path="/survey-complete" element={<SurveyComplete />} />
                         <Route path="/survey-closed" element={<SurveyClosed />} />
+                        <Route path="/accept-invitation" element={<AcceptInvitation />} />
                         
                         {/* Protected routes */}
                         <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
