@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -107,8 +108,8 @@ export function useTeamMembers(organizationId?: string) {
           })
           .select(`
             *,
-            organizations!inner (name),
-            profiles!fk_organization_invitations_invited_by (
+            organizations!organization_invitations_organization_id_fkey (name),
+            profiles!organization_invitations_invited_by_fkey (
               first_name,
               last_name
             )
@@ -180,8 +181,8 @@ export function useTeamMembers(organizationId?: string) {
         .from('organization_invitations')
         .select(`
           *,
-          organizations!inner (name),
-          profiles!fk_organization_invitations_invited_by (
+          organizations!organization_invitations_organization_id_fkey (name),
+          profiles!organization_invitations_invited_by_fkey (
             first_name,
             last_name
           )
