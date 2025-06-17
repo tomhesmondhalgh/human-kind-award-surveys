@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -95,7 +94,8 @@ export function useTeamMembers(organizationId?: string) {
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
         
-        const { data, error } = await supabase
+        // Create the invitation in the database
+        const { data: invitation, error } = await supabase
           .from('organization_invitations')
           .insert({
             email,
@@ -105,7 +105,14 @@ export function useTeamMembers(organizationId?: string) {
             invited_by: session.user.id,
             expires_at: expiresAt.toISOString()
           })
-          .select()
+          .select(`
+            *,
+            organizations!inner (name),
+            profiles!fk_organization_invitations_invited_by (
+              first_name,
+              last_name
+            )
+          `)
           .single();
           
         if (error) {
@@ -113,8 +120,32 @@ export function useTeamMembers(organizationId?: string) {
           throw error;
         }
         
-        console.log('Invitation created successfully:', data);
-        return data;
+        console.log('Invitation created successfully:', invitation);
+
+        // Send the invitation email
+        const inviterName = invitation.profiles 
+          ? `${invitation.profiles.first_name || ''} ${invitation.profiles.last_name || ''}`.trim() || 'A colleague'
+          : 'A colleague';
+
+        const { error: emailError } = await supabase.functions.invoke('send-team-invitation', {
+          body: {
+            email,
+            organizationName: invitation.organizations?.name || 'your organization',
+            role,
+            inviterName,
+            invitationToken: token
+          }
+        });
+
+        if (emailError) {
+          console.error('Email sending error:', emailError);
+          // Don't throw here - the invitation was created successfully, just log the email error
+          toast.error('Invitation created but email failed to send. You can resend it from the pending invitations list.');
+        } else {
+          console.log('Invitation email sent successfully');
+        }
+        
+        return invitation;
       } catch (error) {
         console.error('Error sending invitation:', error);
         throw error;
@@ -124,6 +155,7 @@ export function useTeamMembers(organizationId?: string) {
       toast.success('Invitation sent successfully');
       setIsInviteModalOpen(false);
       queryClient.invalidateQueries({ queryKey: ['organizationMembers', organizationId] });
+      queryClient.invalidateQueries({ queryKey: ['organizationInvitations', organizationId] });
     },
     onError: (error: any) => {
       console.error('Invitation mutation error:', error);
@@ -131,6 +163,62 @@ export function useTeamMembers(organizationId?: string) {
         toast.error('Authentication required - please refresh the page and log in again');
       } else {
         toast.error('Failed to send invitation');
+      }
+    }
+  });
+
+  const resendInvitation = useMutation({
+    mutationFn: async (invitationId: string) => {
+      // Check session before making the request
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        throw new Error('Not authenticated - please log in again');
+      }
+
+      // Get the invitation details
+      const { data: invitation, error } = await supabase
+        .from('organization_invitations')
+        .select(`
+          *,
+          organizations!inner (name),
+          profiles!fk_organization_invitations_invited_by (
+            first_name,
+            last_name
+          )
+        `)
+        .eq('id', invitationId)
+        .single();
+
+      if (error) throw error;
+
+      const inviterName = invitation.profiles 
+        ? `${invitation.profiles.first_name || ''} ${invitation.profiles.last_name || ''}`.trim() || 'A colleague'
+        : 'A colleague';
+
+      // Send the invitation email
+      const { error: emailError } = await supabase.functions.invoke('send-team-invitation', {
+        body: {
+          email: invitation.email,
+          organizationName: invitation.organizations?.name || 'your organization',
+          role: invitation.role,
+          inviterName,
+          invitationToken: invitation.token
+        }
+      });
+
+      if (emailError) throw emailError;
+      
+      return invitation;
+    },
+    onSuccess: () => {
+      toast.success('Invitation email resent successfully');
+    },
+    onError: (error: any) => {
+      console.error('Resend invitation error:', error);
+      if (error.message?.includes('Not authenticated')) {
+        toast.error('Authentication required - please refresh the page and log in again');
+      } else {
+        toast.error('Failed to resend invitation');
       }
     }
   });
@@ -173,6 +261,7 @@ export function useTeamMembers(organizationId?: string) {
     isInviteModalOpen,
     setIsInviteModalOpen,
     sendInvitation,
-    removeMember
+    removeMember,
+    resendInvitation
   };
 }

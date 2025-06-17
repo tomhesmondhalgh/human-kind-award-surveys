@@ -20,7 +20,8 @@ export function useTeamInvitations(organizationId: string | undefined) {
           .select('*')
           .eq('organization_id', organizationId)
           .is('accepted_at', null)
-          .gt('expires_at', new Date().toISOString());
+          .gt('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: false });
           
         if (error) throw error;
         

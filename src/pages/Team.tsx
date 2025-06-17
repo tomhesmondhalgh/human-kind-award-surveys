@@ -47,7 +47,8 @@ const Team = () => {
     isInviteModalOpen,
     setIsInviteModalOpen,
     sendInvitation,
-    removeMember
+    removeMember,
+    resendInvitation
   } = useTeamMembers(currentOrganization?.id);
 
   const {
@@ -59,6 +60,15 @@ const Team = () => {
   const handleSendInvitation = async (data: { email: string; role: string }) => {
     await sendInvitation.mutateAsync(data);
     return;
+  };
+
+  // Function to handle resending invitations that returns void
+  const handleResendInvitation = async (invitationId: string) => {
+    try {
+      await resendInvitation.mutateAsync(invitationId);
+    } catch (error) {
+      console.error('Failed to resend invitation:', error);
+    }
   };
 
   if (orgLoading || !authCheckComplete) {
@@ -359,10 +369,23 @@ const Team = () => {
                               </p>
                             </div>
                           </div>
-                          <Badge variant={getRoleBadgeVariant(invitation.role)} className="flex items-center gap-1">
-                            {getRoleIcon(invitation.role)}
-                            {invitation.role}
-                          </Badge>
+                          <div className="flex items-center gap-3">
+                            <Badge variant={getRoleBadgeVariant(invitation.role)} className="flex items-center gap-1">
+                              {getRoleIcon(invitation.role)}
+                              {invitation.role}
+                            </Badge>
+                            {canManageTeam && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleResendInvitation(invitation.id)}
+                                disabled={resendInvitation.isPending}
+                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              >
+                                {resendInvitation.isPending ? 'Sending...' : 'Resend'}
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
