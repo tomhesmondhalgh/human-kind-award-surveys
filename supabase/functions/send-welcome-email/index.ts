@@ -32,7 +32,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Preparing to send welcome email to ${email}`);
 
-    // Updated: Use the new sender format
     const emailResponse = await resend.emails.send({
       from: "Human Kind <contact@humankindaward.com>",
       to: [email],

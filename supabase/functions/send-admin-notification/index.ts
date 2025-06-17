@@ -55,7 +55,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Preparing to send admin notification about new user: ${email}`);
 
-    // Updated: Use the new sender format
     console.log("Sending email via Resend");
     const emailResponse = await resend.emails.send({
       from: "Human Kind <contact@humankindaward.com>",

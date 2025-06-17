@@ -39,7 +39,7 @@ const handler = async (req: Request): Promise<Response> => {
     };
 
     const emailResponse = await resend.emails.send({
-      from: "School Wellbeing Survey <noreply@resend.dev>",
+      from: "Human Kind <contact@humankindaward.com>",
       to: [email],
       subject: `You're invited to join ${organizationName}`,
       html: `
