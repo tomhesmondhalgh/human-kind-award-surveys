@@ -197,8 +197,8 @@ const OrganizationsList = () => {
       const { error } = await supabase
         .from('organization_memberships')
         .delete()
-        .eq('user_id', user?.id)
-        .eq('organization_id', orgId);
+        .eq('user_id', user?.id as any)
+        .eq('organization_id', orgId as any);
         
       if (error) {
         throw error;

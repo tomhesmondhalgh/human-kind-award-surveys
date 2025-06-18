@@ -37,8 +37,8 @@ const SurveyLink: React.FC<SurveyLinkProps> = ({
         
         const { error } = await supabase
           .from('survey_templates')
-          .update({ status: 'Sent' })
-          .eq('id', surveyId);
+          .update({ status: 'Sent' } as any)
+          .eq('id', surveyId as any);
           
         if (error) {
           console.error('Error updating survey status:', error);

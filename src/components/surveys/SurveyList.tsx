@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Send, Copy, Edit } from 'lucide-react';
@@ -51,8 +50,8 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder, refres
         
         const { error } = await supabase
           .from('survey_templates')
-          .update({ status: 'Sent' })
-          .eq('id', id);
+          .update({ status: 'Sent' } as any)
+          .eq('id', id as any);
           
         if (error) {
           console.error('Error updating survey status:', error);

@@ -18,7 +18,7 @@ export function useProfiles(members: OrganizationMember[] | undefined) {
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
-          .in('id', userIds);
+          .in('id', userIds as any);
           
         if (error) throw error;
         return data || [];

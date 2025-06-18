@@ -2,352 +2,197 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { OrganizationMember } from '@/types/organizations';
-import { preflightAuthCheck, requireAuthentication } from '@/utils/auth/sessionUtils';
+import { v4 as uuidv4 } from 'uuid';
+import type { OrganizationMember } from '@/types/organizations';
 
-export function useTeamMembers(organizationId?: string) {
-  const queryClient = useQueryClient();
+export function useTeamMembers(organizationId: string | undefined) {
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  
-  const {
-    data: members,
-    isLoading,
-    isError,
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const { 
+    data: members, 
+    isLoading, 
     error,
-    refetch
+    refetch: refetchMembers 
   } = useQuery({
     queryKey: ['organizationMembers', organizationId],
     queryFn: async () => {
       if (!organizationId) return [];
       
       try {
-        // Enhanced auth check before querying
-        const authCheck = await preflightAuthCheck('fetch team members');
-        
-        if (!authCheck.success) {
-          console.error('Pre-flight auth check failed:', authCheck.error);
-          
-          if (authCheck.storageIssues) {
-            throw new Error('Browser privacy settings are blocking authentication. Please try refreshing the page or using a different browser.');
-          }
-          
-          if (authCheck.needsRefresh) {
-            throw new Error('Authentication session expired. Please refresh the page and log in again.');
-          }
-          
-          throw authCheck.error || new Error('Authentication required');
-        }
-
-        console.log('Team members query - Auth check passed:', {
-          hasSession: !!authCheck.session,
-          userId: authCheck.session?.user?.id,
-          organizationId
-        });
-
-        // Updated query to work with the new foreign key constraints
         const { data, error } = await supabase
           .from('organization_memberships')
           .select(`
             *,
-            profiles!fk_organization_memberships_user_id (
-              first_name,
-              last_name,
-              job_title
-            )
+            profiles(first_name, last_name, job_title)
           `)
-          .eq('organization_id', organizationId);
+          .eq('organization_id', organizationId as any);
           
-        if (error) {
-          console.error('Team members query error:', error);
-          
-          // Enhanced error handling for common issues
-          if (error.code === '42501') {
-            throw new Error('Permission denied. You may not have access to view this organisation\'s team members.');
-          } else if (error.message?.includes('JWT')) {
-            throw new Error('Authentication token invalid. Please refresh the page and log in again.');
-          }
-          
-          throw error;
-        }
+        if (error) throw error;
         
-        console.log('Team members fetched successfully:', data?.length || 0, 'members');
-        
-        return (data || []).map(membership => ({
-          ...membership,
-          profile: membership.profiles
+        return (data || []).map((item: any) => ({
+          ...item,
+          profile: item.profiles || undefined
         })) as OrganizationMember[];
       } catch (error) {
-        console.error('Error fetching organization members:', error);
-        throw error;
+        console.error('Error fetching members:', error);
+        return [];
       }
     },
-    enabled: !!organizationId,
-    retry: (failureCount, error) => {
-      // Don't retry auth errors
-      if (error?.message?.includes('Authentication') || 
-          error?.message?.includes('Permission denied') ||
-          error?.message?.includes('privacy settings')) {
-        return false;
-      }
-      // Don't retry PostgREST syntax errors
-      if (error?.message?.includes('syntax error') || (error as any)?.code === 'PGRST116') {
-        return false;
-      }
-      return failureCount < 2;
-    }
+    enabled: !!organizationId
   });
-  
-  const sendInvitation = useMutation({
+
+  // Check if current user is admin
+  const { data: currentUserRole } = useQuery({
+    queryKey: ['currentUserRole', organizationId, user?.id],
+    queryFn: async () => {
+      if (!organizationId || !user?.id) return null;
+      
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session?.user) return null;
+      
+      const { data, error } = await supabase
+        .from('organization_memberships')
+        .select('role')
+        .eq('organization_id', organizationId)
+        .eq('user_id', session.session.user.id)
+        .single();
+        
+      if (error) {
+        console.error('Error fetching user role:', error);
+        return null;
+      }
+      
+      return data?.role || null;
+    },
+    enabled: !!organizationId && !!user?.id
+  });
+
+  const sendInvitationMutation = useMutation({
     mutationFn: async ({ email, role }: { email: string; role: string }) => {
-      if (!organizationId) throw new Error('No organization selected');
-      
-      try {
-        // Enhanced pre-flight auth check
-        const authCheck = await preflightAuthCheck('send team invitation');
-        
-        if (!authCheck.success) {
-          console.error('Pre-flight auth check failed for invitation:', authCheck.error);
-          
-          if (authCheck.storageIssues) {
-            throw new Error('Browser privacy settings are preventing invitations. Please try refreshing the page or contact support.');
-          }
-          
-          if (authCheck.needsRefresh) {
-            throw new Error('Your session has expired. Please refresh the page and log in again to send invitations.');
-          }
-          
-          throw new Error('Authentication required to send invitations');
-        }
-
-        console.log('Sending invitation with enhanced auth check:', { 
-          email, 
-          role, 
-          organizationId, 
-          userId: authCheck.session.user.id 
-        });
-
-        const token = crypto.randomUUID();
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
-        
-        // Create the invitation in the database
-        const { data: invitation, error } = await supabase
-          .from('organization_invitations')
-          .insert({
-            email,
-            organization_id: organizationId,
-            role: role as any,
-            token,
-            invited_by: authCheck.session.user.id,
-            expires_at: expiresAt.toISOString()
-          })
-          .select(`
-            *,
-            organizations!organization_invitations_organization_id_fkey (name)
-          `)
-          .single();
-          
-        if (error) {
-          console.error('Invitation creation error:', error);
-          
-          // Enhanced error messages with retry suggestions
-          if (error.code === '42501') {
-            throw new Error('Permission denied: You may not have admin privileges for this organisation. Please refresh the page and try again.');
-          } else if (error.code === '23505') {
-            throw new Error('An invitation for this email already exists');
-          } else if (error.message?.includes('JWT') || error.message?.includes('auth')) {
-            throw new Error('Authentication error: Please refresh the page and log in again');
-          } else {
-            throw new Error(`Failed to create invitation: ${error.message}`);
-          }
-        }
-        
-        console.log('Invitation created successfully:', invitation);
-
-        // Get inviter profile separately with error handling
-        let inviterName = 'A colleague';
-        try {
-          const { data: inviterProfile } = await supabase
-            .from('profiles')
-            .select('first_name, last_name')
-            .eq('id', authCheck.session.user.id)
-            .single();
-
-          if (inviterProfile) {
-            inviterName = `${inviterProfile.first_name || ''} ${inviterProfile.last_name || ''}`.trim() || 'A colleague';
-          }
-        } catch (profileError) {
-          console.warn('Could not fetch inviter profile, using default name:', profileError);
-        }
-
-        // Send the invitation email with enhanced error handling
-        try {
-          const { error: emailError } = await supabase.functions.invoke('send-team-invitation', {
-            body: {
-              email,
-              organizationName: invitation.organizations?.name || 'your organisation',
-              role,
-              inviterName,
-              invitationToken: token
-            }
-          });
-
-          if (emailError) {
-            console.error('Email sending error:', emailError);
-            // Don't throw here - the invitation was created successfully
-            toast.error('Invitation created but email failed to send. You can resend it from the pending invitations list.');
-          } else {
-            console.log('Invitation email sent successfully');
-          }
-        } catch (emailException) {
-          console.error('Email sending exception:', emailException);
-          toast.error('Invitation created but email failed to send. You can resend it from the pending invitations list.');
-        }
-        
-        return invitation;
-      } catch (error) {
-        console.error('Error sending invitation:', error);
-        throw error;
-      }
-    },
-    onSuccess: () => {
-      toast.success('Invitation sent successfully');
-      setIsInviteModalOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['organizationMembers', organizationId] });
-      queryClient.invalidateQueries({ queryKey: ['organizationInvitations', organizationId] });
-    },
-    onError: (error: any) => {
-      console.error('Invitation mutation error:', error);
-      
-      // Enhanced error handling with specific messages
-      if (error.message?.includes('privacy settings')) {
-        toast.error('Browser privacy settings are blocking invitations. Please try refreshing the page or contact support for assistance.');
-      } else if (error.message?.includes('session expired') || error.message?.includes('Authentication')) {
-        toast.error('Your session has expired. Please refresh the page and log in again.');
-      } else if (error.message?.includes('Permission denied')) {
-        toast.error('You need admin privileges to send invitations');
-      } else {
-        toast.error(error.message || 'Failed to send invitation');
-      }
-    }
-  });
-
-  const resendInvitation = useMutation({
-    mutationFn: async (invitationId: string) => {
-      // Enhanced auth check before resending
-      const authCheck = await preflightAuthCheck('resend team invitation');
-      
-      if (!authCheck.success) {
-        if (authCheck.storageIssues) {
-          throw new Error('Browser privacy settings are preventing this action. Please refresh the page and try again.');
-        }
-        throw new Error('Authentication required - please refresh the page and log in again');
+      if (!organizationId || !user?.id) {
+        throw new Error('Missing organization or user information');
       }
 
-      // Get the invitation details
-      const { data: invitation, error } = await supabase
+      const token = uuidv4();
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
+
+      const { data, error } = await supabase
         .from('organization_invitations')
-        .select(`
-          *,
-          organizations!organization_invitations_organization_id_fkey (name)
-        `)
-        .eq('id', invitationId)
+        .insert({
+          email,
+          organization_id: organizationId,
+          role: role as any,
+          token,
+          invited_by: user.id as any,
+          expires_at: expiresAt.toISOString()
+        } as any)
+        .select()
         .single();
 
       if (error) throw error;
 
-      // Get inviter profile separately with error handling
-      let inviterName = 'A colleague';
-      try {
-        const { data: inviterProfile } = await supabase
-          .from('profiles')
-          .select('first_name, last_name')
-          .eq('id', invitation.invited_by)
-          .single();
-
-        if (inviterProfile) {
-          inviterName = `${inviterProfile.first_name || ''} ${inviterProfile.last_name || ''}`.trim() || 'A colleague';
-        }
-      } catch (profileError) {
-        console.warn('Could not fetch inviter profile for resend, using default name:', profileError);
-      }
-
-      // Send the invitation email
+      // Send invitation email via edge function
       const { error: emailError } = await supabase.functions.invoke('send-team-invitation', {
         body: {
-          email: invitation.email,
-          organizationName: invitation.organizations?.name || 'your organisation',
-          role: invitation.role,
-          inviterName,
-          invitationToken: invitation.token
+          email,
+          organizationId,
+          token,
+          inviterName: `${user.user_metadata?.first_name || ''} ${user.user_metadata?.last_name || ''}`.trim() || 'A team member'
         }
       });
 
-      if (emailError) throw emailError;
-      
-      return invitation;
-    },
-    onSuccess: () => {
-      toast.success('Invitation email resent successfully');
-    },
-    onError: (error: any) => {
-      console.error('Resend invitation error:', error);
-      if (error.message?.includes('privacy settings')) {
-        toast.error('Browser privacy settings are blocking this action. Please refresh the page and try again.');
-      } else if (error.message?.includes('Authentication')) {
-        toast.error('Authentication required - please refresh the page and log in again');
-      } else {
-        toast.error('Failed to resend invitation');
-      }
-    }
-  });
-  
-  const removeMember = useMutation({
-    mutationFn: async (memberId: string) => {
-      // Enhanced auth check before removing member
-      const authCheck = await preflightAuthCheck('remove team member');
-      
-      if (!authCheck.success) {
-        if (authCheck.storageIssues) {
-          throw new Error('Browser privacy settings are preventing this action. Please refresh the page and try again.');
-        }
-        throw new Error('Authentication required - please refresh the page and log in again');
+      if (emailError) {
+        console.error('Error sending invitation email:', emailError);
+        // Don't throw here as the invitation was created successfully
       }
 
+      return data;
+    },
+    onSuccess: () => {
+      toast.success('Invitation sent successfully');
+      queryClient.invalidateQueries({ queryKey: ['organizationInvitations', organizationId] });
+      setIsInviteModalOpen(false);
+    },
+    onError: (error) => {
+      console.error('Error sending invitation:', error);
+      toast.error('Failed to send invitation');
+    }
+  });
+
+  const removeMemberMutation = useMutation({
+    mutationFn: async (membershipId: string) => {
       const { error } = await supabase
         .from('organization_memberships')
         .delete()
-        .eq('id', memberId);
+        .eq('id', membershipId as any);
         
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success('Team member removed');
-      queryClient.invalidateQueries({ queryKey: ['organizationMembers', organizationId] });
+      toast.success('Member removed successfully');
+      refetchMembers();
     },
-    onError: (error: any) => {
-      console.error('Remove member error:', error);
-      if (error.message?.includes('privacy settings')) {
-        toast.error('Browser privacy settings are blocking this action. Please refresh the page and try again.');
-      } else if (error.message?.includes('Authentication')) {
-        toast.error('Authentication required - please refresh the page and log in again');
-      } else {
-        toast.error('Failed to remove team member');
-      }
+    onError: (error) => {
+      console.error('Error removing member:', error);
+      toast.error('Failed to remove member');
     }
   });
-  
+
+  const cancelInvitationMutation = useMutation({
+    mutationFn: async (invitationId: string) => {
+      const { error } = await supabase
+        .from('organization_invitations')
+        .delete()
+        .eq('id', invitationId as any);
+        
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Invitation cancelled successfully');
+      queryClient.invalidateQueries({ queryKey: ['organizationInvitations', organizationId] });
+    },
+    onError: (error) => {
+      console.error('Error cancelling invitation:', error);
+      toast.error('Failed to cancel invitation');
+    }
+  });
+
+  const updateMemberRoleMutation = useMutation({
+    mutationFn: async ({ membershipId, newRole }: { membershipId: string; newRole: string }) => {
+      const { error } = await supabase
+        .from('organization_memberships')
+        .update({ role: newRole as any })
+        .eq('id', membershipId as any);
+        
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Member role updated successfully');
+      refetchMembers();
+    },
+    onError: (error) => {
+      console.error('Error updating member role:', error);
+      toast.error('Failed to update member role');
+    }
+  });
+
   return {
     members,
     isLoading,
-    isError,
+    isError: !!error,
     error,
-    refetch,
+    currentUserRole,
     isInviteModalOpen,
     setIsInviteModalOpen,
-    sendInvitation,
-    removeMember,
-    resendInvitation
+    sendInvitation: sendInvitationMutation.mutate,
+    removeMember: removeMemberMutation.mutate,
+    cancelInvitation: cancelInvitationMutation.mutate,
+    updateMemberRole: updateMemberRoleMutation.mutate,
+    refetchMembers
   };
 }
