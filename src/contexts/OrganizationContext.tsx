@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { Organization, OrganizationWithRole } from '../types/organizations';
 import { toast } from 'sonner';
+import { rpcQuery, insertQuery } from '@/lib/supabase/queryUtils';
+import { OrganizationData } from '@/types/supabase-overrides';
 
 export interface OrganizationContextType {
   currentOrganization: OrganizationWithRole | null;
@@ -54,8 +56,10 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       // Use the security definer function to get user organizations
       console.log('OrganizationContext: Calling get_user_organizations function...');
-      const { data: organizationsData, error: orgError } = await supabase
-        .rpc('get_user_organizations', { user_uuid: user.id });
+      const { data: organizationsData, error: orgError } = await rpcQuery<OrganizationData[]>(
+        'get_user_organizations',
+        { user_uuid: user.id }
+      );
 
       if (orgError) {
         console.error('OrganizationContext: Error calling get_user_organizations:', orgError);
@@ -89,7 +93,7 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         urn: org.urn,
         created_at: org.created_at,
         updated_at: org.updated_at,
-        role: org.role
+        role: org.role as any
       })) as OrganizationWithRole[];
       
       console.log('OrganizationContext: Processed organizations successfully:', organizations.length, 'organizations');
@@ -148,15 +152,14 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
       
       // Create the organization
-      const { data: orgData, error: orgError } = await supabase
-        .from('organizations')
-        .insert({
+      const { data: orgData, error: orgError } = await insertQuery<OrganizationData>(
+        'organizations',
+        {
           name,
           address: address || null,
           urn: urn || null,
-        })
-        .select('*')
-        .single();
+        }
+      );
         
       if (orgError) {
         console.error('OrganizationContext: Error creating organization:', orgError);
@@ -166,14 +169,15 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       console.log('OrganizationContext: Organization created:', orgData);
       
       // Add user as admin of the new organization
-      const { error: membershipError } = await supabase
-        .from('organization_memberships')
-        .insert({
+      const { error: membershipError } = await insertQuery(
+        'organization_memberships',
+        {
           user_id: user.id,
-          organization_id: orgData.id,
+          organization_id: orgData!.id,
           role: 'admin',
           is_primary: true
-        });
+        }
+      );
         
       if (membershipError) {
         console.error('OrganizationContext: Error creating membership:', membershipError);
@@ -184,8 +188,8 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       
       // Create the OrganizationWithRole object
       const newOrg: OrganizationWithRole = {
-        ...orgData,
-        role: 'admin'
+        ...orgData!,
+        role: 'admin' as any
       };
       
       // Refresh organizations list

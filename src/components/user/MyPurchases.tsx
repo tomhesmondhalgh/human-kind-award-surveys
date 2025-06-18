@@ -11,6 +11,8 @@ import { formatCurrency } from '../../lib/utils';
 import PageTitle from '../ui/PageTitle';
 import { useSubscription } from '../../hooks/useSubscription';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import { selectQuery } from '@/lib/supabase/queryUtils';
+import { SubscriptionData, PaymentHistoryData } from '@/types/supabase-overrides';
 
 export type Purchase = {
   id: string;
@@ -55,33 +57,39 @@ const MyPurchases = () => {
     if (!user) return;
     setLoading(true);
     try {
-      const {
-        data: subscriptions,
-        error: subError
-      } = await supabase.from('subscriptions').select('*').eq('user_id', user.id as any);
+      const { data: subscriptions, error: subError } = await selectQuery<SubscriptionData>(
+        'subscriptions',
+        '*',
+        { user_id: user.id }
+      );
+      
       if (subError) {
         throw subError;
       }
+      
       const active = subscriptions?.find((sub: any) => 
         sub.status === 'active' && 
         sub.purchase_type === 'subscription' && 
         (sub.end_date === null || new Date(sub.end_date) > new Date())
       );
+      
       if (active) {
         setActiveSubscription({
           id: active.id,
           plan_type: active.plan_type,
-          status: active.status,
+          status: active.status as any,
           start_date: active.start_date || active.created_at,
           end_date: active.end_date || '',
           purchase_type: active.purchase_type
         });
       }
+      
       if (!subscriptions || subscriptions.length === 0) {
         setPurchases([]);
         setLoading(false);
         return;
       }
+      
       const subscriptionIds = subscriptions.map((sub: any) => sub.id);
       const {
         data: payments,
@@ -96,14 +104,17 @@ const MyPurchases = () => {
         `).in('subscription_id', subscriptionIds as any).order('created_at', {
         ascending: false
       });
+      
       if (paymentError) {
         throw paymentError;
       }
+      
       const formattedPurchases = (payments || []).map((item: any) => ({
         ...item,
         plan_type: item.subscription?.plan_type || 'unknown',
         purchase_type: item.subscription?.purchase_type || 'unknown'
       }));
+      
       setPurchases(formattedPurchases);
     } catch (error) {
       console.error('Error fetching purchases:', error);

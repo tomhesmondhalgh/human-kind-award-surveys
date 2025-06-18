@@ -4,6 +4,8 @@ import { supabase } from '../integrations/supabase/client';
 import { toast } from 'sonner';
 import { CustomQuestionType } from '../types/surveyForm';
 import { getCacheItem, setCacheItem, clearCacheItem } from '@/utils/cache/cacheUtils';
+import { selectQuery } from '@/lib/supabase/queryUtils';
+import { SurveyQuestionData, CustomQuestionData } from '@/types/supabase-overrides';
 
 interface CustomQuestionsContextType {
   questions: CustomQuestionType[];
@@ -50,10 +52,11 @@ export const CustomQuestionsProvider: React.FC<CustomQuestionsProviderProps> = (
       }
       
       // First get the question IDs linked to this survey
-      const { data: linkedQuestions, error: linkError } = await supabase
-        .from('survey_questions')
-        .select('question_id')
-        .eq('survey_id', surveyId);
+      const { data: linkedQuestions, error: linkError } = await selectQuery<SurveyQuestionData>(
+        'survey_questions',
+        'question_id',
+        { survey_id: surveyId }
+      );
         
       if (linkError) {
         console.error('Error fetching linked questions:', linkError);
@@ -70,24 +73,24 @@ export const CustomQuestionsProvider: React.FC<CustomQuestionsProviderProps> = (
       console.log('Found question IDs:', questionIds);
       
       // Now fetch the actual question data
-      const { data: questionData, error: questionsError } = await supabase
+      const { data, error } = await supabase
         .from('custom_questions')
         .select('*')
-        .in('id', questionIds);
+        .in('id', questionIds as any);
         
-      if (questionsError) {
-        console.error('Error fetching questions data:', questionsError);
-        throw new Error(`Failed to fetch questions data: ${questionsError.message}`);
+      if (error) {
+        console.error('Error fetching questions data:', error);
+        throw new Error(`Failed to fetch questions data: ${error.message}`);
       }
       
-      if (!questionData) {
+      if (!data) {
         console.log('No question data found');
         setQuestions([]);
         return;
       }
       
       // Process the question data to ensure proper typing
-      const formattedQuestions: CustomQuestionType[] = questionData.map(q => {
+      const formattedQuestions: CustomQuestionType[] = data.map((q: any) => {
         let options: string[] = [];
         
         // Process options based on their actual format

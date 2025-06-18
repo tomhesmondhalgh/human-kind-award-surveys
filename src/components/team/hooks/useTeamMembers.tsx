@@ -6,6 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 import type { OrganizationMember } from '@/types/organizations';
+import { selectQuery, selectSingleQuery, insertQuery, updateQuery, deleteQuery } from '@/lib/supabase/queryUtils';
+import { OrganizationMembershipData, OrganizationInvitationData } from '@/types/supabase-overrides';
 
 export function useTeamMembers(organizationId: string | undefined) {
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
@@ -54,19 +56,21 @@ export function useTeamMembers(organizationId: string | undefined) {
       const { data: session } = await supabase.auth.getSession();
       if (!session.session?.user) return null;
       
-      const { data, error } = await supabase
-        .from('organization_memberships')
-        .select('role')
-        .eq('organization_id', organizationId as any)
-        .eq('user_id', session.session.user.id as any)
-        .single();
+      const { data, error } = await selectSingleQuery<OrganizationMembershipData>(
+        'organization_memberships',
+        'role',
+        {
+          organization_id: organizationId,
+          user_id: session.session.user.id
+        }
+      );
         
       if (error) {
         console.error('Error fetching user role:', error);
         return null;
       }
       
-      return (data as any)?.role || null;
+      return data?.role || null;
     },
     enabled: !!organizationId && !!user?.id
   });
@@ -81,18 +85,17 @@ export function useTeamMembers(organizationId: string | undefined) {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
 
-      const { data, error } = await supabase
-        .from('organization_invitations')
-        .insert({
+      const { data, error } = await insertQuery<OrganizationInvitationData>(
+        'organization_invitations',
+        {
           email,
           organization_id: organizationId,
-          role: role as any,
+          role: role,
           token,
-          invited_by: user.id as any,
+          invited_by: user.id,
           expires_at: expiresAt.toISOString()
-        } as any)
-        .select()
-        .single();
+        }
+      );
 
       if (error) throw error;
 
@@ -126,11 +129,7 @@ export function useTeamMembers(organizationId: string | undefined) {
 
   const removeMemberMutation = useMutation({
     mutationFn: async (membershipId: string) => {
-      const { error } = await supabase
-        .from('organization_memberships')
-        .delete()
-        .eq('id', membershipId as any);
-        
+      const { error } = await deleteQuery('organization_memberships', { id: membershipId });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -145,11 +144,7 @@ export function useTeamMembers(organizationId: string | undefined) {
 
   const cancelInvitationMutation = useMutation({
     mutationFn: async (invitationId: string) => {
-      const { error } = await supabase
-        .from('organization_invitations')
-        .delete()
-        .eq('id', invitationId as any);
-        
+      const { error } = await deleteQuery('organization_invitations', { id: invitationId });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -164,11 +159,11 @@ export function useTeamMembers(organizationId: string | undefined) {
 
   const updateMemberRoleMutation = useMutation({
     mutationFn: async ({ membershipId, newRole }: { membershipId: string; newRole: string }) => {
-      const { error } = await supabase
-        .from('organization_memberships')
-        .update({ role: newRole } as any)
-        .eq('id', membershipId as any);
-        
+      const { error } = await updateQuery(
+        'organization_memberships',
+        { role: newRole },
+        { id: membershipId }
+      );
       if (error) throw error;
     },
     onSuccess: () => {

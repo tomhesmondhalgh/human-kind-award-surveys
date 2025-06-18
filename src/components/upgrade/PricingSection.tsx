@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import PlanCard, { PlanType } from './PlanCard';
 import { useSubscription } from '../../hooks/useSubscription';
@@ -12,6 +13,8 @@ import { Label } from '../../components/ui/label';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import RedemptionCodeDialog from './RedemptionCodeDialog';
+import { selectSingleQuery } from '@/lib/supabase/queryUtils';
+import { ProfileData } from '@/types/supabase-overrides';
 
 interface UserProfile {
   firstName: string;
@@ -105,11 +108,11 @@ const PricingSection: React.FC = () => {
       if (!user) return;
       
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('first_name, last_name, school_name, school_address')
-          .eq('id', user.id as any)
-          .single();
+        const { data, error } = await selectSingleQuery<ProfileData>(
+          'profiles',
+          'first_name, last_name, school_name, school_address',
+          { id: user.id }
+        );
         
         if (error) {
           console.error('Error fetching user profile:', error);
@@ -117,19 +120,18 @@ const PricingSection: React.FC = () => {
         }
         
         if (data) {
-          const profileData = data as any;
           setUserProfile({
-            firstName: profileData.first_name || '',
-            lastName: profileData.last_name || '',
+            firstName: data.first_name || '',
+            lastName: data.last_name || '',
             email: user.email || '',
-            schoolName: profileData.school_name || '',
-            schoolAddress: profileData.school_address || ''
+            schoolName: data.school_name || '',
+            schoolAddress: data.school_address || ''
           });
 
           setInvoiceDetails({
-            schoolName: profileData.school_name || '',
-            address: profileData.school_address || '',
-            contactName: `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim(),
+            schoolName: data.school_name || '',
+            address: data.school_address || '',
+            contactName: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
             contactEmail: user.email || '',
             purchaseOrderNumber: '',
             additionalInformation: ''
