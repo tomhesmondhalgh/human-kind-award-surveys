@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { getCacheItem, setCacheItem, clearCacheItem } from '@/utils/cache/cacheUtils';
-import { selectSingleQuery } from '@/lib/supabase/queryUtils';
+import { supabase } from '@/integrations/supabase/client';
 import { ProfileData } from '@/types/supabase-overrides';
 
 // Cache expiry time in seconds (5 minutes)
@@ -42,11 +42,11 @@ export function useAdminRole() {
       setIsLoading(true);
       
       // Query the profiles table to check if the user has admin status
-      const { data, error } = await selectSingleQuery<ProfileData>(
-        'profiles',
-        'is_admin',
-        { id: user.id }
-      );
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', user.id)
+        .single();
       
       if (error) {
         console.error('Error checking admin status:', error);

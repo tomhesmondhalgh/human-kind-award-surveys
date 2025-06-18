@@ -2,7 +2,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Purchase } from '../types/purchases';
-import { selectSingleQuery } from '@/lib/supabase/queryUtils';
 import { ProfileData, PaymentHistoryData } from '@/types/supabase-overrides';
 
 export type PurchasesQueryParams = {
@@ -44,11 +43,11 @@ export const useAdminPurchaseData = (initialParams?: Partial<PurchasesQueryParam
         
         console.log('Checking admin status for user:', user.id);
         
-        const { data: profile, error: profileError } = await selectSingleQuery<ProfileData>(
-          'profiles',
-          'is_admin',
-          { id: user.id }
-        );
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', user.id)
+          .single();
         
         if (profileError) {
           console.error('Error checking admin status:', profileError);

@@ -104,7 +104,7 @@ export function useTeamMembers(organizationId: string | undefined) {
         .insert({
           email,
           organization_id: organizationId,
-          role: role,
+          role: role as any,
           token,
           invited_by: user.id,
           expires_at: expiresAt.toISOString()

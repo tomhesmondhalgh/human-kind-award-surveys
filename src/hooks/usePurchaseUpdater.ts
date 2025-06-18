@@ -32,7 +32,7 @@ export function usePurchaseUpdater() {
           billing_school_name: updateData.billingSchoolName || null,
           billing_contact_name: updateData.billingContactName || null,
           billing_contact_email: updateData.billingContactEmail || null
-        })
+        } as any)
         .eq('id', purchase.id);
 
       if (billingError) {

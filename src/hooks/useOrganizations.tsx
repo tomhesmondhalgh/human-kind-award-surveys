@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { OrganizationWithRole } from '../types/organizations';
-import { rpcQuery } from '@/lib/supabase/queryUtils';
 
 export const useOrganizations = () => {
   const { user } = useAuth();
@@ -24,7 +23,7 @@ export const useOrganizations = () => {
 
       try {
         // Use the security definer function to bypass RLS issues
-        const { data: organizationsData, error: orgError } = await rpcQuery(
+        const { data: organizationsData, error: orgError } = await supabase.rpc(
           'get_user_organizations',
           { user_uuid: user.id }
         );
