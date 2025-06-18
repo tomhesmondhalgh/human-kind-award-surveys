@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { OrganizationWithRole } from '../types/organizations';
+import { rpcQuery } from '@/lib/supabase/queryUtils';
 
 export const useOrganizations = () => {
   const { user } = useAuth();
@@ -22,15 +23,20 @@ export const useOrganizations = () => {
       setError(null);
 
       try {
-        // Use the new security definer function to bypass RLS issues
-        const { data: organizationsData, error: orgError } = await supabase
-          .rpc('get_user_organizations', { user_uuid: user.id });
+        // Use the security definer function to bypass RLS issues
+        const { data: organizationsData, error: orgError } = await rpcQuery(
+          'get_user_organizations',
+          { user_uuid: user.id }
+        );
 
         if (orgError) {
           throw orgError;
         }
 
-        const orgsWithRoles = organizationsData?.map(org => ({
+        // Handle the case where data might be null or not an array
+        const orgsArray = Array.isArray(organizationsData) ? organizationsData : [];
+        
+        const orgsWithRoles = orgsArray.map((org: any) => ({
           id: org.id,
           name: org.name,
           address: org.address,
@@ -38,7 +44,7 @@ export const useOrganizations = () => {
           created_at: org.created_at,
           updated_at: org.updated_at,
           role: org.role
-        })) as OrganizationWithRole[] || [];
+        })) as OrganizationWithRole[];
 
         setOrganizations(orgsWithRoles);
       } catch (err) {

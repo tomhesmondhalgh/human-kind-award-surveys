@@ -2,6 +2,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Purchase } from '../types/purchases';
+import { selectSingleQuery } from '@/lib/supabase/queryUtils';
+import { ProfileData, PaymentHistoryData } from '@/types/supabase-overrides';
 
 export type PurchasesQueryParams = {
   page: number;
@@ -42,11 +44,11 @@ export const useAdminPurchaseData = (initialParams?: Partial<PurchasesQueryParam
         
         console.log('Checking admin status for user:', user.id);
         
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', user.id)
-          .single();
+        const { data: profile, error: profileError } = await selectSingleQuery<ProfileData>(
+          'profiles',
+          'is_admin',
+          { id: user.id }
+        );
         
         if (profileError) {
           console.error('Error checking admin status:', profileError);
@@ -117,22 +119,22 @@ export const useAdminPurchaseData = (initialParams?: Partial<PurchasesQueryParam
         return;
       }
       
-      // Format the data for the UI
-      const formattedData = data.map(item => ({
-        id: item.id,
-        subscription_id: item.subscription_id,
-        amount: item.amount,
+      // Format the data for the UI with proper type checking
+      const formattedData = data.map((item: any) => ({
+        id: item.id || '',
+        subscription_id: item.subscription_id || '',
+        amount: item.amount || 0,
         currency: item.currency || 'GBP',
-        payment_method: item.payment_method,
-        payment_status: item.payment_status,
-        invoice_number: item.invoice_number,
-        billing_school_name: item.billing_school_name,
-        billing_contact_name: item.billing_contact_name,
-        billing_contact_email: item.billing_contact_email,
-        billing_address: item.billing_address,
-        created_at: item.created_at,
-        plan_type: item.subscriptions?.plan_type || 'unknown',
-        purchase_type: item.subscriptions?.purchase_type || 'unknown'
+        payment_method: item.payment_method || 'stripe',
+        payment_status: item.payment_status || 'pending',
+        invoice_number: item.invoice_number || null,
+        billing_school_name: item.billing_school_name || null,
+        billing_contact_name: item.billing_contact_name || null,
+        billing_contact_email: item.billing_contact_email || null,
+        billing_address: item.billing_address || null,
+        created_at: item.created_at || '',
+        plan_type: item.subscriptions?.plan_type || 'foundation',
+        purchase_type: item.subscriptions?.purchase_type || 'subscription'
       }));
       
       setPurchases(formattedData);
