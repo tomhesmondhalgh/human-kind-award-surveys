@@ -32,7 +32,7 @@ interface OrganizationProviderProps {
 export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ children }) => {
   const [currentOrganization, setCurrentOrganization] = useState<OrganizationWithRole | null>(null);
   const { user } = useAuth();
-  const { organizations, isLoading, error, refetch } = useOrganizations();
+  const { organizations, isLoading, error, refetch: refreshOrganizations } = useOrganizations();
 
   const createOrganization = async (name: string, address?: string, urn?: string): Promise<OrganizationWithRole | null> => {
     if (!user) return null;
@@ -62,11 +62,12 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
       }
 
       // Refresh organizations list
-      refetch();
+      refreshOrganizations();
 
+      // Safely create new org object with proper typings
       const newOrg: OrganizationWithRole = {
-        ...orgData,
-        role: 'admin' as any
+        ...orgData as any,
+        role: 'admin'
       };
 
       setCurrentOrganization(newOrg);
@@ -75,10 +76,6 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
       console.error('Error creating organization:', error);
       return null;
     }
-  };
-
-  const refreshOrganizations = () => {
-    refetch();
   };
 
   // Set the current organization when organizations are loaded
