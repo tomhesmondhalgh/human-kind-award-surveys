@@ -19,23 +19,30 @@ export const queryTable = async <T>(
     });
   }
   
+  // Add ordering for consistent results
+  query = query.order('created_at', { ascending: false });
+  
   const { data, error } = await query;
   return { data: data as T[] | null, error };
 };
 
 /**
- * Generic insert helper
+ * Generic insert helper - handles both single objects and arrays
  */
 export const insertIntoTable = async <T>(
   tableName: string,
-  insertData: Record<string, any>
+  insertData: Record<string, any> | Record<string, any>[]
 ): Promise<{ data: T | null; error: any }> => {
-  const { data, error } = await supabase
-    .from(tableName)
-    .insert(insertData as any)
-    .select()
-    .single();
+  let query = supabase.from(tableName).insert(insertData as any);
   
+  // Only add select and single for single inserts
+  if (!Array.isArray(insertData)) {
+    query = query.select().single();
+  } else {
+    query = query.select();
+  }
+  
+  const { data, error } = await query;
   return { data: data as T | null, error };
 };
 

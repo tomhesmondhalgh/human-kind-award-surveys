@@ -1,9 +1,8 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { useOrganizations } from '../hooks/useOrganizations';
 import { OrganizationWithRole } from '../types/organizations';
-import { queryTable, insertIntoTable } from '@/utils/supabaseHelpers';
+import { insertIntoTable } from '@/utils/supabaseHelpers';
 
 interface OrganizationContextType {
   currentOrganization: OrganizationWithRole | null;
@@ -38,21 +37,21 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
     if (!user) return null;
 
     try {
-      // Create organization
+      // Create organization using helper function
       const { data: orgData, error: orgError } = await insertIntoTable('organizations', {
         name,
         address,
         urn
       });
 
-      if (orgError || !orgData) {
+      if (orgError || !orgData || typeof orgData !== 'object' || !('id' in orgData)) {
         throw orgError || new Error('Failed to create organization');
       }
 
-      // Create membership
+      // Create membership using helper function
       const { error: membershipError } = await insertIntoTable('organization_memberships', {
         user_id: user.id,
-        organization_id: orgData.id,
+        organization_id: (orgData as any).id,
         role: 'admin',
         is_primary: organizations.length === 0
       });
@@ -66,7 +65,7 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
 
       // Safely create new org object with proper typings
       const newOrg: OrganizationWithRole = {
-        ...orgData as any,
+        ...(orgData as any),
         role: 'admin'
       };
 

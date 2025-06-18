@@ -1,10 +1,10 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { toast } from 'sonner';
 import { SurveyStatus } from '@/utils/types/survey';
+import { queryTable } from '@/utils/supabaseHelpers';
 
 export const useSurveyTemplates = (status?: SurveyStatus) => {
   const [templates, setTemplates] = useState<any[]>([]);
@@ -20,9 +20,19 @@ export const useSurveyTemplates = (status?: SurveyStatus) => {
       try {
         setLoading(true);
         
-        let query = supabase
-          .from('survey_templates')
-          .select(`
+        // Build filters for the query
+        const filters: Record<string, any> = {
+          organization_id: currentOrganization.id
+        };
+        
+        if (status) {
+          filters.status = status;
+        }
+
+        // Use helper function to query templates
+        const { data, error: fetchError } = await queryTable(
+          'survey_templates',
+          `
             id,
             name,
             date,
@@ -32,15 +42,9 @@ export const useSurveyTemplates = (status?: SurveyStatus) => {
             status,
             created_at,
             updated_at
-          `)
-          .eq('organization_id', currentOrganization.id)
-          .order('created_at', { ascending: false });
-
-        if (status) {
-          query = query.eq('status', status);
-        }
-
-        const { data, error: fetchError } = await query;
+          `,
+          filters
+        );
 
         if (fetchError) {
           console.error('Error fetching survey templates:', fetchError);
