@@ -26,6 +26,7 @@ const AcceptInvitation = () => {
       return;
     }
 
+    // Fetch invitation immediately without waiting for auth
     fetchInvitation();
   }, [token]);
 
