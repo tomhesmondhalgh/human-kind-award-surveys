@@ -31,7 +31,7 @@ export const usePaymentHistory = (limit = 10) => {
               purchase_type
             )
           `)
-          .eq('subscriptions.user_id', user.id as any)
+          .eq('subscriptions.user_id', user.id)
           .order('created_at', { ascending: false })
           .range((page - 1) * limit, page * limit - 1);
 

@@ -31,7 +31,7 @@ export function useTeamMembers(organizationId: string | undefined) {
             *,
             profiles(first_name, last_name, job_title)
           `)
-          .eq('organization_id', organizationId as any);
+          .eq('organization_id', organizationId);
           
         if (error) {
           console.error('Error fetching team members:', error);
@@ -70,8 +70,8 @@ export function useTeamMembers(organizationId: string | undefined) {
         const { data, error } = await supabase
           .from('organization_memberships')
           .select('role')
-          .eq('organization_id', organizationId as any)
-          .eq('user_id', session.session.user.id as any)
+          .eq('organization_id', organizationId)
+          .eq('user_id', session.session.user.id)
           .single();
           
         if (error) {
@@ -108,7 +108,7 @@ export function useTeamMembers(organizationId: string | undefined) {
           token,
           invited_by: user.id,
           expires_at: expiresAt.toISOString()
-        } as any)
+        })
         .select()
         .single();
 
@@ -147,7 +147,7 @@ export function useTeamMembers(organizationId: string | undefined) {
       const { error } = await supabase
         .from('organization_memberships')
         .delete()
-        .eq('id', membershipId as any);
+        .eq('id', membershipId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -165,7 +165,7 @@ export function useTeamMembers(organizationId: string | undefined) {
       const { error } = await supabase
         .from('organization_invitations')
         .delete()
-        .eq('id', invitationId as any);
+        .eq('id', invitationId);
       if (error) throw error;
     },
     onSuccess: () => {
