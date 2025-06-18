@@ -1,40 +1,45 @@
 
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { OrganizationMember } from '@/types/organizations';
-import { selectQuery } from '@/lib/supabase/queryUtils';
 import { ProfileData } from '@/types/supabase-overrides';
 
-export function useProfiles(members: OrganizationMember[] | undefined) {
-  const { 
-    data: profiles, 
-    isLoading: profilesLoading, 
-    error: profilesError 
-  } = useQuery({
-    queryKey: ['userProfiles', members],
-    queryFn: async () => {
-      if (!members || members.length === 0) return [];
-      
-      const userIds = members.map(member => member.user_id);
-      const { data, error } = await selectQuery<ProfileData>(
-        'profiles',
-        '*',
-        { id: userIds }
-      );
-        
-      if (error) {
-        console.error('Error fetching profiles:', error);
-        return [];
-      }
-      
-      return data || [];
-    },
-    enabled: !!members && members.length > 0
-  });
+export const useProfiles = (userIds: string[]) => {
+  const [profiles, setProfiles] = useState<ProfileData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  return {
-    profiles,
-    profilesLoading,
-    profilesError
-  };
-}
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      if (userIds.length === 0) {
+        setProfiles([]);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('id', userIds);
+
+        if (error) {
+          console.error('Error fetching profiles:', error);
+          throw error;
+        }
+
+        setProfiles(data || []);
+      } catch (err: any) {
+        console.error('Error in fetchProfiles:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfiles();
+  }, [userIds]);
+
+  return { profiles, loading, error };
+};

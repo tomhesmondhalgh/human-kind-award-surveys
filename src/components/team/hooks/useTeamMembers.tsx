@@ -31,7 +31,7 @@ export function useTeamMembers(organizationId: string | undefined) {
             *,
             profiles(first_name, last_name, job_title)
           `)
-          .eq('organization_id', organizationId);
+          .eq('organization_id', organizationId as any);
           
         if (error) {
           console.error('Error fetching team members:', error);
@@ -70,8 +70,8 @@ export function useTeamMembers(organizationId: string | undefined) {
         const { data, error } = await supabase
           .from('organization_memberships')
           .select('role')
-          .eq('organization_id', organizationId)
-          .eq('user_id', session.session.user.id)
+          .eq('organization_id', organizationId as any)
+          .eq('user_id', session.session.user.id as any)
           .single();
           
         if (error) {
@@ -103,12 +103,12 @@ export function useTeamMembers(organizationId: string | undefined) {
         .from('organization_invitations')
         .insert({
           email,
-          organization_id: organizationId,
+          organization_id: organizationId as any,
           role: role as any,
           token,
-          invited_by: user.id,
+          invited_by: user.id as any,
           expires_at: expiresAt.toISOString()
-        })
+        } as any)
         .select()
         .single();
 
@@ -147,7 +147,7 @@ export function useTeamMembers(organizationId: string | undefined) {
       const { error } = await supabase
         .from('organization_memberships')
         .delete()
-        .eq('id', membershipId);
+        .eq('id', membershipId as any);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -165,7 +165,7 @@ export function useTeamMembers(organizationId: string | undefined) {
       const { error } = await supabase
         .from('organization_invitations')
         .delete()
-        .eq('id', invitationId);
+        .eq('id', invitationId as any);
       if (error) throw error;
     },
     onSuccess: () => {

@@ -1,45 +1,49 @@
 
 import React, { useState, useEffect } from 'react';
-import { useToast } from '../../hooks/use-toast';
-import { Button } from '../../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
-import { Switch } from '../../components/ui/switch';
-import { Separator } from '../../components/ui/separator';
-import { Textarea } from '../../components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { Plan, getPlans } from '../../lib/supabase/subscription';
-import { supabase } from '../../lib/supabase';
-import { Pencil, Trash, Plus, Save, X } from 'lucide-react';
-import { fixPlanTypes } from '../../utils/typeConversions';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Textarea } from '../ui/textarea';
+import { Switch } from '../ui/switch';
+import { Badge } from '../ui/badge';
+import { Plus, Edit3, Trash2, Save, X } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+interface Plan {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  currency: string;
+  features: string[];
+  is_active: boolean;
+  is_popular: boolean;
+  sort_order: number;
+  stripe_price_id?: string;
+  duration_months?: number;
+  purchase_type?: string;
+}
 
 const PlansManagement: React.FC = () => {
   const [plans, setPlans] = useState<Plan[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
-  const [showDialog, setShowDialog] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const { toast } = useToast();
+  const [isCreating, setIsCreating] = useState(false);
 
-  // For new plan form
-  const [newPlan, setNewPlan] = useState<Partial<Plan>>({
+  const defaultPlan: Partial<Plan> = {
     name: '',
     description: '',
     price: 0,
     currency: 'GBP',
-    purchase_type: 'subscription',
-    duration_months: 36,
-    stripe_price_id: '',
     features: [],
-    is_popular: false,
     is_active: true,
-    sort_order: 0
-  });
-
-  // For features input in the form
-  const [featuresText, setFeaturesText] = useState('');
+    is_popular: false,
+    sort_order: 0,
+    duration_months: 12,
+    purchase_type: 'subscription'
+  };
 
   useEffect(() => {
     fetchPlans();
@@ -47,449 +51,276 @@ const PlansManagement: React.FC = () => {
 
   const fetchPlans = async () => {
     try {
-      setIsLoading(true);
-      const fetchedPlans = await getPlans();
-      
-      // Also get inactive plans
-      const { data: inactivePlans, error } = await supabase
+      const { data, error } = await supabase
         .from('plans')
         .select('*')
-        .eq('is_active', false as any)
         .order('sort_order');
-      
-      if (error) {
-        console.error('Error fetching inactive plans:', error);
-      } else if (inactivePlans) {
-        // Use our utility function to fix plan types
-        const typedInactivePlans = fixPlanTypes(inactivePlans);
-        setPlans([...fetchedPlans, ...typedInactivePlans]);
-      } else {
-        setPlans(fetchedPlans);
-      }
+
+      if (error) throw error;
+
+      setPlans(data || []);
     } catch (error) {
       console.error('Error fetching plans:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load plans.',
-        variant: 'destructive'
-      });
+      toast.error('Failed to load plans');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleEditPlan = (plan: Plan) => {
-    setEditingPlan(plan);
-    setFeaturesText(plan.features.join('\n'));
-    setShowDialog(true);
-  };
-
-  const handleCreateNewPlan = () => {
-    setEditingPlan(null);
-    setFeaturesText('');
-    setNewPlan({
-      name: '',
-      description: '',
-      price: 0,
-      currency: 'GBP',
-      purchase_type: 'subscription',
-      duration_months: 36,
-      stripe_price_id: '',
-      features: [],
-      is_popular: false,
-      is_active: true,
-      sort_order: plans.length > 0 ? Math.max(...plans.map(p => p.sort_order)) + 1 : 1
-    });
-    setShowDialog(true);
-  };
-
-  const handleSavePlan = async () => {
+  const handleSave = async (plan: Plan) => {
     try {
-      setIsSaving(true);
-      
-      // Parse features from textarea into array
-      const featuresArray = featuresText
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 0);
-      
-      if (editingPlan) {
-        // Update existing plan - ensure required properties
-        const updatedPlan = {
-          ...editingPlan,
-          name: editingPlan.name || '',
-          description: editingPlan.description || '',
-          sort_order: editingPlan.sort_order || 0,
-          features: featuresArray,
-          updated_at: new Date().toISOString()
-        };
-        
+      if (plan.id) {
+        // Update existing plan
         const { error } = await supabase
           .from('plans')
-          .update(updatedPlan as any)
-          .eq('id', editingPlan.id as any);
-          
-        if (error) {
-          throw error;
-        }
-        
-        toast({
-          title: 'Success',
-          description: `Plan "${editingPlan.name}" has been updated.`
-        });
+          .update({
+            name: plan.name,
+            description: plan.description,
+            price: plan.price,
+            currency: plan.currency,
+            features: plan.features,
+            is_active: plan.is_active,
+            is_popular: plan.is_popular,
+            sort_order: plan.sort_order,
+            stripe_price_id: plan.stripe_price_id,
+            duration_months: plan.duration_months,
+            purchase_type: plan.purchase_type
+          })
+          .eq('id', plan.id);
+
+        if (error) throw error;
+        toast.success('Plan updated successfully');
       } else {
-        // Create new plan - ensure required properties
-        const planToCreate = {
-          ...newPlan,
-          name: newPlan.name || '',
-          description: newPlan.description || '',
-          sort_order: newPlan.sort_order || 0,
-          features: featuresArray,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        
+        // Create new plan
         const { error } = await supabase
           .from('plans')
-          .insert(planToCreate as any);
-          
-        if (error) {
-          throw error;
-        }
-        
-        toast({
-          title: 'Success',
-          description: `New plan "${newPlan.name}" has been created.`
-        });
+          .insert({
+            name: plan.name,
+            description: plan.description,
+            price: plan.price,
+            currency: plan.currency,
+            features: plan.features,
+            is_active: plan.is_active,
+            is_popular: plan.is_popular,
+            sort_order: plan.sort_order,
+            stripe_price_id: plan.stripe_price_id,
+            duration_months: plan.duration_months,
+            purchase_type: plan.purchase_type
+          });
+
+        if (error) throw error;
+        toast.success('Plan created successfully');
       }
-      
-      // Refresh plans list
-      await fetchPlans();
-      setShowDialog(false);
+
+      setEditingPlan(null);
+      setIsCreating(false);
+      fetchPlans();
     } catch (error) {
       console.error('Error saving plan:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to save plan.',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsSaving(false);
+      toast.error('Failed to save plan');
     }
   };
 
-  const handleTogglePlanStatus = async (plan: Plan) => {
+  const handleDelete = async (planId: string) => {
+    if (!confirm('Are you sure you want to delete this plan?')) return;
+
     try {
       const { error } = await supabase
         .from('plans')
-        .update({ 
-          is_active: !plan.is_active,
-          updated_at: new Date().toISOString()
-        } as any)
-        .eq('id', plan.id as any);
-        
-      if (error) {
-        throw error;
-      }
-      
-      toast({
-        title: 'Success',
-        description: `Plan "${plan.name}" has been ${plan.is_active ? 'deactivated' : 'activated'}.`
-      });
-      
-      // Refresh plans list
-      await fetchPlans();
+        .delete()
+        .eq('id', planId);
+
+      if (error) throw error;
+
+      toast.success('Plan deleted successfully');
+      fetchPlans();
     } catch (error) {
-      console.error('Error toggling plan status:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update plan status.',
-        variant: 'destructive'
-      });
+      console.error('Error deleting plan:', error);
+      toast.error('Failed to delete plan');
     }
   };
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Plans Management</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-          </div>
-        </CardContent>
-      </Card>
-    );
+  const startEditing = (plan: Plan) => {
+    setEditingPlan({ ...plan });
+    setIsCreating(false);
+  };
+
+  const startCreating = () => {
+    setEditingPlan({ ...defaultPlan, id: '' } as Plan);
+    setIsCreating(true);
+  };
+
+  const cancelEditing = () => {
+    setEditingPlan(null);
+    setIsCreating(false);
+  };
+
+  if (loading) {
+    return <div className="flex justify-center p-8">Loading plans...</div>;
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Plans Management</CardTitle>
-        <Button onClick={handleCreateNewPlan}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add New Plan
-        </Button>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-6">
-          {plans.length === 0 ? (
-            <p className="text-center py-4 text-gray-500">No plans found. Create your first plan.</p>
-          ) : (
-            plans.sort((a, b) => a.sort_order - b.sort_order).map((plan) => (
-              <div key={plan.id} className={`p-4 border rounded-lg ${!plan.is_active ? 'bg-gray-50' : 'bg-white'}`}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-semibold">{plan.name}</h3>
-                    {plan.is_popular && (
-                      <span className="bg-brandPurple-100 text-brandPurple-800 text-xs px-2 py-1 rounded-full">
-                        Popular
-                      </span>
-                    )}
-                    {!plan.is_active && (
-                      <span className="bg-gray-100 text-gray-500 text-xs px-2 py-1 rounded-full">
-                        Inactive
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center mr-4">
-                      <Label htmlFor={`active-${plan.id}`} className="mr-2">
-                        Active
-                      </Label>
-                      <Switch 
-                        id={`active-${plan.id}`}
-                        checked={plan.is_active}
-                        onCheckedChange={() => handleTogglePlanStatus(plan)}
-                      />
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => handleEditPlan(plan)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-                <p className="text-gray-500 mb-2">{plan.description}</p>
-                <div className="grid grid-cols-2 gap-4 mb-2">
-                  <div>
-                    <span className="text-sm font-medium text-gray-500">Price:</span>{' '}
-                    <span className="font-semibold">{`${plan.currency} ${(plan.price / 100).toFixed(2)}`}</span>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-500">Type:</span>{' '}
-                    <span>{plan.purchase_type || 'N/A'}</span>
-                    {plan.duration_months && (
-                      <span> ({plan.duration_months} months)</span>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-sm font-medium text-gray-500">Stripe Price ID:</span>{' '}
-                  <span className="font-mono text-sm">{plan.stripe_price_id || 'Not set'}</span>
-                </div>
-                <Separator className="my-3" />
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500 mb-2">Features:</h4>
-                  <ul className="pl-5 list-disc space-y-1">
-                    {plan.features.map((feature, index) => (
-                      <li key={index} className="text-sm">{feature}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            ))
-          )}
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold">Plans Management</h2>
+          <p className="text-gray-600">Manage subscription plans and pricing</p>
         </div>
-      </CardContent>
+        <Button onClick={startCreating} disabled={!!editingPlan}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Plan
+        </Button>
+      </div>
 
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>{editingPlan ? `Edit Plan: ${editingPlan.name}` : 'Create New Plan'}</DialogTitle>
-            <DialogDescription>
-              {editingPlan ? 'Update the details of this plan.' : 'Add a new subscription plan to your offerings.'}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="grid gap-4 py-4">
+      {editingPlan && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{isCreating ? 'Create New Plan' : 'Edit Plan'}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="name">Plan Name</Label>
-                <Input 
-                  id="name" 
-                  value={editingPlan ? editingPlan.name : newPlan.name}
-                  onChange={(e) => editingPlan 
-                    ? setEditingPlan({...editingPlan, name: e.target.value})
-                    : setNewPlan({...newPlan, name: e.target.value})
-                  }
+                <Input
+                  id="name"
+                  value={editingPlan.name}
+                  onChange={(e) => setEditingPlan({ ...editingPlan, name: e.target.value })}
                 />
               </div>
-              
               <div>
-                <Label htmlFor="sort_order">Display Order</Label>
-                <Input 
-                  id="sort_order" 
+                <Label htmlFor="price">Price</Label>
+                <Input
+                  id="price"
                   type="number"
-                  value={editingPlan ? editingPlan.sort_order : newPlan.sort_order}
-                  onChange={(e) => {
-                    const value = parseInt(e.target.value);
-                    editingPlan 
-                      ? setEditingPlan({...editingPlan, sort_order: value})
-                      : setNewPlan({...newPlan, sort_order: value})
-                  }}
-                />
-              </div>
-              
-              <div className="col-span-2">
-                <Label htmlFor="description">Description</Label>
-                <Input 
-                  id="description" 
-                  value={editingPlan ? editingPlan.description : newPlan.description}
-                  onChange={(e) => editingPlan 
-                    ? setEditingPlan({...editingPlan, description: e.target.value})
-                    : setNewPlan({...newPlan, description: e.target.value})
-                  }
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="price">Price (in pence)</Label>
-                <Input 
-                  id="price" 
-                  type="number"
-                  value={editingPlan ? editingPlan.price : newPlan.price}
-                  onChange={(e) => {
-                    const value = parseInt(e.target.value);
-                    editingPlan 
-                      ? setEditingPlan({...editingPlan, price: value})
-                      : setNewPlan({...newPlan, price: value})
-                  }}
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="currency">Currency</Label>
-                <Input 
-                  id="currency" 
-                  value={editingPlan ? editingPlan.currency : newPlan.currency}
-                  onChange={(e) => editingPlan 
-                    ? setEditingPlan({...editingPlan, currency: e.target.value})
-                    : setNewPlan({...newPlan, currency: e.target.value})
-                  }
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="purchase_type">Purchase Type</Label>
-                <Select 
-                  value={editingPlan ? editingPlan.purchase_type : newPlan.purchase_type}
-                  onValueChange={(value) => editingPlan 
-                    ? setEditingPlan({...editingPlan, purchase_type: value as 'subscription' | 'one-time'})
-                    : setNewPlan({...newPlan, purchase_type: value as 'subscription' | 'one-time'})
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="subscription">Subscription</SelectItem>
-                    <SelectItem value="one-time">One-time Payment</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <Label htmlFor="duration_months">Duration (months)</Label>
-                <Input 
-                  id="duration_months" 
-                  type="number"
-                  value={editingPlan ? editingPlan.duration_months : newPlan.duration_months}
-                  onChange={(e) => {
-                    const value = parseInt(e.target.value);
-                    editingPlan 
-                      ? setEditingPlan({...editingPlan, duration_months: value})
-                      : setNewPlan({...newPlan, duration_months: value})
-                  }}
-                />
-              </div>
-              
-              <div className="col-span-2">
-                <Label htmlFor="stripe_price_id">Stripe Price ID</Label>
-                <Input 
-                  id="stripe_price_id" 
-                  value={editingPlan ? editingPlan.stripe_price_id : newPlan.stripe_price_id}
-                  onChange={(e) => editingPlan 
-                    ? setEditingPlan({...editingPlan, stripe_price_id: e.target.value})
-                    : setNewPlan({...newPlan, stripe_price_id: e.target.value})
-                  }
-                />
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Switch 
-                  id="is_popular"
-                  checked={editingPlan ? editingPlan.is_popular : newPlan.is_popular}
-                  onCheckedChange={(checked) => editingPlan 
-                    ? setEditingPlan({...editingPlan, is_popular: checked})
-                    : setNewPlan({...newPlan, is_popular: checked})
-                  }
-                />
-                <Label htmlFor="is_popular">Mark as popular</Label>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Switch 
-                  id="is_active"
-                  checked={editingPlan ? editingPlan.is_active : newPlan.is_active}
-                  onCheckedChange={(checked) => editingPlan 
-                    ? setEditingPlan({...editingPlan, is_active: checked})
-                    : setNewPlan({...newPlan, is_active: checked})
-                  }
-                />
-                <Label htmlFor="is_active">Active plan</Label>
-              </div>
-              
-              <div className="col-span-2">
-                <Label htmlFor="features">Features (one per line)</Label>
-                <Textarea 
-                  id="features" 
-                  value={featuresText}
-                  onChange={(e) => setFeaturesText(e.target.value)}
-                  rows={6}
+                  value={editingPlan.price}
+                  onChange={(e) => setEditingPlan({ ...editingPlan, price: parseFloat(e.target.value) })}
                 />
               </div>
             </div>
-          </div>
-          
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowDialog(false)}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSavePlan}
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Plan
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Card>
+
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={editingPlan.description}
+                onChange={(e) => setEditingPlan({ ...editingPlan, description: e.target.value })}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="currency">Currency</Label>
+                <Input
+                  id="currency"
+                  value={editingPlan.currency}
+                  onChange={(e) => setEditingPlan({ ...editingPlan, currency: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="sort_order">Sort Order</Label>
+                <Input
+                  id="sort_order"
+                  type="number"
+                  value={editingPlan.sort_order}
+                  onChange={(e) => setEditingPlan({ ...editingPlan, sort_order: parseInt(e.target.value) })}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="is_active"
+                  checked={editingPlan.is_active}
+                  onCheckedChange={(checked) => setEditingPlan({ ...editingPlan, is_active: checked })}
+                />
+                <Label htmlFor="is_active">Active</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="is_popular"
+                  checked={editingPlan.is_popular}
+                  onCheckedChange={(checked) => setEditingPlan({ ...editingPlan, is_popular: checked })}
+                />
+                <Label htmlFor="is_popular">Popular</Label>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={cancelEditing}>
+                <X className="h-4 w-4 mr-2" />
+                Cancel
+              </Button>
+              <Button onClick={() => handleSave(editingPlan)}>
+                <Save className="h-4 w-4 mr-2" />
+                Save
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid gap-4">
+        {plans.map((plan) => (
+          <Card key={plan.id}>
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    {plan.name}
+                    {plan.is_popular && <Badge variant="secondary">Popular</Badge>}
+                    {!plan.is_active && <Badge variant="outline">Inactive</Badge>}
+                  </CardTitle>
+                  <CardDescription>{plan.description}</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => startEditing(plan)}
+                    disabled={!!editingPlan}
+                  >
+                    <Edit3 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDelete(plan.id)}
+                    disabled={!!editingPlan}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-2xl font-bold">
+                    {plan.currency} {plan.price}
+                    {plan.duration_months && (
+                      <span className="text-sm font-normal text-gray-600">
+                        /{plan.duration_months} months
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-sm text-gray-600">Sort order: {plan.sort_order}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-600">
+                    Features: {Array.isArray(plan.features) ? plan.features.length : 0}
+                  </p>
+                  {plan.stripe_price_id && (
+                    <p className="text-xs text-gray-500">Stripe: {plan.stripe_price_id}</p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
   );
 };
 
