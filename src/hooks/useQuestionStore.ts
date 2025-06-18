@@ -80,7 +80,7 @@ export function useQuestionStore() {
       
       const { data, error } = await supabase
         .from('custom_questions')
-        .insert(dbQuestion)
+        .insert(dbQuestion as any)
         .select()
         .single();
 
@@ -107,7 +107,7 @@ export function useQuestionStore() {
     try {
       console.log('Raw update data:', updates);
       
-      const updateData: Partial<CustomQuestion> = {
+      const updateData = {
         text: updates.text,
         type: 'text',
         archived: updates.archived
@@ -117,7 +117,7 @@ export function useQuestionStore() {
 
       const { error } = await supabase
         .from('custom_questions')
-        .update(updateData)
+        .update(updateData as any)
         .eq('id', id);
 
       if (error) throw error;

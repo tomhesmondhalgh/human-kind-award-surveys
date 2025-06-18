@@ -25,14 +25,14 @@ export function usePurchaseUpdater() {
     try {
       console.log('Updating purchase record:', purchase.id, updateData);
       
-      // First, update the billing information directly
+      // First, update the billing information directly using native Supabase client
       const { error: billingError } = await supabase
         .from('payment_history')
         .update({
-          billing_school_name: updateData.billingSchoolName,
-          billing_contact_name: updateData.billingContactName,
-          billing_contact_email: updateData.billingContactEmail
-        })
+          billing_school_name: updateData.billingSchoolName || null,
+          billing_contact_name: updateData.billingContactName || null,
+          billing_contact_email: updateData.billingContactEmail || null
+        } as any)
         .eq('id', purchase.id);
 
       if (billingError) {

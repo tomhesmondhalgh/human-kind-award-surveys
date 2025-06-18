@@ -24,7 +24,7 @@ export function useSurveyCustomQuestions(surveyId: string | null) {
         setError(null);
         console.log('Loading custom questions for survey:', surveyId);
         
-        // First, get the question IDs linked to this survey
+        // First, get the question IDs linked to this survey using native Supabase client
         const { data: linkData, error: linkError } = await supabase
           .from('survey_questions')
           .select('question_id')
@@ -49,7 +49,7 @@ export function useSurveyCustomQuestions(surveyId: string | null) {
         const questionIds = linkData.map(link => link.question_id);
         console.log('Question IDs to fetch:', questionIds);
         
-        // Fetch the actual questions
+        // Fetch the actual questions using native Supabase client
         const { data: questionsData, error: questionsError } = await supabase
           .from('custom_questions')
           .select('*')

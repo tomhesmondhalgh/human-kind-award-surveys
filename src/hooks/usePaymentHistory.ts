@@ -19,7 +19,7 @@ export const usePaymentHistory = (limit = 10) => {
       try {
         setLoading(true);
         
-        // Query payment_history table with subscription details
+        // Query payment_history table with subscription details using direct Supabase client
         const { data, error } = await supabase
           .from('payment_history')
           .select(`
