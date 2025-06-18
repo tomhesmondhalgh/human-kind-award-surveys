@@ -3,8 +3,10 @@ import React from 'react';
 import { useTestingMode } from '@/contexts/TestingModeContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlanType } from '@/lib/supabase/subscription';
 import { toast } from '@/hooks/use-toast';
+
+// Define PlanType locally to match the one used in TestingModeContext
+type PlanType = 'free' | 'foundation' | 'progress' | 'premium';
 
 const TestingMode = () => {
   const { 

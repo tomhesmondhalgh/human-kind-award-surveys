@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '../../contexts/AuthContext';
@@ -252,7 +251,7 @@ const MyPurchases = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Date</TableHea>
+                      <TableHead>Date</TableHead>
                       <TableHead>School/Customer</TableHead>
                       <TableHead>Plan</TableHead>
                       <TableHead>Amount</TableHead>
