@@ -45,12 +45,12 @@ const CustomScriptsManagement = () => {
           .eq('is_active', true)
           .order('created_at', { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle(); // Use maybeSingle instead of single to avoid errors when no data exists
         
-        if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned" which is fine for new setups
+        if (error) {
           console.error('Error fetching custom scripts:', error);
           setError('Failed to load existing scripts. Please try again.');
-        } else if (data) {
+        } else if (data && 'script_content' in data) {
           setScriptContent(data.script_content || '');
           
           // Update cache

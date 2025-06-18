@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,12 +10,34 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { AccreditationSubmission, AccreditationStatus } from '@/types/accreditation';
 import { Award, Eye, CheckCircle, XCircle, Clock, AlertCircle, Search } from 'lucide-react';
 
+// Use the actual database types instead of custom interface
+type DatabaseSubmission = {
+  id: string;
+  user_id: string;
+  organization_id: string;
+  status: 'submitted' | 'under_review' | 'approved' | 'rejected';
+  submitted_at: string;
+  reviewed_at?: string;
+  approved_at?: string;
+  next_submission_due?: string;
+  reviewer_notes?: string;
+  submission_data?: any;
+  created_at: string;
+  updated_at: string;
+  profiles?: {
+    first_name?: string;
+    last_name?: string;
+    school_name?: string;
+  };
+};
+
+type AccreditationStatus = 'submitted' | 'under_review' | 'approved' | 'rejected';
+
 const AccreditationManagement = () => {
-  const [submissions, setSubmissions] = useState<AccreditationSubmission[]>([]);
-  const [selectedSubmission, setSelectedSubmission] = useState<AccreditationSubmission | null>(null);
+  const [submissions, setSubmissions] = useState<DatabaseSubmission[]>([]);
+  const [selectedSubmission, setSelectedSubmission] = useState<DatabaseSubmission | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,7 +68,13 @@ const AccreditationManagement = () => {
       }
 
       console.log('Fetched submissions:', data);
-      setSubmissions(data as AccreditationSubmission[] || []);
+      // Properly cast the data to our expected type
+      const typedSubmissions = (data || []).map(submission => ({
+        ...submission,
+        profiles: submission.profiles || undefined
+      })) as DatabaseSubmission[];
+      
+      setSubmissions(typedSubmissions);
     } catch (error) {
       console.error('Error fetching submissions:', error);
       toast.error('Failed to load submissions');
@@ -65,7 +94,7 @@ const AccreditationManagement = () => {
       case 'rejected':
         return <Badge className="bg-red-500"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
       default:
-        return <Badge>Not Submitted</Badge>;
+        return <Badge>Unknown Status</Badge>;
     }
   };
 

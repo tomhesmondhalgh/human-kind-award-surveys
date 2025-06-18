@@ -1,9 +1,10 @@
 
-export type AccreditationStatus = 'not_submitted' | 'submitted' | 'under_review' | 'approved' | 'rejected';
+export type AccreditationStatus = 'submitted' | 'under_review' | 'approved' | 'rejected';
 
 export interface AccreditationSubmission {
   id: string;
   user_id: string;
+  organization_id: string;
   submitted_at: string;
   status: AccreditationStatus;
   reviewed_at?: string;
