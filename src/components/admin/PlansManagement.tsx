@@ -8,8 +8,8 @@ import { Textarea } from '../ui/textarea';
 import { Switch } from '../ui/switch';
 import { Badge } from '../ui/badge';
 import { Plus, Edit3, Trash2, Save, X } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { queryTable, insertIntoTable, updateTable, deleteFromTable } from '@/utils/supabaseHelpers';
 
 interface Plan {
   id: string;
@@ -51,14 +51,13 @@ const PlansManagement: React.FC = () => {
 
   const fetchPlans = async () => {
     try {
-      const { data, error } = await supabase
-        .from('plans')
-        .select('*')
-        .order('sort_order');
+      const { data, error } = await queryTable<Plan>('plans', '*');
 
       if (error) throw error;
 
-      setPlans(data || []);
+      // Sort by sort_order
+      const sortedData = (data || []).sort((a, b) => a.sort_order - b.sort_order);
+      setPlans(sortedData);
     } catch (error) {
       console.error('Error fetching plans:', error);
       toast.error('Failed to load plans');
@@ -69,45 +68,28 @@ const PlansManagement: React.FC = () => {
 
   const handleSave = async (plan: Plan) => {
     try {
+      const planData = {
+        name: plan.name,
+        description: plan.description,
+        price: plan.price,
+        currency: plan.currency,
+        features: plan.features,
+        is_active: plan.is_active,
+        is_popular: plan.is_popular,
+        sort_order: plan.sort_order,
+        stripe_price_id: plan.stripe_price_id,
+        duration_months: plan.duration_months,
+        purchase_type: plan.purchase_type
+      };
+
       if (plan.id) {
         // Update existing plan
-        const { error } = await supabase
-          .from('plans')
-          .update({
-            name: plan.name,
-            description: plan.description,
-            price: plan.price,
-            currency: plan.currency,
-            features: plan.features,
-            is_active: plan.is_active,
-            is_popular: plan.is_popular,
-            sort_order: plan.sort_order,
-            stripe_price_id: plan.stripe_price_id,
-            duration_months: plan.duration_months,
-            purchase_type: plan.purchase_type
-          })
-          .eq('id', plan.id);
-
+        const { error } = await updateTable('plans', planData, plan.id);
         if (error) throw error;
         toast.success('Plan updated successfully');
       } else {
         // Create new plan
-        const { error } = await supabase
-          .from('plans')
-          .insert({
-            name: plan.name,
-            description: plan.description,
-            price: plan.price,
-            currency: plan.currency,
-            features: plan.features,
-            is_active: plan.is_active,
-            is_popular: plan.is_popular,
-            sort_order: plan.sort_order,
-            stripe_price_id: plan.stripe_price_id,
-            duration_months: plan.duration_months,
-            purchase_type: plan.purchase_type
-          });
-
+        const { error } = await insertIntoTable('plans', planData);
         if (error) throw error;
         toast.success('Plan created successfully');
       }
@@ -125,11 +107,7 @@ const PlansManagement: React.FC = () => {
     if (!confirm('Are you sure you want to delete this plan?')) return;
 
     try {
-      const { error } = await supabase
-        .from('plans')
-        .delete()
-        .eq('id', planId);
-
+      const { error } = await deleteFromTable('plans', planId);
       if (error) throw error;
 
       toast.success('Plan deleted successfully');

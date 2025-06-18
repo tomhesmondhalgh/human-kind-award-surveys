@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { ProfileData } from '@/types/supabase-overrides';
+import { queryTableWithIn } from '@/utils/supabaseHelpers';
 
 export const useProfiles = (userIds: string[]) => {
   const [profiles, setProfiles] = useState<ProfileData[]>([]);
@@ -19,10 +19,12 @@ export const useProfiles = (userIds: string[]) => {
       try {
         setLoading(true);
         
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .in('id', userIds);
+        const { data, error } = await queryTableWithIn<ProfileData>(
+          'profiles',
+          '*',
+          'id',
+          userIds
+        );
 
         if (error) {
           console.error('Error fetching profiles:', error);

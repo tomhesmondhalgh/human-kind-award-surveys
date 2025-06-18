@@ -4,9 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Eye, Edit3, Archive, Calendar, Users, Link } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { updateTable } from '@/utils/supabaseHelpers';
 
 interface Survey {
   id: string;
@@ -50,11 +50,7 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onArchive, onRefresh }
 
   const handleArchiveSurvey = async (surveyId: string) => {
     try {
-      const { error } = await supabase
-        .from('survey_templates')
-        .update({ status: 'Archived' } as any)
-        .eq('id', surveyId);
-
+      const { error } = await updateTable('survey_templates', { status: 'Archived' }, surveyId);
       if (error) throw error;
 
       toast.success('Survey archived successfully');

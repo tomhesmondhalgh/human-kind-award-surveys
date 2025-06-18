@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { updateTable } from '@/utils/supabaseHelpers';
 
 interface SurveyLinkProps {
   surveyUrl: string | null;
@@ -35,10 +35,7 @@ const SurveyLink: React.FC<SurveyLinkProps> = ({
           currentStatus !== 'Completed') {
         console.log(`Updating survey ${surveyId} status to Sent after copying link`);
         
-        const { error } = await supabase
-          .from('survey_templates')
-          .update({ status: 'Sent' } as any)
-          .eq('id', surveyId as any);
+        const { error } = await updateTable('survey_templates', { status: 'Sent' }, surveyId);
           
         if (error) {
           console.error('Error updating survey status:', error);
