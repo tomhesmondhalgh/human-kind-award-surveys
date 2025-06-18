@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { Users, UserPlus, Mail, Crown, Edit3, Eye, Trash2, Building, AlertCircle, RefreshCw } from 'lucide-react';
+import { Users, UserPlus, Mail, Crown, Edit3, Eye, Trash2, Building, AlertCircle, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { useTeamMembers } from '../components/team/hooks/useTeamMembers';
 import { useTeamInvitations } from '../components/team/hooks/useTeamInvitations';
 import { Skeleton } from '../components/ui/skeleton';
@@ -14,15 +14,26 @@ import ConfirmDeleteModal from '../components/team/ConfirmDeleteModal';
 import OrganizationsList from '../components/team/OrganizationsList';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { validateAndRefreshSession } from '../utils/auth/sessionUtils';
+import { detectStorageAvailability, forceAuthRefresh } from '../utils/auth/sessionUtils';
 
 const Team = () => {
-  const { user, isAuthenticated, authCheckComplete } = useAuth();
+  const { user, isAuthenticated, authCheckComplete, authError } = useAuth();
   const { currentOrganization, isLoading: orgLoading, error: orgError } = useOrganization();
   const [memberToDelete, setMemberToDelete] = React.useState<string | null>(null);
   const [activeTab, setActiveTab] = React.useState('members');
+  const [storageStatus, setStorageStatus] = React.useState({ localStorage: true, sessionStorage: true });
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Check storage availability on mount
+  React.useEffect(() => {
+    const status = detectStorageAvailability();
+    setStorageStatus(status);
+    
+    if (!status.localStorage) {
+      console.warn('localStorage not available - may affect functionality');
+    }
+  }, []);
 
   // Parse organization ID from URL if present
   useEffect(() => {
@@ -94,6 +105,41 @@ const Team = () => {
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <h2 className="text-xl font-semibold mb-4">Authentication Required</h2>
             <p className="text-gray-600 mb-6">Please log in to access team management.</p>
+            
+            {/* Enhanced error messaging for storage issues */}
+            {authError && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 max-w-md mx-auto">
+                <div className="flex items-center gap-2 text-yellow-800 mb-2">
+                  {!storageStatus.localStorage ? <WifiOff size={16} /> : <AlertCircle size={16} />}
+                  <span className="font-medium">Authentication Issue Detected</span>
+                </div>
+                <p className="text-sm text-yellow-700 mb-3">
+                  {authError.message?.includes('privacy settings') || !storageStatus.localStorage
+                    ? 'Your browser privacy settings may be blocking authentication. This is common with tracking protection enabled.'
+                    : 'There was an issue with authentication.'}
+                </p>
+                <div className="space-y-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => window.location.reload()}
+                    className="w-full"
+                  >
+                    <RefreshCw size={12} className="mr-1" />
+                    Refresh Page
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => forceAuthRefresh('user-requested')}
+                    className="w-full"
+                  >
+                    Clear Auth & Refresh
+                  </Button>
+                </div>
+              </div>
+            )}
+            
             <Button onClick={() => navigate('/login')} className="bg-brandPurple-500 hover:bg-brandPurple-600">
               Log In
             </Button>
@@ -113,7 +159,8 @@ const Team = () => {
     membersCount: members?.length || 0,
     hasCurrentOrganization: !!currentOrganization,
     membersError,
-    membersErrorDetails: membersErrorDetails?.message
+    membersErrorDetails: membersErrorDetails?.message,
+    storageAvailable: storageStatus.localStorage
   });
 
   const getRoleBadgeVariant = (role: string) => {
@@ -160,6 +207,14 @@ const Team = () => {
                   ? `Manage members and permissions for ${currentOrganization.name}`
                   : 'No organisation selected - please contact support to set up your organisation'}
               </p>
+              
+              {/* Storage status indicator */}
+              {!storageStatus.localStorage && (
+                <div className="flex items-center gap-2 text-amber-600 text-sm mt-2">
+                  <WifiOff size={14} />
+                  <span>Limited functionality due to browser privacy settings</span>
+                </div>
+              )}
             </div>
 
             {currentOrganization && canManageTeam && (
@@ -185,6 +240,12 @@ const Team = () => {
                     <p className="font-medium">{currentOrganization.name}</p>
                     <p className="text-sm text-gray-500">Current Organisation</p>
                   </div>
+                  {storageStatus.localStorage && (
+                    <div className="ml-auto flex items-center gap-1 text-green-600 text-xs">
+                      <Wifi size={12} />
+                      <span>Connected</span>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -192,7 +253,7 @@ const Team = () => {
 
           {currentOrganization ? (
             <>
-              {/* Show error state for members loading with retry option */}
+              {/* Enhanced error state for members loading with retry option */}
               {membersError && (
                 <Card className="mb-6 border-red-200 bg-red-50">
                   <CardContent className="p-4">
@@ -201,7 +262,9 @@ const Team = () => {
                       <span className="font-medium">Failed to load team members</span>
                     </div>
                     <p className="text-sm text-red-600 mt-1">
-                      {membersErrorDetails?.message || 'There was an error loading the team members. Please try again.'}
+                      {membersErrorDetails?.message?.includes('privacy settings') || !storageStatus.localStorage
+                        ? 'Browser privacy settings may be blocking this feature. Try refreshing the page or using a different browser.'
+                        : membersErrorDetails?.message || 'There was an error loading the team members. Please try again.'}
                     </p>
                     <div className="flex gap-2 mt-3">
                       <Button 
@@ -231,6 +294,16 @@ const Team = () => {
                       >
                         Refresh Page
                       </Button>
+                      {!storageStatus.localStorage && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-red-700 border-red-300 hover:bg-red-100"
+                          onClick={() => forceAuthRefresh('storage-issues')}
+                        >
+                          Reset Auth
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
