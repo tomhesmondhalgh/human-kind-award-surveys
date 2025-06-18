@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useAuth } from './AuthContext';
 import { useOrganizations } from '../hooks/useOrganizations';
 import { OrganizationWithRole } from '../types/organizations';
-import { queryTable } from '@/utils/supabaseHelpers';
+import { queryTable, insertIntoTable } from '@/utils/supabaseHelpers';
 
 interface OrganizationContextType {
   currentOrganization: OrganizationWithRole | null;
@@ -11,6 +11,8 @@ interface OrganizationContextType {
   organizations: OrganizationWithRole[];
   isLoading: boolean;
   error: Error | null;
+  createOrganization: (name: string, address?: string, urn?: string) => Promise<OrganizationWithRole | null>;
+  refreshOrganizations: () => void;
 }
 
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
@@ -30,7 +32,54 @@ interface OrganizationProviderProps {
 export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ children }) => {
   const [currentOrganization, setCurrentOrganization] = useState<OrganizationWithRole | null>(null);
   const { user } = useAuth();
-  const { organizations, isLoading, error } = useOrganizations();
+  const { organizations, isLoading, error, refetch } = useOrganizations();
+
+  const createOrganization = async (name: string, address?: string, urn?: string): Promise<OrganizationWithRole | null> => {
+    if (!user) return null;
+
+    try {
+      // Create organization
+      const { data: orgData, error: orgError } = await insertIntoTable('organizations', {
+        name,
+        address,
+        urn
+      });
+
+      if (orgError || !orgData) {
+        throw orgError || new Error('Failed to create organization');
+      }
+
+      // Create membership
+      const { error: membershipError } = await insertIntoTable('organization_memberships', {
+        user_id: user.id,
+        organization_id: orgData.id,
+        role: 'admin',
+        is_primary: organizations.length === 0
+      });
+
+      if (membershipError) {
+        throw membershipError;
+      }
+
+      // Refresh organizations list
+      refetch();
+
+      const newOrg: OrganizationWithRole = {
+        ...orgData,
+        role: 'admin' as any
+      };
+
+      setCurrentOrganization(newOrg);
+      return newOrg;
+    } catch (error) {
+      console.error('Error creating organization:', error);
+      return null;
+    }
+  };
+
+  const refreshOrganizations = () => {
+    refetch();
+  };
 
   // Set the current organization when organizations are loaded
   useEffect(() => {
@@ -68,6 +117,8 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
     organizations,
     isLoading,
     error,
+    createOrganization,
+    refreshOrganizations,
   };
 
   return (

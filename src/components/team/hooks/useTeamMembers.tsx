@@ -79,8 +79,10 @@ export function useTeamMembers(organizationId: string | undefined) {
           return null;
         }
         
-        console.log('User role result:', data?.role);
-        return data?.role || null;
+        // Safe property access with type checking
+        const role = data && typeof data === 'object' && 'role' in data ? data.role : null;
+        console.log('User role result:', role);
+        return role;
       } catch (error) {
         console.error('Error in user role query:', error);
         return null;

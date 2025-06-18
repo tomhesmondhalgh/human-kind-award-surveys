@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Purchase, PaymentStatus } from '../types/purchases';
 import { useAuth } from '../contexts/AuthContext';
+import { updateTable } from '@/utils/supabaseHelpers';
 
 interface PurchaseUpdateData {
   invoiceNumber?: string;
@@ -25,15 +26,16 @@ export function usePurchaseUpdater() {
     try {
       console.log('Updating purchase record:', purchase.id, updateData);
       
-      // First, update the billing information directly using native Supabase client
-      const { error: billingError } = await supabase
-        .from('payment_history')
-        .update({
+      // First, update the billing information using supabaseHelpers
+      const { error: billingError } = await updateTable(
+        'payment_history',
+        {
           billing_school_name: updateData.billingSchoolName || null,
           billing_contact_name: updateData.billingContactName || null,
           billing_contact_email: updateData.billingContactEmail || null
-        } as any)
-        .eq('id', purchase.id);
+        },
+        purchase.id as any
+      );
 
       if (billingError) {
         console.error('Error updating billing information:', billingError);

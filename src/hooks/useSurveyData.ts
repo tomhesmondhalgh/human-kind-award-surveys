@@ -1,11 +1,12 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from '../integrations/supabase/client';
 import { getSurveyById } from '../utils/survey/templates';
 import { isSurveyClosed } from '../utils/survey/status';
 import { SurveyTemplate } from '../utils/types/survey';
 import { CustomQuestionType } from '../types/surveyForm';
 import { toast } from 'sonner';
+import { queryTable } from '@/utils/supabaseHelpers';
+import { supabase } from '../integrations/supabase/client';
 
 export function useSurveyData(surveyId: string | null, isPreview: boolean) {
   const [isLoading, setIsLoading] = useState(true);
@@ -64,7 +65,7 @@ export function useSurveyData(surveyId: string | null, isPreview: boolean) {
               options
             )
           `)
-          .eq('survey_id', surveyId);
+          .eq('survey_id', surveyId as any);
         
         if (joinError) {
           console.error('Error fetching linked questions with join:', joinError);
@@ -85,9 +86,9 @@ export function useSurveyData(surveyId: string | null, isPreview: boolean) {
         
         // Extract and format the questions from the join results
         const questionsFromJoin = joinedData
-          .filter(item => item.custom_questions) // Filter out any null results
-          .map(item => {
-            const q = item.custom_questions as any;
+          .filter((item: any) => item && typeof item === 'object' && 'custom_questions' in item && item.custom_questions) // Filter out any null results
+          .map((item: any) => {
+            const q = item.custom_questions;
             
             // Ensure options are properly formatted
             let formattedOptions: string[] = [];
@@ -135,10 +136,11 @@ export function useSurveyData(surveyId: string | null, isPreview: boolean) {
         
         // STEP 1: Get all question IDs linked to this survey
         console.log('STEP 1: Get all question IDs linked to this survey');
-        const { data: linkData, error: linkError } = await supabase
-          .from('survey_questions')
-          .select('question_id')
-          .eq('survey_id', surveyId);
+        const { data: linkData, error: linkError } = await queryTable(
+          'survey_questions',
+          'question_id',
+          { survey_id: surveyId as any }
+        );
         
         if (linkError || !linkData || linkData.length === 0) {
           console.error('Direct query - No links found or error:', linkError);
@@ -148,7 +150,7 @@ export function useSurveyData(surveyId: string | null, isPreview: boolean) {
         }
         
         console.log('Direct query - Link data:', linkData);
-        const questionIds = linkData.map(link => link.question_id);
+        const questionIds = linkData.map((link: any) => link.question_id);
         
         // STEP 2: Get the actual question data for these IDs
         console.log('STEP 2: Get the actual question data for these IDs');
@@ -167,7 +169,7 @@ export function useSurveyData(surveyId: string | null, isPreview: boolean) {
         console.log('Direct query - Questions data:', questionsData);
         
         // Format the questions to match our expected format
-        const formattedQuestions = questionsData.map(q => {
+        const formattedQuestions = questionsData.map((q: any) => {
           let options: string[] = [];
           
           // Handle options based on what type it actually is

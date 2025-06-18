@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Purchase } from '../types/purchases';
 import { ProfileData, PaymentHistoryData } from '@/types/supabase-overrides';
+import { queryTable } from '@/utils/supabaseHelpers';
 
 export type PurchasesQueryParams = {
   page: number;
@@ -43,18 +44,23 @@ export const useAdminPurchaseData = (initialParams?: Partial<PurchasesQueryParam
         
         console.log('Checking admin status for user:', user.id);
         
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', user.id)
-          .single();
+        const { data: profile, error: profileError } = await queryTable<ProfileData>(
+          'profiles',
+          'is_admin',
+          { id: user.id as any }
+        );
         
         if (profileError) {
           console.error('Error checking admin status:', profileError);
           setIsAdmin(false);
         } else {
-          console.log('Admin check result:', profile?.is_admin);
-          setIsAdmin(!!profile?.is_admin);
+          // Safe property access with type checking
+          const adminStatus = profile && profile.length > 0 && profile[0] && 
+            typeof profile[0] === 'object' && 'is_admin' in profile[0] 
+            ? !!profile[0].is_admin 
+            : false;
+          console.log('Admin check result:', adminStatus);
+          setIsAdmin(adminStatus);
         }
       } catch (error) {
         console.error('Error in admin check:', error);

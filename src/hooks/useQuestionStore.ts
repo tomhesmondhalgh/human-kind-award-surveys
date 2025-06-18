@@ -1,9 +1,10 @@
 
 import { useState } from 'react';
 import { CustomQuestion, convertToCustomQuestion, convertToCustomQuestions } from '../types/customQuestions';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/services/toastService';
 import { useOrganization } from '../contexts/OrganizationContext';
+import { queryTable, insertIntoTable, updateTable } from '@/utils/supabaseHelpers';
+import { supabase } from '@/integrations/supabase/client';
 
 // Helper function to create a DB question payload
 const createDbQuestionPayload = (question: Partial<CustomQuestion>, organizationId?: string) => {
@@ -28,7 +29,7 @@ export function useQuestionStore() {
       let query = supabase
         .from('custom_questions')
         .select('*')
-        .eq('archived', showArchived)
+        .eq('archived', showArchived as any)
         .order('created_at', { ascending: false });
 
       // Filter by current organization or global questions (organization_id is null)
@@ -48,7 +49,7 @@ export function useQuestionStore() {
       }
 
       // Process the data with our utility function to ensure type safety
-      const processedData = convertToCustomQuestions(data || []);
+      const processedData = convertToCustomQuestions(data as any || []);
       
       console.log('Fetched questions after processing:', processedData);
       setQuestions(processedData);
@@ -78,11 +79,7 @@ export function useQuestionStore() {
       
       console.log('Creating question with payload:', JSON.stringify(dbQuestion, null, 2));
       
-      const { data, error } = await supabase
-        .from('custom_questions')
-        .insert(dbQuestion as any)
-        .select()
-        .single();
+      const { data, error } = await insertIntoTable('custom_questions', dbQuestion);
 
       if (error) {
         console.error('Database error:', error);
@@ -92,7 +89,7 @@ export function useQuestionStore() {
 
       console.log('New question created:', data);
       // Convert to our type before adding to state
-      const newQuestion = convertToCustomQuestion(data);
+      const newQuestion = convertToCustomQuestion(data as any);
       setQuestions(prev => [newQuestion, ...prev]);
       toast.success('Question created successfully');
       return newQuestion;
@@ -115,10 +112,11 @@ export function useQuestionStore() {
       
       console.log('Sanitised update data:', updateData);
 
-      const { error } = await supabase
-        .from('custom_questions')
-        .update(updateData as any)
-        .eq('id', id);
+      const { error } = await updateTable(
+        'custom_questions',
+        updateData,
+        id as any
+      );
 
       if (error) throw error;
       
