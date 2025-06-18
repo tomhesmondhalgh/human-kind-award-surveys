@@ -28,7 +28,7 @@ export function useSurveyCustomQuestions(surveyId: string | null) {
         const { data: linkData, error: linkError } = await supabase
           .from('survey_questions')
           .select('question_id')
-          .eq('survey_id', surveyId);
+          .eq('survey_id', surveyId as any);
         
         if (linkError) {
           console.error('Error fetching question links:', linkError);
@@ -45,8 +45,8 @@ export function useSurveyCustomQuestions(surveyId: string | null) {
           return;
         }
         
-        // Extract question IDs
-        const questionIds = linkData.map(link => link.question_id);
+        // Extract question IDs with proper type handling
+        const questionIds = (linkData as any[]).map((link: any) => link.question_id);
         console.log('Question IDs to fetch:', questionIds);
         
         // Fetch the actual questions using native Supabase client
@@ -70,8 +70,8 @@ export function useSurveyCustomQuestions(surveyId: string | null) {
           return;
         }
         
-        // Process questions into the expected format
-        const processedQuestions = questionsData.map(q => {
+        // Process questions into the expected format with proper type handling
+        const processedQuestions = (questionsData as any[]).map((q: any) => {
           let formattedOptions: string[] = [];
           
           if (q.options) {

@@ -28,14 +28,14 @@ export function useQuestionStore() {
       let query = supabase
         .from('custom_questions')
         .select('*')
-        .eq('archived', showArchived)
+        .eq('archived', showArchived as any)
         .order('created_at', { ascending: false });
 
       // Filter by current organization or global questions (organization_id is null)
       if (currentOrganization?.id) {
         query = query.or(`organization_id.is.null,organization_id.eq.${currentOrganization.id}`);
       } else {
-        // If no organization, only show global questions
+        // If no organisation, only show global questions
         query = query.is('organization_id', null);
       }
 
@@ -48,7 +48,7 @@ export function useQuestionStore() {
       }
 
       // Process the data with our utility function to ensure type safety
-      const processedData = convertToCustomQuestions(data || []);
+      const processedData = convertToCustomQuestions((data || []) as any);
       
       console.log('Fetched questions after processing:', processedData);
       setQuestions(processedData);
@@ -92,7 +92,7 @@ export function useQuestionStore() {
 
       console.log('New question created:', data);
       // Convert to our type before adding to state
-      const newQuestion = convertToCustomQuestion(data);
+      const newQuestion = convertToCustomQuestion(data as any);
       setQuestions(prev => [newQuestion, ...prev]);
       toast.success('Question created successfully');
       return newQuestion;
@@ -109,23 +109,28 @@ export function useQuestionStore() {
       
       const updateData = {
         text: updates.text,
-        type: 'text',
+        type: updates.type === 'multiple_choice' ? 'multiple_choice' : 'text',
         archived: updates.archived
       };
       
-      console.log('Sanitized update data:', updateData);
+      console.log('Sanitised update data:', updateData);
 
       const { error } = await supabase
         .from('custom_questions')
         .update(updateData as any)
-        .eq('id', id);
+        .eq('id', id as any);
 
       if (error) throw error;
       
       // Update state with converted types
       setQuestions(prev => prev.map(q => {
         if (q.id === id) {
-          return { ...q, ...updateData };
+          return { 
+            ...q, 
+            text: updateData.text || q.text,
+            type: updateData.type,
+            archived: updateData.archived !== undefined ? updateData.archived : q.archived
+          };
         }
         return q;
       }));
