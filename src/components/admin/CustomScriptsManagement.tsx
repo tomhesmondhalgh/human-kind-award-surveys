@@ -50,11 +50,13 @@ const CustomScriptsManagement = () => {
         if (error) {
           console.error('Error fetching custom scripts:', error);
           setError('Failed to load existing scripts. Please try again.');
-        } else if (data && 'script_content' in data) {
-          setScriptContent(data.script_content || '');
+        } else if (data) {
+          // Type assertion to ensure we can access script_content
+          const scriptData = data as any;
+          setScriptContent(scriptData.script_content || '');
           
           // Update cache
-          adminScriptCache.content = data.script_content || '';
+          adminScriptCache.content = scriptData.script_content || '';
           adminScriptCache.timestamp = now;
         }
       } catch (err) {
@@ -82,7 +84,7 @@ const CustomScriptsManagement = () => {
       // First, deactivate any existing active scripts
       const { error: updateError } = await supabase
         .from('custom_scripts')
-        .update({ is_active: false })
+        .update({ is_active: false } as any)
         .eq('is_active', true);
 
       if (updateError) {
@@ -99,7 +101,7 @@ const CustomScriptsManagement = () => {
           script_content: scriptContent,
           is_active: true,
           user_id: user.id // Add user_id to satisfy RLS policy
-        });
+        } as any);
       
       if (error) {
         console.error('Error saving custom scripts:', error);

@@ -126,7 +126,7 @@ const PlansManagement: React.FC = () => {
         
         const { error } = await supabase
           .from('plans')
-          .update(updatedPlan)
+          .update(updatedPlan as any)
           .eq('id', editingPlan.id);
           
         if (error) {
@@ -151,7 +151,7 @@ const PlansManagement: React.FC = () => {
         
         const { error } = await supabase
           .from('plans')
-          .insert(planToCreate);
+          .insert(planToCreate as any);
           
         if (error) {
           throw error;
@@ -185,7 +185,7 @@ const PlansManagement: React.FC = () => {
         .update({ 
           is_active: !plan.is_active,
           updated_at: new Date().toISOString()
-        })
+        } as any)
         .eq('id', plan.id);
         
       if (error) {

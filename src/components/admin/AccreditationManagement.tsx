@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Award, Eye, CheckCircle, XCircle, Clock, AlertCircle, Search } from 'lucide-react';
 
-// Use the actual database types instead of custom interface
+// Use a simplified type that matches what we actually need
 type DatabaseSubmission = {
   id: string;
   user_id: string;
@@ -68,13 +68,29 @@ const AccreditationManagement = () => {
       }
 
       console.log('Fetched submissions:', data);
-      // Properly cast the data to our expected type
-      const typedSubmissions = (data || []).map(submission => ({
-        ...submission,
-        profiles: submission.profiles || undefined
-      })) as DatabaseSubmission[];
       
-      setSubmissions(typedSubmissions);
+      // Safely transform the data to match our expected type
+      if (data && Array.isArray(data)) {
+        const typedSubmissions: DatabaseSubmission[] = data.map((item: any) => ({
+          id: item.id,
+          user_id: item.user_id,
+          organization_id: item.organization_id,
+          status: item.status,
+          submitted_at: item.submitted_at,
+          reviewed_at: item.reviewed_at,
+          approved_at: item.approved_at,
+          next_submission_due: item.next_submission_due,
+          reviewer_notes: item.reviewer_notes,
+          submission_data: item.submission_data,
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+          profiles: item.profiles || undefined
+        }));
+        
+        setSubmissions(typedSubmissions);
+      } else {
+        setSubmissions([]);
+      }
     } catch (error) {
       console.error('Error fetching submissions:', error);
       toast.error('Failed to load submissions');
