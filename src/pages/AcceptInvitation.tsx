@@ -21,20 +21,30 @@ const AcceptInvitation = () => {
 
   useEffect(() => {
     if (!token) {
-      console.log('No token provided in URL');
+      console.log('❌ AcceptInvitation: No token provided in URL');
       setStatus('not-found');
       return;
     }
 
-    // Fetch invitation immediately without waiting for auth
+    console.log('🔍 AcceptInvitation: Starting invitation fetch with token:', token);
     fetchInvitation();
   }, [token]);
 
   const fetchInvitation = async () => {
     try {
-      console.log('Fetching invitation with token:', token);
+      console.log('📡 AcceptInvitation: Fetching invitation with token:', token);
       
-      // First, get the invitation
+      // Get current session info for debugging
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log('🔐 AcceptInvitation: Session check:', {
+        hasSession: !!session,
+        userId: session?.user?.id,
+        userEmail: session?.user?.email,
+        sessionError
+      });
+
+      // First, get the invitation details
+      console.log('📝 AcceptInvitation: Querying organization_invitations table...');
       const { data: invitationData, error: invitationError } = await supabase
         .from('organization_invitations')
         .select('*')
@@ -42,57 +52,92 @@ const AcceptInvitation = () => {
         .is('accepted_at', null)
         .maybeSingle();
 
+      console.log('📋 AcceptInvitation: Invitation query result:', {
+        invitationData,
+        invitationError,
+        hasData: !!invitationData
+      });
+
       if (invitationError) {
-        console.error('Error fetching invitation:', invitationError);
+        console.error('❌ AcceptInvitation: Error fetching invitation:', invitationError);
         setStatus('error');
         return;
       }
 
       if (!invitationData) {
-        console.log('No invitation found for token:', token);
+        console.log('❌ AcceptInvitation: No invitation found for token:', token);
         setStatus('not-found');
         return;
       }
 
-      console.log('Invitation found:', invitationData);
+      console.log('✅ AcceptInvitation: Invitation found:', {
+        id: invitationData.id,
+        email: invitationData.email,
+        organizationId: invitationData.organization_id,
+        role: invitationData.role,
+        expiresAt: invitationData.expires_at,
+        invitedBy: invitationData.invited_by
+      });
 
       // Check if invitation has expired
-      if (new Date(invitationData.expires_at) < new Date()) {
-        console.log('Invitation has expired');
+      const expiryDate = new Date(invitationData.expires_at);
+      const now = new Date();
+      console.log('⏰ AcceptInvitation: Expiry check:', {
+        expiryDate: expiryDate.toISOString(),
+        now: now.toISOString(),
+        isExpired: expiryDate < now
+      });
+
+      if (expiryDate < now) {
+        console.log('❌ AcceptInvitation: Invitation has expired');
         setStatus('expired');
         return;
       }
 
-      // Now get the organization details separately
+      // Now try to get the organization details with the new RLS policy
+      console.log('🏢 AcceptInvitation: Querying organizations table for ID:', invitationData.organization_id);
       const { data: organizationData, error: organizationError } = await supabase
         .from('organizations')
         .select('id, name')
         .eq('id', invitationData.organization_id)
-        .single();
+        .maybeSingle();
+
+      console.log('🏢 AcceptInvitation: Organization query result:', {
+        organizationData,
+        organizationError,
+        hasData: !!organizationData
+      });
 
       if (organizationError) {
-        console.error('Error fetching organization:', organizationError);
-        setStatus('error');
-        return;
+        console.error('❌ AcceptInvitation: Error fetching organization:', organizationError);
+        // Don't fail completely - we can still show the invitation without the org name
+        console.log('⚠️ AcceptInvitation: Continuing without organization details');
       }
 
       // Combine the data
       const combinedInvitation = {
         ...invitationData,
-        organizations: organizationData
+        organizations: organizationData || { name: 'Organization' } // Fallback name
       };
+
+      console.log('✅ AcceptInvitation: Final invitation data:', {
+        id: combinedInvitation.id,
+        email: combinedInvitation.email,
+        organizationName: combinedInvitation.organizations?.name,
+        role: combinedInvitation.role
+      });
 
       setInvitation(combinedInvitation);
       setStatus('success');
-      console.log('Combined invitation data:', combinedInvitation);
     } catch (error) {
-      console.error('Error in fetchInvitation:', error);
+      console.error('❌ AcceptInvitation: Unexpected error in fetchInvitation:', error);
       setStatus('error');
     }
   };
 
   const acceptInvitation = async () => {
     if (!user || !invitation) {
+      console.log('❌ AcceptInvitation: Missing user or invitation data:', { hasUser: !!user, hasInvitation: !!invitation });
       toast.error('Please log in to accept this invitation');
       navigate('/login', { state: { returnTo: window.location.pathname + window.location.search } });
       return;
@@ -100,27 +145,32 @@ const AcceptInvitation = () => {
 
     setIsAccepting(true);
     try {
-      console.log('Accepting invitation:', invitation.id);
+      console.log('🚀 AcceptInvitation: Starting acceptance process for invitation:', invitation.id);
 
       // Create organization membership
+      console.log('👥 AcceptInvitation: Creating organization membership...');
+      const membershipData = {
+        user_id: user.id,
+        organization_id: invitation.organization_id,
+        role: invitation.role,
+        is_primary: false
+      };
+      console.log('👥 AcceptInvitation: Membership data:', membershipData);
+
       const { error: membershipError } = await supabase
         .from('organization_memberships')
-        .insert({
-          user_id: user.id,
-          organization_id: invitation.organization_id,
-          role: invitation.role,
-          is_primary: false
-        });
+        .insert(membershipData);
 
       if (membershipError) {
-        console.error('Error creating membership:', membershipError);
+        console.error('❌ AcceptInvitation: Error creating membership:', membershipError);
         toast.error('Failed to accept invitation');
         return;
       }
 
-      console.log('Membership created successfully');
+      console.log('✅ AcceptInvitation: Membership created successfully');
 
-      // Mark invitation as accepted (only update accepted_at, not accepted_by)
+      // Mark invitation as accepted
+      console.log('📝 AcceptInvitation: Marking invitation as accepted...');
       const { error: invitationError } = await supabase
         .from('organization_invitations')
         .update({ 
@@ -129,19 +179,22 @@ const AcceptInvitation = () => {
         .eq('id', invitation.id);
 
       if (invitationError) {
-        console.error('Error updating invitation:', invitationError);
+        console.error('❌ AcceptInvitation: Error updating invitation:', invitationError);
         // Don't fail here as the membership was created successfully
+        console.log('⚠️ AcceptInvitation: Continuing despite invitation update error');
       } else {
-        console.log('Invitation marked as accepted');
+        console.log('✅ AcceptInvitation: Invitation marked as accepted');
       }
 
       // Refresh organizations to include the new one
+      console.log('🔄 AcceptInvitation: Refreshing organizations...');
       await refreshOrganizations();
+      console.log('✅ AcceptInvitation: Organizations refreshed');
 
       toast.success(`Successfully joined ${invitation.organizations.name}!`);
       navigate('/team');
     } catch (error) {
-      console.error('Error accepting invitation:', error);
+      console.error('❌ AcceptInvitation: Unexpected error accepting invitation:', error);
       toast.error('Failed to accept invitation');
     } finally {
       setIsAccepting(false);
