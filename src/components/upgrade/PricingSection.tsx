@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import PlanCard, { PlanType } from './PlanCard';
 import { useSubscription } from '../../hooks/useSubscription';
@@ -6,14 +5,14 @@ import { useSubscriptionPlans } from '../../hooks/useSubscriptionPlans';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '../../hooks/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import { Button } from '../../components/ui/button';
 import { Label } from '../../components/ui/label';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import RedemptionCodeDialog from './RedemptionCodeDialog';
-import { selectSingleQuery } from '@/lib/supabase/queryUtils';
+import { queryTable } from '@/utils/supabaseHelpers';
 import { ProfileData } from '@/types/supabase-overrides';
 
 interface UserProfile {
@@ -108,7 +107,7 @@ const PricingSection: React.FC = () => {
       if (!user) return;
       
       try {
-        const { data, error } = await selectSingleQuery<ProfileData>(
+        const { data, error } = await queryTable<ProfileData>(
           'profiles',
           'first_name, last_name, school_name, school_address',
           { id: user.id }
@@ -119,19 +118,20 @@ const PricingSection: React.FC = () => {
           return;
         }
         
-        if (data) {
+        if (data && data.length > 0) {
+          const profile = data[0];
           setUserProfile({
-            firstName: data.first_name || '',
-            lastName: data.last_name || '',
+            firstName: profile.first_name || '',
+            lastName: profile.last_name || '',
             email: user.email || '',
-            schoolName: data.school_name || '',
-            schoolAddress: data.school_address || ''
+            schoolName: profile.school_name || '',
+            schoolAddress: profile.school_address || ''
           });
 
           setInvoiceDetails({
-            schoolName: data.school_name || '',
-            address: data.school_address || '',
-            contactName: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
+            schoolName: profile.school_name || '',
+            address: profile.school_address || '',
+            contactName: `${profile.first_name || ''} ${profile.last_name || ''}`.trim(),
             contactEmail: user.email || '',
             purchaseOrderNumber: '',
             additionalInformation: ''

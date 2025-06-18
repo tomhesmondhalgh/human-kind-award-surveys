@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '../../contexts/AuthContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { Badge } from "../ui/badge";
@@ -11,7 +11,7 @@ import { formatCurrency } from '../../lib/utils';
 import PageTitle from '../ui/PageTitle';
 import { useSubscription } from '../../hooks/useSubscription';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
-import { selectQuery } from '@/lib/supabase/queryUtils';
+import { queryTable } from '@/utils/supabaseHelpers';
 import { SubscriptionData, PaymentHistoryData } from '@/types/supabase-overrides';
 
 export type Purchase = {
@@ -57,7 +57,7 @@ const MyPurchases = () => {
     if (!user) return;
     setLoading(true);
     try {
-      const { data: subscriptions, error: subError } = await selectQuery<SubscriptionData>(
+      const { data: subscriptions, error: subError } = await queryTable<SubscriptionData>(
         'subscriptions',
         '*',
         { user_id: user.id }
@@ -252,7 +252,7 @@ const MyPurchases = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Date</TableHead>
+                      <TableHead>Date</TableHea>
                       <TableHead>School/Customer</TableHead>
                       <TableHead>Plan</TableHead>
                       <TableHead>Amount</TableHead>
