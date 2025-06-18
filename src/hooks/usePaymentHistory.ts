@@ -18,6 +18,7 @@ export const usePaymentHistory = (limit = 10) => {
       
       try {
         setLoading(true);
+        console.log('Fetching payment history for user:', user.id);
         
         // Query payment_history table with subscription details using direct Supabase client
         const { data, error } = await supabase
@@ -30,13 +31,16 @@ export const usePaymentHistory = (limit = 10) => {
               purchase_type
             )
           `)
-          .eq('subscriptions.user_id', user.id as any)
+          .eq('subscriptions.user_id', user.id)
           .order('created_at', { ascending: false })
           .range((page - 1) * limit, page * limit - 1);
 
         if (error) {
+          console.error('Error fetching payment history:', error);
           throw error;
         }
+
+        console.log('Payment history data:', data);
 
         // Format the data with proper type checking
         const formattedPayments: PaymentHistoryData[] = (data || []).map((item: any) => ({
@@ -56,6 +60,7 @@ export const usePaymentHistory = (limit = 10) => {
           purchase_type: item.subscriptions?.purchase_type
         }));
 
+        console.log('Formatted payments:', formattedPayments);
         setPayments(formattedPayments);
       } catch (err: any) {
         console.error('Error fetching payments:', err);

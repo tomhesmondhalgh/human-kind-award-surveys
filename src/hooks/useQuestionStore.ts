@@ -28,7 +28,7 @@ export function useQuestionStore() {
       let query = supabase
         .from('custom_questions')
         .select('*')
-        .eq('archived', showArchived as any)
+        .eq('archived', showArchived)
         .order('created_at', { ascending: false });
 
       // Filter by current organization or global questions (organization_id is null)
@@ -48,7 +48,7 @@ export function useQuestionStore() {
       }
 
       // Process the data with our utility function to ensure type safety
-      const processedData = convertToCustomQuestions((data || []) as any);
+      const processedData = convertToCustomQuestions(data || []);
       
       console.log('Fetched questions after processing:', processedData);
       setQuestions(processedData);
@@ -80,7 +80,7 @@ export function useQuestionStore() {
       
       const { data, error } = await supabase
         .from('custom_questions')
-        .insert(dbQuestion as any)
+        .insert(dbQuestion)
         .select()
         .single();
 
@@ -92,7 +92,7 @@ export function useQuestionStore() {
 
       console.log('New question created:', data);
       // Convert to our type before adding to state
-      const newQuestion = convertToCustomQuestion(data as any);
+      const newQuestion = convertToCustomQuestion(data);
       setQuestions(prev => [newQuestion, ...prev]);
       toast.success('Question created successfully');
       return newQuestion;
@@ -117,8 +117,8 @@ export function useQuestionStore() {
 
       const { error } = await supabase
         .from('custom_questions')
-        .update(updateData as any)
-        .eq('id', id as any);
+        .update(updateData)
+        .eq('id', id);
 
       if (error) throw error;
       
@@ -128,7 +128,7 @@ export function useQuestionStore() {
           return { 
             ...q, 
             text: updateData.text || q.text,
-            type: updateData.type,
+            type: updateData.type as 'text' | 'multiple_choice',
             archived: updateData.archived !== undefined ? updateData.archived : q.archived
           };
         }

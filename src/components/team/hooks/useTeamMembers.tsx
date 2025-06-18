@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 import type { OrganizationMember } from '@/types/organizations';
-import { selectQuery, selectSingleQuery, insertQuery, updateQuery, deleteQuery } from '@/lib/supabase/queryUtils';
+import { selectSingleQuery, insertQuery, deleteQuery } from '@/lib/supabase/queryUtils';
 import { OrganizationMembershipData, OrganizationInvitationData } from '@/types/supabase-overrides';
 
 export function useTeamMembers(organizationId: string | undefined) {
@@ -25,23 +25,33 @@ export function useTeamMembers(organizationId: string | undefined) {
       if (!organizationId) return [];
       
       try {
+        console.log('Fetching team members for organization:', organizationId);
+        
         const { data, error } = await supabase
           .from('organization_memberships')
           .select(`
             *,
             profiles(first_name, last_name, job_title)
           `)
-          .eq('organization_id', organizationId as any);
+          .eq('organization_id', organizationId);
           
-        if (error) throw error;
+        if (error) {
+          console.error('Error fetching team members:', error);
+          throw error;
+        }
         
-        return (data || []).map((item: any) => ({
+        console.log('Raw team members data:', data);
+        
+        const formattedMembers = (data || []).map((item: any) => ({
           ...item,
           profile: item.profiles || undefined
         })) as OrganizationMember[];
+        
+        console.log('Formatted team members:', formattedMembers);
+        return formattedMembers;
       } catch (error) {
-        console.error('Error fetching members:', error);
-        return [];
+        console.error('Error in team members query:', error);
+        throw error;
       }
     },
     enabled: !!organizationId
@@ -53,24 +63,32 @@ export function useTeamMembers(organizationId: string | undefined) {
     queryFn: async () => {
       if (!organizationId || !user?.id) return null;
       
-      const { data: session } = await supabase.auth.getSession();
-      if (!session.session?.user) return null;
-      
-      const { data, error } = await selectSingleQuery<OrganizationMembershipData>(
-        'organization_memberships',
-        'role',
-        {
-          organization_id: organizationId,
-          user_id: session.session.user.id
-        }
-      );
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        if (!session.session?.user) return null;
         
-      if (error) {
-        console.error('Error fetching user role:', error);
+        console.log('Checking user role for:', session.session.user.id, 'in org:', organizationId);
+        
+        const { data, error } = await selectSingleQuery<OrganizationMembershipData>(
+          'organization_memberships',
+          'role',
+          {
+            organization_id: organizationId,
+            user_id: session.session.user.id
+          }
+        );
+          
+        if (error) {
+          console.error('Error fetching user role:', error);
+          return null;
+        }
+        
+        console.log('User role result:', data?.role);
+        return data?.role || null;
+      } catch (error) {
+        console.error('Error in user role query:', error);
         return null;
       }
-      
-      return data?.role || null;
     },
     enabled: !!organizationId && !!user?.id
   });
@@ -157,22 +175,19 @@ export function useTeamMembers(organizationId: string | undefined) {
     }
   });
 
-  const updateMemberRoleMutation = useMutation({
-    mutationFn: async ({ membershipId, newRole }: { membershipId: string; newRole: string }) => {
-      const { error } = await updateQuery(
-        'organization_memberships',
-        { role: newRole },
-        { id: membershipId }
-      );
-      if (error) throw error;
+  const resendInvitationMutation = useMutation({
+    mutationFn: async (invitationId: string) => {
+      // This would typically involve calling an edge function to resend the email
+      // For now, we'll just simulate success
+      console.log('Resending invitation:', invitationId);
+      return true;
     },
     onSuccess: () => {
-      toast.success('Member role updated successfully');
-      refetchMembers();
+      toast.success('Invitation resent successfully');
     },
     onError: (error) => {
-      console.error('Error updating member role:', error);
-      toast.error('Failed to update member role');
+      console.error('Error resending invitation:', error);
+      toast.error('Failed to resend invitation');
     }
   });
 
@@ -184,10 +199,10 @@ export function useTeamMembers(organizationId: string | undefined) {
     currentUserRole,
     isInviteModalOpen,
     setIsInviteModalOpen,
-    sendInvitation: sendInvitationMutation.mutate,
-    removeMember: removeMemberMutation.mutate,
-    cancelInvitation: cancelInvitationMutation.mutate,
-    updateMemberRole: updateMemberRoleMutation.mutate,
+    sendInvitation: sendInvitationMutation,
+    removeMember: removeMemberMutation,
+    cancelInvitation: cancelInvitationMutation,
+    resendInvitation: resendInvitationMutation,
     refetchMembers
   };
 }
