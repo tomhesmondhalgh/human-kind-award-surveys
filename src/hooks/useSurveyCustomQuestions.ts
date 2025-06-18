@@ -28,7 +28,7 @@ export function useSurveyCustomQuestions(surveyId: string | null) {
         const { data: linkData, error: linkError } = await supabase
           .from('survey_questions')
           .select('question_id')
-          .eq('survey_id', surveyId);
+          .eq('survey_id', surveyId as any);
         
         if (linkError) {
           console.error('Error fetching question links:', linkError);
