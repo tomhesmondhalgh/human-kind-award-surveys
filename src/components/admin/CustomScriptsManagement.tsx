@@ -42,7 +42,7 @@ const CustomScriptsManagement = () => {
         const { data, error } = await supabase
           .from('custom_scripts')
           .select('*')
-          .eq('is_active', true)
+          .eq('is_active', true as any)
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle(); // Use maybeSingle instead of single to avoid errors when no data exists
@@ -85,7 +85,7 @@ const CustomScriptsManagement = () => {
       const { error: updateError } = await supabase
         .from('custom_scripts')
         .update({ is_active: false } as any)
-        .eq('is_active', true);
+        .eq('is_active', true as any);
 
       if (updateError) {
         console.error('Error deactivating old scripts:', updateError);

@@ -31,20 +31,24 @@ const CustomScriptsLoader = () => {
         const { data, error } = await supabase
           .from('custom_scripts')
           .select('script_content')
-          .eq('is_active', true)
+          .eq('is_active', true as any)
           .order('created_at', { ascending: false })
           .limit(1)
           .single();
         
         if (error && error.code !== 'PGRST116') {
           console.error('Error fetching custom scripts:', error);
-        } else if (data && data.script_content) {
-          setScriptContent(data.script_content);
-          
-          // Update cache
-          scriptCache.content = data.script_content;
-          scriptCache.timestamp = now;
-          scriptCache.expiresAt = now + CACHE_EXPIRY;
+        } else if (data) {
+          // Type assertion to handle the data properly
+          const scriptData = data as any;
+          if (scriptData && scriptData.script_content) {
+            setScriptContent(scriptData.script_content);
+            
+            // Update cache
+            scriptCache.content = scriptData.script_content;
+            scriptCache.timestamp = now;
+            scriptCache.expiresAt = now + CACHE_EXPIRY;
+          }
         }
       } catch (err) {
         console.error('Unexpected error loading scripts:', err);

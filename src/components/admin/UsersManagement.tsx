@@ -92,7 +92,7 @@ const UsersManagement = () => {
       const { data, error } = await supabase
         .from('profiles')
         .update({ is_admin: !currentAdminState } as any)
-        .eq('id', userId)
+        .eq('id', userId as any)
         .select();
       
       if (error) {

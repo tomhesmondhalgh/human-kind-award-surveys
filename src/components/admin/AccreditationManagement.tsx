@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -146,8 +145,8 @@ const AccreditationManagement = () => {
 
       const { error } = await supabase
         .from('action_plan_submissions')
-        .update(updateData)
-        .eq('id', submissionId);
+        .update(updateData as any)
+        .eq('id', submissionId as any);
 
       if (error) {
         console.error('Error updating submission:', error);

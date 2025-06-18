@@ -54,7 +54,7 @@ const PlansManagement: React.FC = () => {
       const { data: inactivePlans, error } = await supabase
         .from('plans')
         .select('*')
-        .eq('is_active', false)
+        .eq('is_active', false as any)
         .order('sort_order');
       
       if (error) {
@@ -127,7 +127,7 @@ const PlansManagement: React.FC = () => {
         const { error } = await supabase
           .from('plans')
           .update(updatedPlan as any)
-          .eq('id', editingPlan.id);
+          .eq('id', editingPlan.id as any);
           
         if (error) {
           throw error;
@@ -186,7 +186,7 @@ const PlansManagement: React.FC = () => {
           is_active: !plan.is_active,
           updated_at: new Date().toISOString()
         } as any)
-        .eq('id', plan.id);
+        .eq('id', plan.id as any);
         
       if (error) {
         throw error;
