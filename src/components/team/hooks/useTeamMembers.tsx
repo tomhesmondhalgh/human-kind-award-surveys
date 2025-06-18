@@ -114,7 +114,15 @@ export function useTeamMembers(organizationId?: string) {
           
         if (error) {
           console.error('Invitation creation error:', error);
-          throw error;
+          
+          // Provide more specific error messages
+          if (error.code === '42501') {
+            throw new Error('Permission denied: You may not have admin privileges for this organization');
+          } else if (error.code === '23505') {
+            throw new Error('An invitation for this email already exists');
+          } else {
+            throw new Error(`Failed to create invitation: ${error.message}`);
+          }
         }
         
         console.log('Invitation created successfully:', invitation);
@@ -165,8 +173,10 @@ export function useTeamMembers(organizationId?: string) {
       console.error('Invitation mutation error:', error);
       if (error.message?.includes('Not authenticated')) {
         toast.error('Authentication required - please refresh the page and log in again');
+      } else if (error.message?.includes('Permission denied')) {
+        toast.error('You need admin privileges to send invitations');
       } else {
-        toast.error('Failed to send invitation');
+        toast.error(error.message || 'Failed to send invitation');
       }
     }
   });

@@ -6,6 +6,66 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://bagaaqkmewkuwtudwnqw.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhZ2FhcWttZXdrdXd0dWR3bnF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA2NjQwMzIsImV4cCI6MjA1NjI0MDAzMn0.Eu_xDUDDk188oE0dB7W7KJ4oWjB6nQNuUBBnZUMrsvE";
 
+// Storage management with fallback for tracking protection
+const createStorage = () => {
+  try {
+    // Test if localStorage is accessible
+    const testKey = '__supabase_test__';
+    localStorage.setItem(testKey, 'test');
+    localStorage.removeItem(testKey);
+    
+    return {
+      getItem: (key: string) => {
+        try {
+          const item = localStorage.getItem(key);
+          console.log('Getting auth item:', key, item ? 'exists' : 'not found');
+          return item;
+        } catch (error) {
+          console.warn('Failed to get item from localStorage:', key, error);
+          return null;
+        }
+      },
+      setItem: (key: string, value: string) => {
+        try {
+          console.log('Setting auth item:', key);
+          localStorage.setItem(key, value);
+        } catch (error) {
+          console.warn('Failed to set item in localStorage:', key, error);
+        }
+      },
+      removeItem: (key: string) => {
+        try {
+          console.log('Removing auth item:', key);
+          localStorage.removeItem(key);
+        } catch (error) {
+          console.warn('Failed to remove item from localStorage:', key, error);
+        }
+      }
+    };
+  } catch (error) {
+    console.warn('localStorage not accessible, using in-memory storage fallback');
+    
+    // Fallback to in-memory storage if localStorage is blocked
+    const memoryStorage: Record<string, string> = {};
+    
+    return {
+      getItem: (key: string) => {
+        const item = memoryStorage[key] || null;
+        console.log('Getting auth item from memory:', key, item ? 'exists' : 'not found');
+        return item;
+      },
+      setItem: (key: string, value: string) => {
+        console.log('Setting auth item in memory:', key);
+        memoryStorage[key] = value;
+      },
+      removeItem: (key: string) => {
+        console.log('Removing auth item from memory:', key);
+        delete memoryStorage[key];
+      }
+    };
+  }
+};
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
@@ -17,21 +77,7 @@ export const supabase = createClient<Database>(
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: false,
-      storage: {
-        getItem: (key) => {
-          const item = localStorage.getItem(key);
-          console.log('Getting auth item:', key, item ? 'exists' : 'not found');
-          return item;
-        },
-        setItem: (key, value) => {
-          console.log('Setting auth item:', key);
-          localStorage.setItem(key, value);
-        },
-        removeItem: (key) => {
-          console.log('Removing auth item:', key);
-          localStorage.removeItem(key);
-        }
-      }
+      storage: createStorage()
     }
   }
 );
