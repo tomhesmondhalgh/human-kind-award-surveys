@@ -108,7 +108,7 @@ const PricingSection: React.FC = () => {
         const { data, error } = await supabase
           .from('profiles')
           .select('first_name, last_name, school_name, school_address')
-          .eq('id', user.id)
+          .eq('id', user.id as any)
           .single();
         
         if (error) {
@@ -117,18 +117,19 @@ const PricingSection: React.FC = () => {
         }
         
         if (data) {
+          const profileData = data as any;
           setUserProfile({
-            firstName: data.first_name || '',
-            lastName: data.last_name || '',
+            firstName: profileData.first_name || '',
+            lastName: profileData.last_name || '',
             email: user.email || '',
-            schoolName: data.school_name || '',
-            schoolAddress: data.school_address || ''
+            schoolName: profileData.school_name || '',
+            schoolAddress: profileData.school_address || ''
           });
 
           setInvoiceDetails({
-            schoolName: data.school_name || '',
-            address: data.school_address || '',
-            contactName: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
+            schoolName: profileData.school_name || '',
+            address: profileData.school_address || '',
+            contactName: `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim(),
             contactEmail: user.email || '',
             purchaseOrderNumber: '',
             additionalInformation: ''

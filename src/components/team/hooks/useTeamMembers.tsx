@@ -57,8 +57,8 @@ export function useTeamMembers(organizationId: string | undefined) {
       const { data, error } = await supabase
         .from('organization_memberships')
         .select('role')
-        .eq('organization_id', organizationId)
-        .eq('user_id', session.session.user.id)
+        .eq('organization_id', organizationId as any)
+        .eq('user_id', session.session.user.id as any)
         .single();
         
       if (error) {
@@ -66,7 +66,7 @@ export function useTeamMembers(organizationId: string | undefined) {
         return null;
       }
       
-      return data?.role || null;
+      return (data as any)?.role || null;
     },
     enabled: !!organizationId && !!user?.id
   });
@@ -166,7 +166,7 @@ export function useTeamMembers(organizationId: string | undefined) {
     mutationFn: async ({ membershipId, newRole }: { membershipId: string; newRole: string }) => {
       const { error } = await supabase
         .from('organization_memberships')
-        .update({ role: newRole as any })
+        .update({ role: newRole } as any)
         .eq('id', membershipId as any);
         
       if (error) throw error;

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -57,11 +58,11 @@ const MyPurchases = () => {
       const {
         data: subscriptions,
         error: subError
-      } = await supabase.from('subscriptions').select('*').eq('user_id', user.id);
+      } = await supabase.from('subscriptions').select('*').eq('user_id', user.id as any);
       if (subError) {
         throw subError;
       }
-      const active = subscriptions?.find(sub => 
+      const active = subscriptions?.find((sub: any) => 
         sub.status === 'active' && 
         sub.purchase_type === 'subscription' && 
         (sub.end_date === null || new Date(sub.end_date) > new Date())
@@ -81,7 +82,7 @@ const MyPurchases = () => {
         setLoading(false);
         return;
       }
-      const subscriptionIds = subscriptions.map(sub => sub.id);
+      const subscriptionIds = subscriptions.map((sub: any) => sub.id);
       const {
         data: payments,
         error: paymentError
@@ -92,13 +93,13 @@ const MyPurchases = () => {
             plan_type,
             purchase_type
           )
-        `).in('subscription_id', subscriptionIds).order('created_at', {
+        `).in('subscription_id', subscriptionIds as any).order('created_at', {
         ascending: false
       });
       if (paymentError) {
         throw paymentError;
       }
-      const formattedPurchases = payments.map(item => ({
+      const formattedPurchases = (payments || []).map((item: any) => ({
         ...item,
         plan_type: item.subscription?.plan_type || 'unknown',
         purchase_type: item.subscription?.purchase_type || 'unknown'
