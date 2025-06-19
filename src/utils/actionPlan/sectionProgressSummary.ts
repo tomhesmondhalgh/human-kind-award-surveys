@@ -1,5 +1,5 @@
 
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { ACTION_PLAN_SECTIONS } from '../../types/actionPlan';
 
 export async function getSectionProgressSummary(organizationId: string): Promise<{ success: boolean; data: any[] | null; error: any }> {

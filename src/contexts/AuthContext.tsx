@@ -1,84 +1,66 @@
-
-import React, { createContext, useContext, ReactNode } from 'react';
-import { Session, User } from '@supabase/supabase-js';
-import { useAuthState } from '@/utils/auth/useAuthState';
-import { signInWithEmail } from '@/utils/auth/signIn';
-import { signUpWithEmail } from '@/utils/auth/signUp';
-import { signOutUser } from '@/utils/auth/signOut';
-import { completeUserProfile } from '@/utils/auth/profileManagement';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { User } from '@supabase/supabase-js';
+import { supabase } from '../integrations/supabase/client';
+import { useAuthState } from '../utils/auth/useAuthState';
 
 interface AuthContextType {
   user: User | null;
-  session: Session | null;
-  isLoading: boolean;
   isAuthenticated: boolean;
-  authCheckComplete: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any; success: boolean }>;
-  signUp: (email: string, password: string, userData?: any) => Promise<{ error: any; success: boolean; user?: User }>;
+  isLoading: boolean;
+  authError: string | null;
   signOut: () => Promise<void>;
-  completeUserProfile: (userData: any) => Promise<{ error: any; success: boolean }>;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  session: null,
-  isLoading: true,
-  isAuthenticated: false,
-  authCheckComplete: false,
-  signIn: async () => ({ error: null, success: false }),
-  signUp: async () => ({ error: null, success: false }),
-  signOut: async () => {},
-  completeUserProfile: async () => ({ error: null, success: false }),
-});
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Use the central auth state hook for state management
-  const { user, session, isLoading, isAuthenticated, authCheckComplete } = useAuthState();
+interface AuthProviderProps {
+  children: React.ReactNode;
+}
 
-  // Sign in handler
-  const signIn = async (email: string, password: string) => {
-    return signInWithEmail(email, password);
-  };
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const { user, isAuthenticated, isLoading, error } = useAuthState();
+  const [authError, setAuthError] = useState<string | null>(null);
 
-  // Sign up handler
-  const signUp = async (email: string, password: string, userData?: any) => {
-    const response = await signUpWithEmail(email, password, userData);
-    return response;
-  };
-
-  // Sign out handler
-  const signOut = async () => {
-    await signOutUser();
-  };
-
-  // Profile completion handler
-  const handleCompleteUserProfile = async (userData: any) => {
-    if (!user) {
-      return { error: new Error('User not authenticated'), success: false };
+  useEffect(() => {
+    if (error) {
+      setAuthError(error.message);
+    } else {
+      setAuthError(null);
     }
-    
-    return completeUserProfile(user.id, userData);
+  }, [error]);
+
+  const signOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Error signing out:', error);
+        setAuthError(error.message);
+      }
+    } catch (error: any) {
+      console.error('Unexpected error signing out:', error);
+      setAuthError(error.message || 'An unexpected error occurred');
+    }
+  };
+
+  const value: AuthContextType = {
+    user,
+    isAuthenticated,
+    isLoading,
+    authError,
+    signOut,
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        session,
-        isLoading,
-        isAuthenticated,
-        authCheckComplete,
-        signIn,
-        signUp,
-        signOut,
-        completeUserProfile: handleCompleteUserProfile,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
 };
-
-export default AuthContext;

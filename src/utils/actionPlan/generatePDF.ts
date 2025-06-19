@@ -1,7 +1,7 @@
 
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { ActionPlanDescriptor } from '../../types/actionPlan';
 
 export async function generatePDF(organizationId: string): Promise<{ success: boolean; error?: any }> {
@@ -51,9 +51,9 @@ export async function generatePDF(organizationId: string): Promise<{ success: bo
       
       // Create table data
       const tableData = sectionDescriptors.map(descriptor => [
-        descriptor.index_number,
-        descriptor.descriptor_text,
-        descriptor.status,
+        descriptor.index_number || '',
+        descriptor.descriptor_text || '',
+        descriptor.status || '',
         descriptor.assigned_to || '',
         descriptor.deadline ? new Date(descriptor.deadline).toLocaleDateString('en-GB') : '',
         descriptor.key_actions || ''

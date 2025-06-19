@@ -1,27 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from "zod";
-import { toast } from "sonner";
-import { Calendar } from "@/components/ui/calendar"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { CalendarIcon } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Badge } from "@/components/ui/badge"
-import { supabase } from '../lib/supabase';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { fixCustomQuestionTypes } from '../utils/typeConversions';
+import { useOrganization } from '../contexts/OrganizationContext';
+import { useSurveyData } from '../hooks/useSurveyData';
+import { useSurveyForm } from '../hooks/useSurveyForm';
+import SurveyLoading from '../components/survey-form/SurveyLoading';
+import SurveyNotFound from '../components/survey-form/SurveyNotFound';
+import SurveyFormWrapper from '../components/survey-form/SurveyFormWrapper';
+import { CustomQuestionsProvider } from '../contexts/CustomQuestionsContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const FormSchema = z.object({
   name: z.string().min(2, {
