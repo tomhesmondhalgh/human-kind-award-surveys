@@ -1,10 +1,10 @@
 
 import { useState, useEffect } from 'react';
+import { getSurveyTemplatesOptimized } from '@/utils/db/queryOptimizer';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { toast } from 'sonner';
 import { SurveyStatus } from '@/utils/types/survey';
-import { supabase } from '@/integrations/supabase/client';
 
 export const useSurveyTemplates = (status?: SurveyStatus) => {
   const [templates, setTemplates] = useState<any[]>([]);
@@ -19,37 +19,8 @@ export const useSurveyTemplates = (status?: SurveyStatus) => {
       
       try {
         setLoading(true);
-        
-        // Build query using direct Supabase call
-        let query = supabase
-          .from('survey_templates')
-          .select(`
-            id,
-            name,
-            date,
-            close_date,
-            organization_id,
-            emails,
-            status,
-            created_at,
-            updated_at
-          `)
-          .eq('organization_id', currentOrganization.id)
-          .order('created_at', { ascending: false });
-        
-        if (status) {
-          query = query.eq('status', status);
-        }
-
-        const { data, error: fetchError } = await query;
-
-        if (fetchError) {
-          console.error('Error fetching survey templates:', fetchError);
-          throw fetchError;
-        }
-
-        console.log(`Fetched ${data?.length || 0} survey templates`);
-        setTemplates(data || []);
+        const data = await getSurveyTemplatesOptimized(currentOrganization.id, status);
+        setTemplates(data);
       } catch (err: any) {
         console.error('Error fetching templates:', err);
         setError(err.message);

@@ -51,12 +51,6 @@ export function useSurveyFeedbackAnalytics(threshold: number = 5) {
         
         await Promise.all(surveys.map(async (survey) => {
           try {
-            // Ensure survey has required properties
-            if (!survey || typeof survey !== 'object' || !('id' in survey)) {
-              console.warn('Invalid survey object:', survey);
-              return;
-            }
-
             // Get responses for this survey
             const { data: responses, error: responseError } = await supabase
               .from('survey_responses')
@@ -88,11 +82,6 @@ export function useSurveyFeedbackAnalytics(threshold: number = 5) {
             let scoreCount = 0;
             
             responses.forEach(response => {
-              // Ensure response is an object
-              if (!response || typeof response !== 'object') {
-                return;
-              }
-
               // Count negative feedback (strongly disagree or disagree) across wellbeing questions
               const wellbeingFields = [
                 'valued_member', 'leadership_prioritize', 'manageable_workload',
@@ -101,20 +90,17 @@ export function useSurveyFeedbackAnalytics(threshold: number = 5) {
               ];
               
               wellbeingFields.forEach(field => {
-                if (field in response && 
-                    (response[field as keyof typeof response] === 'Disagree' || 
-                     response[field as keyof typeof response] === 'Strongly Disagree')) {
+                if (response[field as keyof typeof response] === 'Disagree' || 
+                    response[field as keyof typeof response] === 'Strongly Disagree') {
                   negativeFeedbackCount++;
                 }
               });
               
               // Process recommendation score
-              if ('recommendation_score' in response && response.recommendation_score) {
-                const recScore = parseInt(response.recommendation_score as string);
-                if (!isNaN(recScore)) {
-                  totalScore += recScore;
-                  scoreCount++;
-                }
+              const recScore = parseInt(response.recommendation_score as string);
+              if (!isNaN(recScore)) {
+                totalScore += recScore;
+                scoreCount++;
               }
             });
             
@@ -124,15 +110,14 @@ export function useSurveyFeedbackAnalytics(threshold: number = 5) {
             
             // If this survey has significant negative feedback, add it to the results
             if (responses.length >= threshold && (feedbackRatio > 0.25 || avgScore < 6)) {
-              // Safe property access for organization
-              const organization = ('organizations' in survey && survey.organizations) ? survey.organizations as any : null;
+              const organization = survey.organizations as any;
               
               feedbackData.push({
-                userId: ('organization_id' in survey) ? survey.organization_id as string : '',
+                userId: survey.organization_id,
                 userName: 'Organization Admin',
                 schoolName: organization?.name || 'Unknown Organisation',
-                surveyId: ('id' in survey) ? survey.id as string : '',
-                surveyName: ('name' in survey) ? survey.name as string : 'Unknown Survey',
+                surveyId: survey.id,
+                surveyName: survey.name,
                 responseCount: responses.length,
                 avgScore: Math.round(avgScore * 10) / 10,
                 negativeFeedbackCount,
@@ -140,7 +125,7 @@ export function useSurveyFeedbackAnalytics(threshold: number = 5) {
               });
             }
           } catch (err) {
-            console.error(`Error processing survey ${('id' in survey) ? survey.id : 'unknown'}:`, err);
+            console.error(`Error processing survey ${survey.id}:`, err);
           }
         }));
         

@@ -30,8 +30,8 @@ export const UpdatePurchaseDialog: React.FC<UpdatePurchaseDialogProps> = ({
   const [billingContactName, setBillingContactName] = useState(purchase.billing_contact_name || '');
   const [billingContactEmail, setBillingContactEmail] = useState(purchase.billing_contact_email || '');
   
-  // Use our updated hook
-  const { updatePurchase, isUpdating, error } = usePurchaseUpdater();
+  // Use our new hook for update logic
+  const { updatePurchase, isSubmitting, error, setError } = usePurchaseUpdater();
 
   const handlePaymentStatusChange = (value: string) => {
     setPaymentStatus(value as PaymentStatus);
@@ -40,12 +40,12 @@ export const UpdatePurchaseDialog: React.FC<UpdatePurchaseDialogProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const updateResult = await updatePurchase(purchase.id, {
-      invoice_number: invoiceNumber,
-      payment_status: paymentStatus,
-      billing_school_name: billingSchoolName,
-      billing_contact_name: billingContactName,
-      billing_contact_email: billingContactEmail
+    const updateResult = await updatePurchase(purchase, {
+      invoiceNumber,
+      paymentStatus,
+      billingSchoolName,
+      billingContactName,
+      billingContactEmail
     });
 
     if (updateResult) {
@@ -154,10 +154,10 @@ export const UpdatePurchaseDialog: React.FC<UpdatePurchaseDialogProps> = ({
             </Button>
             <Button 
               type="submit" 
-              disabled={isUpdating}
+              disabled={isSubmitting}
               className={getButtonColorClass()}
             >
-              {isUpdating ? 'Updating...' : 'Update Record'}
+              {isSubmitting ? 'Updating...' : 'Update Record'}
             </Button>
           </DialogFooter>
         </form>

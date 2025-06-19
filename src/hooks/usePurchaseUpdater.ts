@@ -1,48 +1,80 @@
 
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
+import { Purchase, PaymentStatus } from '../types/purchases';
+import { useAuth } from '../contexts/AuthContext';
 
-export const usePurchaseUpdater = () => {
-  const [isUpdating, setIsUpdating] = useState(false);
+interface PurchaseUpdateData {
+  invoiceNumber?: string;
+  paymentStatus?: PaymentStatus;
+  billingSchoolName?: string;
+  billingContactName?: string;
+  billingContactEmail?: string;
+}
+
+export function usePurchaseUpdater() {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
-  const updatePurchase = async (purchaseId: string, updates: any) => {
-    setIsUpdating(true);
+  const updatePurchase = async (purchase: Purchase, updateData: PurchaseUpdateData) => {
+    setIsSubmitting(true);
     setError(null);
-    
-    try {
-      const { error } = await supabase
-        .from('payment_history')
-        .update(updates)
-        .eq('id', purchaseId);
 
-      if (error) {
-        console.error('Error updating purchase:', error);
-        setError('Failed to update purchase');
-        toast.error('Failed to update purchase');
-        return false;
-      } else {
-        toast.success('Purchase updated successfully');
-        return true;
+    try {
+      console.log('Updating purchase record:', purchase.id, updateData);
+      
+      // First, update the billing information directly
+      const { error: billingError } = await supabase
+        .from('payment_history')
+        .update({
+          billing_school_name: updateData.billingSchoolName,
+          billing_contact_name: updateData.billingContactName,
+          billing_contact_email: updateData.billingContactEmail
+        })
+        .eq('id', purchase.id);
+
+      if (billingError) {
+        console.error('Error updating billing information:', billingError);
+        throw new Error(`Failed to update billing information: ${billingError.message}`);
       }
-    } catch (error) {
-      console.error('Unexpected error:', error);
-      setError('Unexpected error occurred');
-      toast.error('Unexpected error occurred');
+
+      // If payment status or invoice number needs updating, call the edge function
+      if (updateData.paymentStatus || updateData.invoiceNumber) {
+        const { data, error: functionError } = await supabase.functions.invoke('update-invoice-status', {
+          body: {
+            paymentId: purchase.id,
+            status: updateData.paymentStatus,
+            invoiceNumber: updateData.invoiceNumber,
+            adminUserId: user?.id || 'unknown'
+          }
+        });
+
+        if (functionError) {
+          console.error('Edge function error:', functionError);
+          throw new Error(`Failed to update payment status: ${functionError.message}`);
+        }
+
+        console.log('Update response from edge function:', data);
+      }
+      
+      toast.success("Payment record updated successfully");
+      return true;
+    } catch (err: any) {
+      console.error('Error in updatePurchase:', err);
+      setError(`An error occurred: ${err.message}`);
+      toast.error('Failed to update payment record');
       return false;
     } finally {
-      setIsUpdating(false);
+      setIsSubmitting(false);
     }
   };
 
-  return { 
-    isUpdating, 
-    isSubmitting: isUpdating, 
-    error, 
-    setError, 
-    updatePurchase 
+  return {
+    updatePurchase,
+    isSubmitting,
+    error,
+    setError
   };
-};
+}

@@ -1,104 +1,105 @@
-import React, { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import MainLayout from '../components/layout/MainLayout';
+import AuthForm from '../components/auth/AuthForm';
+import PageTitle from '../components/ui/PageTitle';
+import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
 
-const Login: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+const LOGIN_VERSION = 'main_login_component_v2';
+
+const Login = () => {
+  console.log(`Rendering Login component (${LOGIN_VERSION})`);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const { signIn, user, isAuthenticated, isLoading } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
+  useEffect(() => {
+    console.log('Login component mounted with:');
+    console.log('- Current URL:', window.location.href);
+    console.log('- Environment:', import.meta.env.MODE);
+    console.log('- Route location:', location);
+    console.log('- Auth state:', isAuthenticated ? 'authenticated' : 'not authenticated');
+    console.log('- Auth loading:', isLoading);
+  }, [location, isAuthenticated, isLoading]);
 
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+  const getReturnPath = () => {
+    const params = new URLSearchParams(location.search);
+    const returnPath = params.get('returnTo');
+    return returnPath || '/dashboard';
+  };
+
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      const redirectPath = getReturnPath();
+      console.log(`User authenticated, redirecting to: ${redirectPath}`);
+      
+      toast.success('Logged in successfully', {
+        description: 'Welcome back!'
       });
+      
+      navigate(redirectPath);
+    }
+  }, [isAuthenticated, isLoading, navigate, location.search]);
 
-      if (error) throw error;
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    
+    if (params.get('email_reset') === 'true') {
+      toast.success('Password reset email sent!', {
+        description: 'Please check your inbox for instructions to reset your password.'
+      });
+    }
+    
+    if (params.get('password_reset') === 'true') {
+      toast.success('Password reset successfully!', {
+        description: 'You can now log in with your new password.'
+      });
+    }
+  }, [location]);
 
-      if (data.user) {
-        toast.success('Successfully signed in!');
-        const returnTo = searchParams.get('returnTo');
-        navigate(returnTo ? decodeURIComponent(returnTo) : '/dashboard');
+  const handleSubmit = async (data: any) => {
+    console.log('Login form submitted with:', data.email);
+    setIsSubmitting(true);
+    
+    try {
+      const { error, success } = await signIn(data.email, data.password);
+      
+      if (success) {
+        console.log('Login successful, waiting for auth state to update');
+      } else if (error) {
+        console.error('Login error:', error);
+        toast.error('Failed to log in', {
+          description: error.message || 'Please check your credentials and try again.'
+        });
       }
-    } catch (error: any) {
-      console.error('Sign in error:', error);
-      setError(error.message);
-      toast.error('Failed to sign in');
+    } catch (err) {
+      console.error('Login error:', err);
+      toast.error('Something went wrong', {
+        description: 'Please try again later.'
+      });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle>Sign In</CardTitle>
-          <CardDescription>Enter your email and password to sign in</CardDescription>
-        </CardHeader>
-        <CardContent className="p-6">
-          <form onSubmit={handleSignIn} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            <Button disabled={isLoading} className="w-full">
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Signing In...
-                </>
-              ) : (
-                'Sign In'
-              )}
-            </Button>
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>
-                  {error}
-                </AlertDescription>
-              </Alert>
-            )}
-          </form>
-          <div className="mt-4 text-center">
-            Don't have an account? <a href="/signup" className="text-brandPurple-600 hover:underline">Sign up</a>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <MainLayout>
+      <div className="page-container">
+        <PageTitle 
+          title="Welcome back" 
+          subtitle="Log in to access your surveys and analytics"
+          alignment="center"
+        />
+        <AuthForm 
+          mode="login" 
+          onSubmit={handleSubmit} 
+          isLoading={isSubmitting || isLoading} 
+        />
+      </div>
+    </MainLayout>
   );
 };
 

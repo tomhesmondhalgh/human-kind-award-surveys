@@ -3,10 +3,9 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { PaymentHistoryData } from '@/types/supabase-overrides';
 
 export const usePaymentHistory = (limit = 10) => {
-  const [payments, setPayments] = useState<PaymentHistoryData[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -18,9 +17,8 @@ export const usePaymentHistory = (limit = 10) => {
       
       try {
         setLoading(true);
-        console.log('Fetching payment history for user:', user.id);
         
-        // Query payment_history table with subscription details using direct Supabase client
+        // Query payment_history table with subscription details
         const { data, error } = await supabase
           .from('payment_history')
           .select(`
@@ -31,37 +29,15 @@ export const usePaymentHistory = (limit = 10) => {
               purchase_type
             )
           `)
-          .eq('subscriptions.user_id', user.id as any)
+          .eq('subscriptions.user_id', user.id)
           .order('created_at', { ascending: false })
           .range((page - 1) * limit, page * limit - 1);
 
         if (error) {
-          console.error('Error fetching payment history:', error);
           throw error;
         }
 
-        console.log('Payment history data:', data);
-
-        // Format the data with proper type checking
-        const formattedPayments: PaymentHistoryData[] = (data || []).map((item: any) => ({
-          id: item.id,
-          subscription_id: item.subscription_id,
-          amount: item.amount,
-          currency: item.currency || 'GBP',
-          payment_method: item.payment_method,
-          payment_status: item.payment_status,
-          invoice_number: item.invoice_number,
-          billing_school_name: item.billing_school_name,
-          billing_contact_name: item.billing_contact_name,
-          billing_contact_email: item.billing_contact_email,
-          billing_address: item.billing_address,
-          created_at: item.created_at,
-          plan_type: item.subscriptions?.plan_type,
-          purchase_type: item.subscriptions?.purchase_type
-        }));
-
-        console.log('Formatted payments:', formattedPayments);
-        setPayments(formattedPayments);
+        setPayments(data || []);
       } catch (err: any) {
         console.error('Error fetching payments:', err);
         setError(err.message);

@@ -18,14 +18,14 @@ export function useTeamInvitations(organizationId: string | undefined) {
         const { data, error } = await supabase
           .from('organization_invitations')
           .select('*')
-          .eq('organization_id', organizationId as any)
+          .eq('organization_id', organizationId)
           .is('accepted_at', null)
           .gt('expires_at', new Date().toISOString())
           .order('created_at', { ascending: false });
           
         if (error) throw error;
         
-        return (data as any) as OrganizationInvitation[];
+        return data as OrganizationInvitation[];
       } catch (error) {
         console.error('Error fetching invitations:', error);
         return [];

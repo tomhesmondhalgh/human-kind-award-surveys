@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useQuestionStore } from '../../hooks/useQuestionStore';
 import { Button } from '../ui/button';
@@ -22,7 +23,7 @@ export default function QuestionsPage() {
       await fetchQuestions(showArchived);
     };
     loadQuestions();
-  }, [showArchived, fetchQuestions]);
+  }, [showArchived]);
 
   useEffect(() => {
     const checkEditPermission = async () => {

@@ -2,212 +2,273 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { v4 as uuidv4 } from 'uuid';
-import type { OrganizationMember } from '@/types/organizations';
+import { OrganizationMember } from '@/types/organizations';
 
-export function useTeamMembers(organizationId: string | undefined) {
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  const { user } = useAuth();
+export function useTeamMembers(organizationId?: string) {
   const queryClient = useQueryClient();
-
-  const { 
-    data: members, 
-    isLoading, 
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  
+  const {
+    data: members,
+    isLoading,
+    isError,
     error,
-    refetch: refetchMembers 
+    refetch
   } = useQuery({
     queryKey: ['organizationMembers', organizationId],
     queryFn: async () => {
       if (!organizationId) return [];
       
       try {
-        console.log('Fetching team members for organization:', organizationId);
-        
+        // Debug: Check current session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        console.log('Team members query - Session check:', {
+          hasSession: !!session,
+          userId: session?.user?.id,
+          organizationId,
+          sessionError
+        });
+
+        if (!session?.user) {
+          console.warn('No authenticated session found when querying team members');
+          throw new Error('Not authenticated');
+        }
+
+        // Updated query to work with the new foreign key constraints
         const { data, error } = await supabase
           .from('organization_memberships')
           .select(`
             *,
-            profiles(first_name, last_name, job_title)
+            profiles!fk_organization_memberships_user_id (
+              first_name,
+              last_name,
+              job_title
+            )
           `)
-          .eq('organization_id', organizationId as any);
+          .eq('organization_id', organizationId);
           
         if (error) {
-          console.error('Error fetching team members:', error);
+          console.error('Team members query error:', error);
           throw error;
         }
         
-        console.log('Raw team members data:', data);
+        console.log('Team members fetched successfully:', data?.length || 0, 'members');
         
-        const formattedMembers = (data || []).map((item: any) => ({
-          ...item,
-          profile: item.profiles || undefined
+        return (data || []).map(membership => ({
+          ...membership,
+          profile: membership.profiles
         })) as OrganizationMember[];
-        
-        console.log('Formatted team members:', formattedMembers);
-        return formattedMembers;
       } catch (error) {
-        console.error('Error in team members query:', error);
+        console.error('Error fetching organization members:', error);
         throw error;
       }
     },
-    enabled: !!organizationId
+    enabled: !!organizationId,
+    retry: (failureCount, error) => {
+      // Don't retry auth errors
+      if (error?.message?.includes('Not authenticated')) {
+        return false;
+      }
+      // Don't retry PostgREST syntax errors - properly check for code property
+      if (error?.message?.includes('syntax error') || (error as any)?.code === 'PGRST116') {
+        return false;
+      }
+      return failureCount < 2;
+    }
   });
-
-  // Check if current user is admin
-  const { data: currentUserRole } = useQuery({
-    queryKey: ['currentUserRole', organizationId, user?.id],
-    queryFn: async () => {
-      if (!organizationId || !user?.id) return null;
+  
+  const sendInvitation = useMutation({
+    mutationFn: async ({ email, role }: { email: string; role: string }) => {
+      if (!organizationId) throw new Error('No organization selected');
       
       try {
-        const { data: session } = await supabase.auth.getSession();
-        if (!session.session?.user) return null;
+        // Check session before making the request
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) {
+          throw new Error('Not authenticated - please log in again');
+        }
+
+        console.log('Sending invitation:', { email, role, organizationId, userId: session.user.id });
+
+        const token = crypto.randomUUID();
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
         
-        console.log('Checking user role for:', session.session.user.id, 'in org:', organizationId);
-        
-        const { data, error } = await supabase
-          .from('organization_memberships')
-          .select('role')
-          .eq('organization_id', organizationId as any)
-          .eq('user_id', session.session.user.id as any)
+        // Create the invitation in the database
+        const { data: invitation, error } = await supabase
+          .from('organization_invitations')
+          .insert({
+            email,
+            organization_id: organizationId,
+            role: role as any,
+            token,
+            invited_by: session.user.id,
+            expires_at: expiresAt.toISOString()
+          })
+          .select(`
+            *,
+            organizations!organization_invitations_organization_id_fkey (name)
+          `)
           .single();
           
         if (error) {
-          console.error('Error fetching user role:', error);
-          return null;
+          console.error('Invitation creation error:', error);
+          throw error;
         }
         
-        // Safe property access with type checking
-        const role = data && typeof data === 'object' && 'role' in data ? data.role : null;
-        console.log('User role result:', role);
-        return role;
+        console.log('Invitation created successfully:', invitation);
+
+        // Get inviter profile separately
+        const { data: inviterProfile } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', session.user.id)
+          .single();
+
+        // Send the invitation email
+        const inviterName = inviterProfile 
+          ? `${inviterProfile.first_name || ''} ${inviterProfile.last_name || ''}`.trim() || 'A colleague'
+          : 'A colleague';
+
+        const { error: emailError } = await supabase.functions.invoke('send-team-invitation', {
+          body: {
+            email,
+            organizationName: invitation.organizations?.name || 'your organization',
+            role,
+            inviterName,
+            invitationToken: token
+          }
+        });
+
+        if (emailError) {
+          console.error('Email sending error:', emailError);
+          // Don't throw here - the invitation was created successfully, just log the email error
+          toast.error('Invitation created but email failed to send. You can resend it from the pending invitations list.');
+        } else {
+          console.log('Invitation email sent successfully');
+        }
+        
+        return invitation;
       } catch (error) {
-        console.error('Error in user role query:', error);
-        return null;
+        console.error('Error sending invitation:', error);
+        throw error;
       }
     },
-    enabled: !!organizationId && !!user?.id
+    onSuccess: () => {
+      toast.success('Invitation sent successfully');
+      setIsInviteModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['organizationMembers', organizationId] });
+      queryClient.invalidateQueries({ queryKey: ['organizationInvitations', organizationId] });
+    },
+    onError: (error: any) => {
+      console.error('Invitation mutation error:', error);
+      if (error.message?.includes('Not authenticated')) {
+        toast.error('Authentication required - please refresh the page and log in again');
+      } else {
+        toast.error('Failed to send invitation');
+      }
+    }
   });
 
-  const sendInvitationMutation = useMutation({
-    mutationFn: async ({ email, role }: { email: string; role: string }) => {
-      if (!organizationId || !user?.id) {
-        throw new Error('Missing organization or user information');
+  const resendInvitation = useMutation({
+    mutationFn: async (invitationId: string) => {
+      // Check session before making the request
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        throw new Error('Not authenticated - please log in again');
       }
 
-      const token = uuidv4();
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
-
-      const { data, error } = await supabase
+      // Get the invitation details
+      const { data: invitation, error } = await supabase
         .from('organization_invitations')
-        .insert({
-          email,
-          organization_id: organizationId as any,
-          role: role as any,
-          token,
-          invited_by: user.id as any,
-          expires_at: expiresAt.toISOString()
-        } as any)
-        .select()
+        .select(`
+          *,
+          organizations!organization_invitations_organization_id_fkey (name)
+        `)
+        .eq('id', invitationId)
         .single();
 
       if (error) throw error;
 
-      // Send invitation email via edge function
+      // Get inviter profile separately
+      const { data: inviterProfile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', invitation.invited_by)
+        .single();
+
+      const inviterName = inviterProfile 
+        ? `${inviterProfile.first_name || ''} ${inviterProfile.last_name || ''}`.trim() || 'A colleague'
+        : 'A colleague';
+
+      // Send the invitation email
       const { error: emailError } = await supabase.functions.invoke('send-team-invitation', {
         body: {
-          email,
-          organizationId,
-          token,
-          inviterName: `${user.user_metadata?.first_name || ''} ${user.user_metadata?.last_name || ''}`.trim() || 'A team member'
+          email: invitation.email,
+          organizationName: invitation.organizations?.name || 'your organization',
+          role: invitation.role,
+          inviterName,
+          invitationToken: invitation.token
         }
       });
 
-      if (emailError) {
-        console.error('Error sending invitation email:', emailError);
-        // Don't throw here as the invitation was created successfully
-      }
-
-      return data;
+      if (emailError) throw emailError;
+      
+      return invitation;
     },
     onSuccess: () => {
-      toast.success('Invitation sent successfully');
-      queryClient.invalidateQueries({ queryKey: ['organizationInvitations', organizationId] });
-      setIsInviteModalOpen(false);
+      toast.success('Invitation email resent successfully');
     },
-    onError: (error) => {
-      console.error('Error sending invitation:', error);
-      toast.error('Failed to send invitation');
+    onError: (error: any) => {
+      console.error('Resend invitation error:', error);
+      if (error.message?.includes('Not authenticated')) {
+        toast.error('Authentication required - please refresh the page and log in again');
+      } else {
+        toast.error('Failed to resend invitation');
+      }
     }
   });
+  
+  const removeMember = useMutation({
+    mutationFn: async (memberId: string) => {
+      // Check session before making the request
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        throw new Error('Not authenticated - please log in again');
+      }
 
-  const removeMemberMutation = useMutation({
-    mutationFn: async (membershipId: string) => {
       const { error } = await supabase
         .from('organization_memberships')
         .delete()
-        .eq('id', membershipId as any);
+        .eq('id', memberId);
+        
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success('Member removed successfully');
-      refetchMembers();
+      toast.success('Team member removed');
+      queryClient.invalidateQueries({ queryKey: ['organizationMembers', organizationId] });
     },
-    onError: (error) => {
-      console.error('Error removing member:', error);
-      toast.error('Failed to remove member');
+    onError: (error: any) => {
+      console.error('Remove member error:', error);
+      if (error.message?.includes('Not authenticated')) {
+        toast.error('Authentication required - please refresh the page and log in again');
+      } else {
+        toast.error('Failed to remove team member');
+      }
     }
   });
-
-  const cancelInvitationMutation = useMutation({
-    mutationFn: async (invitationId: string) => {
-      const { error } = await supabase
-        .from('organization_invitations')
-        .delete()
-        .eq('id', invitationId as any);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success('Invitation cancelled successfully');
-      queryClient.invalidateQueries({ queryKey: ['organizationInvitations', organizationId] });
-    },
-    onError: (error) => {
-      console.error('Error cancelling invitation:', error);
-      toast.error('Failed to cancel invitation');
-    }
-  });
-
-  const resendInvitationMutation = useMutation({
-    mutationFn: async (invitationId: string) => {
-      // This would typically involve calling an edge function to resend the email
-      // For now, we'll just simulate success
-      console.log('Resending invitation:', invitationId);
-      return true;
-    },
-    onSuccess: () => {
-      toast.success('Invitation resent successfully');
-    },
-    onError: (error) => {
-      console.error('Error resending invitation:', error);
-      toast.error('Failed to resend invitation');
-    }
-  });
-
+  
   return {
     members,
     isLoading,
-    isError: !!error,
+    isError,
     error,
-    currentUserRole,
+    refetch,
     isInviteModalOpen,
     setIsInviteModalOpen,
-    sendInvitation: sendInvitationMutation,
-    removeMember: removeMemberMutation,
-    cancelInvitation: cancelInvitationMutation,
-    resendInvitation: resendInvitationMutation,
-    refetchMembers
+    sendInvitation,
+    removeMember,
+    resendInvitation
   };
 }

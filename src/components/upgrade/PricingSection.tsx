@@ -5,7 +5,7 @@ import { useSubscriptionPlans } from '../../hooks/useSubscriptionPlans';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '../../hooks/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../integrations/supabase/client';
+import { supabase } from '../../lib/supabase';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import { Button } from '../../components/ui/button';
 import { Label } from '../../components/ui/label';
@@ -386,7 +386,7 @@ const PricingSection: React.FC = () => {
           } else if (isFree || isSubscriptionLoading || 
               (planType === 'progress' && isFoundation) || 
               (planType === 'premium' && (isFoundation || isProgress))) {
-            handleUpgrade(plan.stripe_price_id || '', upgradePlanType, (plan.purchase_type as 'subscription' | 'one-time') || 'subscription');
+            handleUpgrade(plan.stripe_price_id || '', upgradePlanType, plan.purchase_type || 'subscription');
           }
         }),
         buttonText: getButtonText(planType),
@@ -396,10 +396,10 @@ const PricingSection: React.FC = () => {
                   (planType === 'premium' && isPremium),
         hasInvoiceOption: planType !== 'free',
         onCardPayment: () => isPaidPlan ? 
-          handleUpgrade(plan.stripe_price_id || '', upgradePlanType, (plan.purchase_type as 'subscription' | 'one-time') || 'subscription') : 
+          handleUpgrade(plan.stripe_price_id || '', upgradePlanType, plan.purchase_type || 'subscription') : 
           navigate('/dashboard'),
         onInvoiceRequest: () => isPaidPlan ? 
-          openInvoiceDialog(upgradePlanType, (plan.purchase_type as 'subscription' | 'one-time') || 'subscription') : 
+          openInvoiceDialog(upgradePlanType, plan.purchase_type || 'subscription') : 
           null
       };
     });

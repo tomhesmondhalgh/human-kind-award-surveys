@@ -1,129 +1,149 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { CustomQuestion, convertToCustomQuestion, convertToCustomQuestions } from '../types/customQuestions';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '../contexts/AuthContext';
-import { CustomQuestion } from '../types/customQuestions';
-import { fixCustomQuestionTypes } from '../utils/typeConversions';
+import { toast } from '@/services/toastService';
+import { useOrganization } from '../contexts/OrganizationContext';
 
-export const useQuestionStore = () => {
-  const { user } = useAuth();
+// Helper function to create a DB question payload
+const createDbQuestionPayload = (question: Partial<CustomQuestion>, organizationId?: string) => {
+  return {
+    text: question.text || '',
+    type: question.type || 'text',
+    options: question.options || null,
+    organization_id: organizationId || null
+  };
+};
+
+export function useQuestionStore() {
   const [questions, setQuestions] = useState<CustomQuestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { currentOrganization } = useOrganization();
 
   const fetchQuestions = async (showArchived: boolean = false) => {
-    if (!user) {
-      setIsLoading(false);
-      return [];
-    }
-
-    setIsLoading(true);
-    setError(null);
-
     try {
+      setIsLoading(true);
+      console.log(`Fetching questions (showArchived=${showArchived}) for organization:`, currentOrganization?.id);
+      
       let query = supabase
         .from('custom_questions')
         .select('*')
-        .eq('creator_id', user.id)
+        .eq('archived', showArchived)
         .order('created_at', { ascending: false });
 
-      if (!showArchived) {
-        query = query.eq('archived', false);
+      // Filter by current organization or global questions (organization_id is null)
+      if (currentOrganization?.id) {
+        query = query.or(`organization_id.is.null,organization_id.eq.${currentOrganization.id}`);
+      } else {
+        // If no organization, only show global questions
+        query = query.is('organization_id', null);
       }
 
       const { data, error } = await query;
 
       if (error) {
-        setError(error.message);
+        console.error('Error fetching questions:', error);
+        toast.error('Failed to load questions');
         return [];
-      } else {
-        const convertedQuestions = fixCustomQuestionTypes(data || []);
-        setQuestions(convertedQuestions);
-        return convertedQuestions;
       }
-    } catch (err: any) {
-      setError(err.message);
+
+      // Process the data with our utility function to ensure type safety
+      const processedData = convertToCustomQuestions(data || []);
+      
+      console.log('Fetched questions after processing:', processedData);
+      setQuestions(processedData);
+      return processedData;
+    } catch (error) {
+      console.error('Error in fetchQuestions:', error);
+      toast.error('Failed to load questions');
       return [];
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchQuestions();
-  }, [user]);
-
   const createQuestion = async (question: Omit<CustomQuestion, 'id' | 'created_at' | 'archived' | 'creator_id'>) => {
     try {
-      const questionPayload = {
-        ...question,
-        creator_id: user?.id,
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      
+      const dbQuestion = {
+        ...createDbQuestionPayload(question, currentOrganization?.id),
+        creator_id: user.id,
         archived: false
       };
-
+      
+      console.log('Creating question with payload:', JSON.stringify(dbQuestion, null, 2));
+      
       const { data, error } = await supabase
         .from('custom_questions')
-        .insert([questionPayload])
-        .select();
+        .insert(dbQuestion)
+        .select()
+        .single();
 
       if (error) {
-        setError(error.message);
-        return null;
-      } else if (data) {
-        const convertedQuestion = fixCustomQuestionTypes(data)[0];
-        setQuestions([...questions, convertedQuestion]);
-        return convertedQuestion;
+        console.error('Database error:', error);
+        console.error('Error details:', error.details);
+        throw error;
       }
-      return null;
-    } catch (err: any) {
-      setError(err.message);
+
+      console.log('New question created:', data);
+      // Convert to our type before adding to state
+      const newQuestion = convertToCustomQuestion(data);
+      setQuestions(prev => [newQuestion, ...prev]);
+      toast.success('Question created successfully');
+      return newQuestion;
+    } catch (error) {
+      console.error('Error creating question:', error);
+      toast.error('Failed to create question');
       return null;
     }
   };
 
   const updateQuestion = async (id: string, updates: Partial<CustomQuestion>) => {
     try {
-      const { data, error } = await supabase
-        .from('custom_questions')
-        .update(updates)
-        .eq('id', id)
-        .select();
+      console.log('Raw update data:', updates);
+      
+      const updateData: Partial<CustomQuestion> = {
+        text: updates.text,
+        type: 'text',
+        archived: updates.archived
+      };
+      
+      console.log('Sanitized update data:', updateData);
 
-      if (error) {
-        setError(error.message);
-      } else if (data) {
-        const convertedQuestion = fixCustomQuestionTypes(data)[0];
-        setQuestions(questions.map(q => (q.id === id ? convertedQuestion : q)));
-      }
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
-
-  const deleteQuestion = async (id: string) => {
-    try {
       const { error } = await supabase
         .from('custom_questions')
-        .delete()
+        .update(updateData)
         .eq('id', id);
 
-      if (error) {
-        setError(error.message);
-      } else {
-        setQuestions(questions.filter(q => q.id !== id));
-      }
-    } catch (err: any) {
-      setError(err.message);
+      if (error) throw error;
+      
+      // Update state with converted types
+      setQuestions(prev => prev.map(q => {
+        if (q.id === id) {
+          return { ...q, ...updateData };
+        }
+        return q;
+      }));
+      
+      toast.success('Question updated successfully');
+      return true;
+    } catch (error) {
+      console.error('Error updating question:', error);
+      toast.error('Failed to update question');
+      return false;
     }
   };
 
   return {
     questions,
     isLoading,
-    error,
     fetchQuestions,
     createQuestion,
-    updateQuestion,
-    deleteQuestion,
+    updateQuestion
   };
-};
+}

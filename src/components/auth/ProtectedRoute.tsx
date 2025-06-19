@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, authCheckComplete, user, session } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [redirectAttempted, setRedirectAttempted] = useState(false);
@@ -19,12 +19,14 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     console.log('ProtectedRoute: Auth state check', {
       isAuthenticated,
       isLoading,
+      authCheckComplete,
       hasUser: !!user,
+      hasSession: !!session,
       path: location.pathname
     });
     
     // Only redirect if not authenticated after auth check is complete and not loading
-    if (!isLoading && !isAuthenticated && !redirectAttempted) {
+    if (!isLoading && authCheckComplete && !isAuthenticated && !redirectAttempted) {
       const currentPath = location.pathname + location.search;
       const returnTo = encodeURIComponent(currentPath);
       
@@ -37,7 +39,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       
       navigate(`/login?returnTo=${returnTo}`);
     }
-  }, [isAuthenticated, isLoading, navigate, location, redirectAttempted, user]);
+  }, [isAuthenticated, isLoading, authCheckComplete, navigate, location, redirectAttempted, user, session]);
 
   // Show debug panel when pressing Shift+D five times
   useEffect(() => {
@@ -61,7 +63,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     return () => window.removeEventListener('keydown', keyHandler);
   }, []);
 
-  if (isLoading) {
+  if (isLoading || !authCheckComplete) {
     return (
       <div className="flex flex-col justify-center items-center h-screen">
         <div className="animate-spin h-8 w-8 border-4 border-brandPurple-500 border-t-transparent rounded-full mb-4" />
@@ -81,9 +83,12 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
             {JSON.stringify({
               isAuthenticated,
               isLoading,
+              authCheckComplete,
               hasUser: !!user,
               userEmail: user?.email,
               userId: user?.id,
+              hasSession: !!session,
+              sessionExpiry: session?.expires_at,
               path: location.pathname,
               redirectAttempted
             }, null, 2)}

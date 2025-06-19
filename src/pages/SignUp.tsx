@@ -1,185 +1,146 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import MainLayout from '../components/layout/MainLayout';
+import AuthForm from '../components/auth/AuthForm';
+import PageTitle from '../components/ui/PageTitle';
+import { useAuth } from '../contexts/AuthContext';
+import { toast } from '@/services/toastService';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { SignUpFormData } from '../types/auth';
 
-const SignUp: React.FC = () => {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    firstName: '',
-    lastName: '',
-    jobTitle: '',
-    schoolName: '',
-    schoolAddress: ''
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+const SIGNUP_VERSION = 'main_signup_component_v1.2';
+
+const SignUp = () => {
+  console.log(`Rendering SignUp component (${SIGNUP_VERSION})`);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { signUp, completeUserProfile } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [invitationToken, setInvitationToken] = useState<string | null>(null);
+  const [invitation, setInvitation] = useState<any>(null);
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
+  useEffect(() => {
+    console.log('SignUp component mounted with:');
+    console.log('- Current URL:', window.location.href);
+    console.log('- Environment:', import.meta.env.MODE);
+    console.log('- Route location:', location);
+  }, [location]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const token = params.get('invitation');
+    
+    if (token) {
+      setInvitationToken(token);
+      fetchInvitationDetails(token);
+    }
+    
+    console.log('SignUp component mounted, pathname:', location.pathname);
+  }, [location.search, location.pathname]);
+
+  const fetchInvitationDetails = async (token: string) => {
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            job_title: formData.jobTitle,
-            school_name: formData.schoolName,
-            school_address: formData.schoolAddress
-          }
+      // This is commented out as the "invitations" table doesn't exist
+      // Keeping the function structure for future implementation
+      console.log('Invitation token received:', token);
+      // In a future implementation, we can add the invitations table
+      setInvitation({
+        role: 'viewer',
+        organizations: { 
+          school_name: 'School' 
         }
       });
+    } catch (err) {
+      console.error('Error fetching invitation:', err);
+    }
+  };
 
-      if (error) throw error;
-
-      if (data.user) {
-        toast.success('Account created successfully! Please check your email to confirm your account.');
-        navigate('/login');
+  const handleSubmit = async (data: SignUpFormData) => {
+    setIsLoading(true);
+    console.log('Form submitted with data:', data);
+    
+    try {
+      // Ensure all necessary data is included
+      const userData = {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        jobTitle: data.jobTitle || '',
+        schoolName: data.schoolName || '',
+        schoolAddress: data.schoolAddress || compileCustomAddress(data),
+      };
+      
+      console.log('Signup data being sent:', userData);
+      
+      const { error: signUpError, success: signUpSuccess, user } = await signUp(data.email, data.password, userData);
+      
+      if (!signUpSuccess) {
+        throw signUpError || new Error('Failed to create account');
       }
-    } catch (error: any) {
-      console.error('Sign up error:', error);
-      setError(error.message);
+      
+      if (invitationToken) {
+        toast.info('Please check your email to confirm your account before accessing your invitation');
+        navigate(`/email-confirmation`, { 
+          state: { 
+            email: data.email,
+            userData: userData 
+          } 
+        });
+      } else {
+        console.log('Signup successful, redirecting to email confirmation page');
+        navigate('/email-confirmation', { 
+          state: { 
+            email: data.email,
+            userData: userData
+          } 
+        });
+      }
+      
+      toast.success('Account created successfully!');
+    } catch (err: any) {
+      console.error('Signup error details:', err);
       toast.error('Failed to create account');
     } finally {
       setIsLoading(false);
     }
   };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  
+  const compileCustomAddress = (data: SignUpFormData) => {
+    const addressParts = [
+      data.customStreetAddress,
+      data.customStreetAddress2,
+      data.customCity,
+      data.customCounty,
+      data.customPostalCode,
+      data.customCountry,
+    ].filter(Boolean);
+    
+    return addressParts.join(', ');
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle>Create an Account</CardTitle>
-          <CardDescription>Start your journey to better wellbeing insights</CardDescription>
-        </CardHeader>
-        <CardContent className="p-6">
-          <form onSubmit={handleSignUp} className="space-y-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            <div className="grid gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  name="email"
-                  placeholder="Enter your email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  name="password"
-                  placeholder="Enter your password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
-                <Input
-                  id="firstName"
-                  type="text"
-                  name="firstName"
-                  placeholder="Enter your first name"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name</Label>
-                <Input
-                  id="lastName"
-                  type="text"
-                  name="lastName"
-                  placeholder="Enter your last name"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="jobTitle">Job Title</Label>
-                <Input
-                  id="jobTitle"
-                  type="text"
-                  name="jobTitle"
-                  placeholder="Enter your job title"
-                  value={formData.jobTitle}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="schoolName">School Name</Label>
-                <Input
-                  id="schoolName"
-                  type="text"
-                  name="schoolName"
-                  placeholder="Enter your school name"
-                  value={formData.schoolName}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="schoolAddress">School Address</Label>
-                <Input
-                  id="schoolAddress"
-                  type="text"
-                  name="schoolAddress"
-                  placeholder="Enter your school address"
-                  value={formData.schoolAddress}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-            </div>
-            <Button disabled={isLoading} className="w-full">
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Creating...
-                </>
-              ) : (
-                'Create Account'
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+    <MainLayout>
+      <div className="page-container">
+        <PageTitle 
+          title={invitation ? `Join ${invitation.organizations.school_name}` : "Create your account"} 
+          subtitle={invitation 
+            ? `Complete your account to accept the invitation as ${invitation?.role?.replace('_', ' ')}`
+            : "Sign up to create wellbeing surveys for your staff"
+          }
+        />
+        {invitation && (
+          <div className="mb-4 text-sm text-brandPurple-100 rounded-lg p-3 bg-brandPurple-50 border border-brandPurple-100">
+            <p>You've been invited to join an organisation. Create your account to continue.</p>
+          </div>
+        )}
+        <AuthForm 
+          mode="signup" 
+          onSubmit={handleSubmit} 
+          isLoading={isLoading}
+          invitationData={invitation}
+        />
+      </div>
+    </MainLayout>
   );
 };
 

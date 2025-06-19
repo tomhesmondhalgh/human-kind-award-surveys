@@ -42,21 +42,19 @@ const CustomScriptsManagement = () => {
         const { data, error } = await supabase
           .from('custom_scripts')
           .select('*')
-          .eq('is_active', true as any)
+          .eq('is_active', true)
           .order('created_at', { ascending: false })
           .limit(1)
-          .maybeSingle(); // Use maybeSingle instead of single to avoid errors when no data exists
+          .single();
         
-        if (error) {
+        if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned" which is fine for new setups
           console.error('Error fetching custom scripts:', error);
           setError('Failed to load existing scripts. Please try again.');
         } else if (data) {
-          // Type assertion to ensure we can access script_content
-          const scriptData = data as any;
-          setScriptContent(scriptData.script_content || '');
+          setScriptContent(data.script_content || '');
           
           // Update cache
-          adminScriptCache.content = scriptData.script_content || '';
+          adminScriptCache.content = data.script_content || '';
           adminScriptCache.timestamp = now;
         }
       } catch (err) {
@@ -84,8 +82,8 @@ const CustomScriptsManagement = () => {
       // First, deactivate any existing active scripts
       const { error: updateError } = await supabase
         .from('custom_scripts')
-        .update({ is_active: false } as any)
-        .eq('is_active', true as any);
+        .update({ is_active: false })
+        .eq('is_active', true);
 
       if (updateError) {
         console.error('Error deactivating old scripts:', updateError);
@@ -101,7 +99,7 @@ const CustomScriptsManagement = () => {
           script_content: scriptContent,
           is_active: true,
           user_id: user.id // Add user_id to satisfy RLS policy
-        } as any);
+        });
       
       if (error) {
         console.error('Error saving custom scripts:', error);

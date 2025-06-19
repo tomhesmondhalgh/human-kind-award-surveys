@@ -9,34 +9,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { AccreditationSubmission, AccreditationStatus } from '@/types/accreditation';
 import { Award, Eye, CheckCircle, XCircle, Clock, AlertCircle, Search } from 'lucide-react';
 
-// Use a simplified type that matches what we actually need
-type DatabaseSubmission = {
-  id: string;
-  user_id: string;
-  organization_id: string;
-  status: 'submitted' | 'under_review' | 'approved' | 'rejected';
-  submitted_at: string;
-  reviewed_at?: string;
-  approved_at?: string;
-  next_submission_due?: string;
-  reviewer_notes?: string;
-  submission_data?: any;
-  created_at: string;
-  updated_at: string;
-  profiles?: {
-    first_name?: string;
-    last_name?: string;
-    school_name?: string;
-  };
-};
-
-type AccreditationStatus = 'submitted' | 'under_review' | 'approved' | 'rejected';
-
 const AccreditationManagement = () => {
-  const [submissions, setSubmissions] = useState<DatabaseSubmission[]>([]);
-  const [selectedSubmission, setSelectedSubmission] = useState<DatabaseSubmission | null>(null);
+  const [submissions, setSubmissions] = useState<AccreditationSubmission[]>([]);
+  const [selectedSubmission, setSelectedSubmission] = useState<AccreditationSubmission | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -67,29 +45,7 @@ const AccreditationManagement = () => {
       }
 
       console.log('Fetched submissions:', data);
-      
-      // Safely transform the data to match our expected type
-      if (data && Array.isArray(data)) {
-        const typedSubmissions: DatabaseSubmission[] = data.map((item: any) => ({
-          id: item.id,
-          user_id: item.user_id,
-          organization_id: item.organization_id,
-          status: item.status,
-          submitted_at: item.submitted_at,
-          reviewed_at: item.reviewed_at,
-          approved_at: item.approved_at,
-          next_submission_due: item.next_submission_due,
-          reviewer_notes: item.reviewer_notes,
-          submission_data: item.submission_data,
-          created_at: item.created_at,
-          updated_at: item.updated_at,
-          profiles: item.profiles || undefined
-        }));
-        
-        setSubmissions(typedSubmissions);
-      } else {
-        setSubmissions([]);
-      }
+      setSubmissions(data as AccreditationSubmission[] || []);
     } catch (error) {
       console.error('Error fetching submissions:', error);
       toast.error('Failed to load submissions');
@@ -109,7 +65,7 @@ const AccreditationManagement = () => {
       case 'rejected':
         return <Badge className="bg-red-500"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
       default:
-        return <Badge>Unknown Status</Badge>;
+        return <Badge>Not Submitted</Badge>;
     }
   };
 
@@ -145,8 +101,8 @@ const AccreditationManagement = () => {
 
       const { error } = await supabase
         .from('action_plan_submissions')
-        .update(updateData as any)
-        .eq('id', submissionId as any);
+        .update(updateData)
+        .eq('id', submissionId);
 
       if (error) {
         console.error('Error updating submission:', error);

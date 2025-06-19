@@ -1,8 +1,7 @@
-
 import { useState } from 'react';
 import { SurveyFormData } from '../types/surveyForm';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '../integrations/supabase/client';
 
 export const initialFormData: SurveyFormData = {
   role: '',
@@ -56,7 +55,7 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
       console.log('Submitting survey response for survey ID:', surveyId);
       console.log('Form data:', formData);
       
-      // Insert the main survey response using direct Supabase call
+      // First, insert the main survey response
       const { data: responseData, error: responseError } = await supabase
         .from('survey_responses')
         .insert({
@@ -75,17 +74,11 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
           doing_well: formData.doing_well,
           improvements: formData.improvements
         })
-        .select()
+        .select('id')
         .single();
       
       if (responseError) {
         console.error('Error submitting survey response:', responseError);
-        toast.error('Failed to submit survey');
-        return false;
-      }
-
-      if (!responseData) {
-        console.error('No response data returned');
         toast.error('Failed to submit survey');
         return false;
       }
@@ -94,7 +87,7 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
       
       // Handle custom questions responses if any
       const customResponses = Object.entries(formData.custom_responses);
-      if (customResponses.length > 0) {
+      if (customResponses.length > 0 && responseData?.id) {
         const customResponsesPayload = customResponses.map(([questionId, answer]) => ({
           response_id: responseData.id,
           question_id: questionId,
@@ -109,6 +102,8 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
         
         if (customError) {
           console.error('Error saving custom responses:', customError);
+          // Continue with navigation even if custom responses fail
+          // but notify the user that some data might not have been saved
           toast.error('Some responses may not have been fully saved');
         }
       }

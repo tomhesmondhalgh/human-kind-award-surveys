@@ -18,7 +18,7 @@ export function useCustomQuestions() {
   const refreshQuestions = async () => {
     try {
       const questions = await fetchQuestions(false);
-      if (Array.isArray(questions)) { // Check if fetch was successful
+      if (questions.length >= 0) { // Check if fetch was successful
         setRefreshTrigger(prev => prev + 1);
         return true;
       }

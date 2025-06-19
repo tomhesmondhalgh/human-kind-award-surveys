@@ -197,8 +197,8 @@ const OrganizationsList = () => {
       const { error } = await supabase
         .from('organization_memberships')
         .delete()
-        .eq('user_id', user?.id as any)
-        .eq('organization_id', orgId as any);
+        .eq('user_id', user?.id)
+        .eq('organization_id', orgId);
         
       if (error) {
         throw error;
@@ -216,7 +216,7 @@ const OrganizationsList = () => {
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 p-8 text-center">
         <h2 className="text-xl font-semibold mb-4 text-red-700">Error Loading Organizations</h2>
-        <p className="text-gray-700 mb-6">{error.message || 'An error occurred'}</p>
+        <p className="text-gray-700 mb-6">{error}</p>
         <Button onClick={() => refreshOrganizations()} variant="destructive">
           Retry
         </Button>
