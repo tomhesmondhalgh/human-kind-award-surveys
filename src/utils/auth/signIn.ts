@@ -1,10 +1,12 @@
-
-import { cleanSignIn } from './sessionUtils';
+import { supabase } from '@/integrations/supabase/client';
 
 // Handle sign in with email and password
 export async function signInWithEmail(email: string, password: string) {
   try {
-    const { data, error } = await cleanSignIn(email, password);
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
     if (error) {
       // Check if the error is related to email confirmation

@@ -7,7 +7,7 @@ import PageTitle from '../components/ui/PageTitle';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
 
-const LOGIN_VERSION = 'main_login_component_v3_clean_auth';
+const LOGIN_VERSION = 'main_login_component_v2';
 
 const Login = () => {
   console.log(`Rendering Login component (${LOGIN_VERSION})`);
@@ -34,18 +34,15 @@ const Login = () => {
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
       const redirectPath = getReturnPath();
-      console.log(`User authenticated, force reloading to: ${redirectPath}`);
+      console.log(`User authenticated, redirecting to: ${redirectPath}`);
       
       toast.success('Logged in successfully', {
-        description: 'Welcome back! Redirecting...'
+        description: 'Welcome back!'
       });
       
-      // Force page reload to ensure clean state
-      setTimeout(() => {
-        window.location.href = redirectPath;
-      }, 500);
+      navigate(redirectPath);
     }
-  }, [isAuthenticated, isLoading, location.search]);
+  }, [isAuthenticated, isLoading, navigate, location.search]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
