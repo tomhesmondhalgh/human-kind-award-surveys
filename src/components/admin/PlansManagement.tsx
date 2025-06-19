@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2 } from 'lucide-react';
+import { fixPlanTypes } from '@/utils/typeConversions';
 
 interface Plan {
   id: string;
@@ -51,12 +52,8 @@ const PlansManagement = () => {
         throw error;
       }
 
-      // Transform the data to match our Plan interface
-      const transformedPlans = (data || []).map(plan => ({
-        ...plan,
-        features: Array.isArray(plan.features) ? plan.features : []
-      }));
-
+      // Use the type conversion utility to fix Json[] → string[] conversion
+      const transformedPlans = fixPlanTypes(data || []);
       setPlans(transformedPlans);
     } catch (error: any) {
       console.error('Error fetching plans:', error);
@@ -104,11 +101,8 @@ const PlansManagement = () => {
         throw error;
       }
 
-      const transformedData = (data || []).map(plan => ({
-        ...plan,
-        features: Array.isArray(plan.features) ? plan.features : []
-      }));
-
+      // Use the type conversion utility to fix Json[] → string[] conversion
+      const transformedData = fixPlanTypes(data || []);
       setPlans([...plans, ...transformedData]);
       setNewPlan({
         name: '',
