@@ -1,3 +1,4 @@
+
 // Type definitions for subscription-related functionality
 import { supabase } from '@/integrations/supabase/client';
 
@@ -43,6 +44,10 @@ export async function getPlans(): Promise<Plan[]> {
       throw error;
     }
     
+    if (!data) {
+      return [];
+    }
+    
     // Parse features (stored as JSON string in some databases)
     return data.map(plan => ({
       ...plan,
@@ -70,7 +75,7 @@ export async function getUserSubscription(userId: string): Promise<SubscriptionA
       return null;
     }
 
-    if (!data || data.length === 0) {
+    if (!data || !Array.isArray(data) || data.length === 0) {
       return { plan: 'free', isActive: false };
     }
 
@@ -120,7 +125,7 @@ export async function checkAndCreateSubscription(
     // Convert enterprise to premium, keep legacy and others as-is
     const dbPlanType: DatabasePlanType = planType === 'enterprise' ? 'premium' : planType as DatabasePlanType;
     
-    // Insert subscription record
+    // Insert subscription record using direct Supabase call
     const { error } = await supabase
       .from('subscriptions')
       .insert({

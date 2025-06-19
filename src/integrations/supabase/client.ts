@@ -92,8 +92,6 @@ export const supabase = createClient<Database>(
       autoRefreshToken: true,
       detectSessionInUrl: false,
       storage: createStorage(),
-      // Enhanced retry configuration
-      retryDelay: (attempt: number) => Math.min(attempt * 1000, 5000), // Max 5 second delay
     }
   }
 );

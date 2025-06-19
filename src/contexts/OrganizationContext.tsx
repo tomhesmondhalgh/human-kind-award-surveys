@@ -1,8 +1,9 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { useOrganizations } from '../hooks/useOrganizations';
 import { OrganizationWithRole } from '../types/organizations';
-import { insertIntoTable } from '@/utils/supabaseHelpers';
+import { supabase } from '@/integrations/supabase/client';
 
 interface OrganizationContextType {
   currentOrganization: OrganizationWithRole | null;
@@ -37,24 +38,34 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
     if (!user) return null;
 
     try {
-      // Create organization using helper function
-      const { data: orgData, error: orgError } = await insertIntoTable('organizations', {
-        name,
-        address,
-        urn
-      });
+      // Create organization using direct Supabase call
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .insert({
+          name,
+          address,
+          urn
+        })
+        .select()
+        .single();
 
-      if (orgError || !orgData || typeof orgData !== 'object' || !('id' in orgData)) {
-        throw orgError || new Error('Failed to create organization');
+      if (orgError) {
+        throw orgError;
       }
 
-      // Create membership using helper function
-      const { error: membershipError } = await insertIntoTable('organization_memberships', {
-        user_id: user.id,
-        organization_id: (orgData as any).id,
-        role: 'admin',
-        is_primary: organizations.length === 0
-      });
+      if (!orgData) {
+        throw new Error('Failed to create organization');
+      }
+
+      // Create membership using direct Supabase call
+      const { error: membershipError } = await supabase
+        .from('organization_memberships')
+        .insert({
+          user_id: user.id,
+          organization_id: orgData.id,
+          role: 'admin',
+          is_primary: organizations.length === 0
+        });
 
       if (membershipError) {
         throw membershipError;
@@ -63,9 +74,9 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
       // Refresh organizations list
       refreshOrganizations();
 
-      // Safely create new org object with proper typings
+      // Create new org object with proper typings
       const newOrg: OrganizationWithRole = {
-        ...(orgData as any),
+        ...orgData,
         role: 'admin'
       };
 

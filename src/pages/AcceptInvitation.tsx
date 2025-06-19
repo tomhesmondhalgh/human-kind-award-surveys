@@ -43,7 +43,7 @@ const AcceptInvitation = () => {
         sessionError
       });
 
-      // First, get the invitation details
+      // First, get the invitation details using direct Supabase call
       console.log('📝 AcceptInvitation: Querying organization_invitations table...');
       const { data: invitationData, error: invitationError } = await supabase
         .from('organization_invitations')
@@ -94,7 +94,7 @@ const AcceptInvitation = () => {
         return;
       }
 
-      // Now try to get the organization details with the new RLS policy
+      // Now try to get the organization details with direct Supabase call
       console.log('🏢 AcceptInvitation: Querying organizations table for ID:', invitationData.organization_id);
       const { data: organizationData, error: organizationError } = await supabase
         .from('organizations')
@@ -147,7 +147,7 @@ const AcceptInvitation = () => {
     try {
       console.log('🚀 AcceptInvitation: Starting acceptance process for invitation:', invitation.id);
 
-      // Create organization membership
+      // Create organization membership using direct Supabase call
       console.log('👥 AcceptInvitation: Creating organization membership...');
       const membershipData = {
         user_id: user.id,
@@ -169,7 +169,7 @@ const AcceptInvitation = () => {
 
       console.log('✅ AcceptInvitation: Membership created successfully');
 
-      // Mark invitation as accepted
+      // Mark invitation as accepted using direct Supabase call
       console.log('📝 AcceptInvitation: Marking invitation as accepted...');
       const { error: invitationError } = await supabase
         .from('organization_invitations')
