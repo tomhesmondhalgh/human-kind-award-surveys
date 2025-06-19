@@ -6,9 +6,11 @@ import StatsGrid from '../components/dashboard/StatsGrid';
 import RecentSurveysList from '../components/dashboard/RecentSurveysList';
 import GettingStartedGuide from '../components/dashboard/GettingStartedGuide';
 import RoleDiagnostic from '../components/debug/RoleDiagnostic';
+import { useDashboardData } from '@/hooks/useDashboardData';
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const { stats, surveys, isLoading } = useDashboardData();
 
   return (
     <MainLayout>
@@ -28,8 +30,17 @@ const Dashboard = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
-            <StatsGrid />
-            <RecentSurveysList />
+            <StatsGrid 
+              totalSurveys={stats.totalSurveys}
+              totalRespondents={stats.totalRespondents}
+              responseRate={stats.responseRate}
+              benchmarkScore={stats.benchmarkScore}
+              isLoading={isLoading}
+            />
+            <RecentSurveysList 
+              surveys={surveys}
+              isLoading={isLoading}
+            />
           </div>
           <div>
             <GettingStartedGuide />
