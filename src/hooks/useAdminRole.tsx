@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
@@ -21,17 +22,16 @@ export const useAdminRole = () => {
 
       try {
         const { data, error } = await supabase
-          .from('organization_members')
-          .select('role')
-          .eq('user_id', user.id)
-          .eq('organization_id', process.env.NEXT_PUBLIC_ORGANIZATION_ID)
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', user.id)
           .single();
 
         if (error) {
           throw error;
         }
 
-        setIsAdmin(data?.role === 'admin');
+        setIsAdmin(data?.is_admin || false);
       } catch (err) {
         console.error('Error fetching admin role:', err);
         setError(err instanceof Error ? err : new Error('Unknown error loading admin role'));
@@ -46,4 +46,3 @@ export const useAdminRole = () => {
 
   return { isAdmin, isLoading, error };
 };
-

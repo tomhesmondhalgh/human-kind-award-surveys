@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
 import { CustomQuestion } from '../types/customQuestions';
+import { fixCustomQuestionTypes } from '../utils/typeConversions';
 
 export const useQuestionStore = () => {
   const { user } = useAuth();
@@ -13,7 +14,7 @@ export const useQuestionStore = () => {
   const fetchQuestions = async (showArchived: boolean = false) => {
     if (!user) {
       setIsLoading(false);
-      return;
+      return [];
     }
 
     setIsLoading(true);
@@ -34,11 +35,15 @@ export const useQuestionStore = () => {
 
       if (error) {
         setError(error.message);
+        return [];
       } else {
-        setQuestions(data || []);
+        const convertedQuestions = fixCustomQuestionTypes(data || []);
+        setQuestions(convertedQuestions);
+        return convertedQuestions;
       }
     } catch (err: any) {
       setError(err.message);
+      return [];
     } finally {
       setIsLoading(false);
     }
@@ -57,11 +62,16 @@ export const useQuestionStore = () => {
 
       if (error) {
         setError(error.message);
+        return null;
       } else if (data) {
-        setQuestions([...questions, data[0]]);
+        const convertedQuestion = fixCustomQuestionTypes(data)[0];
+        setQuestions([...questions, convertedQuestion]);
+        return convertedQuestion;
       }
+      return null;
     } catch (err: any) {
       setError(err.message);
+      return null;
     }
   };
 
@@ -76,7 +86,8 @@ export const useQuestionStore = () => {
       if (error) {
         setError(error.message);
       } else if (data) {
-        setQuestions(questions.map(q => (q.id === id ? data[0] : q)));
+        const convertedQuestion = fixCustomQuestionTypes(data)[0];
+        setQuestions(questions.map(q => (q.id === id ? convertedQuestion : q)));
       }
     } catch (err: any) {
       setError(err.message);

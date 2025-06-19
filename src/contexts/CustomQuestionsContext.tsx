@@ -1,7 +1,9 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { CustomQuestion } from '../types/customQuestions';
+import { fixCustomQuestionTypes } from '../utils/typeConversions';
 
 interface CustomQuestionsContextType {
   customQuestions: CustomQuestion[];
@@ -53,7 +55,8 @@ export const CustomQuestionsProvider: React.FC<CustomQuestionsProviderProps> = (
         console.error('Error fetching custom questions:', error);
         setError(error.message);
       } else {
-        setCustomQuestions(data || []);
+        const convertedQuestions = fixCustomQuestionTypes(data || []);
+        setCustomQuestions(convertedQuestions);
       }
     } catch (err: any) {
       console.error('Unexpected error fetching custom questions:', err);

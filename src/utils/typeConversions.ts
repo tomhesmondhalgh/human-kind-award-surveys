@@ -12,7 +12,8 @@ export const fixPlanTypes = (plans: any[]) => {
     duration_months: Number(plan.duration_months) || 0,
     is_popular: Boolean(plan.is_popular),
     is_active: Boolean(plan.is_active),
-    features: Array.isArray(plan.features) ? plan.features : []
+    // Properly convert Json[] to string[] for features
+    features: Array.isArray(plan.features) ? plan.features.map(f => String(f)) : []
   }));
 };
 
@@ -20,7 +21,7 @@ export const fixPlanTypes = (plans: any[]) => {
 export const fixCustomQuestionTypes = (questions: any[]) => {
   return questions.map(question => ({
     ...question,
-    type: question.type || 'text',
+    type: question.type === 'multiple_choice' ? 'multiple_choice' : 'text',
     options: Array.isArray(question.options) ? question.options : [],
     archived: Boolean(question.archived)
   }));
