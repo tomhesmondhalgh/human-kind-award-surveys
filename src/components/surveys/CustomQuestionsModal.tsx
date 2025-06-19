@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { Button } from '../ui/button';
@@ -31,14 +30,11 @@ const CustomQuestionsModal: React.FC<CustomQuestionsModalProps> = ({
   const [isNewQuestionModalOpen, setIsNewQuestionModalOpen] = useState(false);
   const navigate = useNavigate();
   
-  // Filter questions based on search term only (removed type filter)
   const filteredQuestions = questions
     .filter(q => !q.archived)
     .filter(q => q.text.toLowerCase().includes(searchTerm.toLowerCase()));
   
-  // Handle question selection
   const toggleQuestion = (questionId: string, e: React.MouseEvent) => {
-    // Prevent any possible propagation to parent forms
     e.preventDefault();
     e.stopPropagation();
     
@@ -49,18 +45,15 @@ const CustomQuestionsModal: React.FC<CustomQuestionsModalProps> = ({
     onChange(newSelected);
   };
   
-  // Handle search input change
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
   };
   
-  // Clear search
   const clearSearch = (e: React.MouseEvent) => {
     e.preventDefault();
     setSearchTerm('');
   };
   
-  // Handle refresh
   const handleRefresh = async (e: React.MouseEvent) => {
     e.preventDefault();
     try {
@@ -75,22 +68,18 @@ const CustomQuestionsModal: React.FC<CustomQuestionsModalProps> = ({
     }
   };
   
-  // Navigate to create new question page
   const handleCreateNew = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsNewQuestionModalOpen(true);
   };
   
-  // Handle saving a new question
   const handleSaveNewQuestion = async (questionData: Omit<CustomQuestion, 'id' | 'created_at' | 'archived' | 'creator_id'>) => {
     try {
       const newQuestion = await createQuestion(questionData);
       if (newQuestion && newQuestion.id) {
         toast.success("New question created");
-        // Select the newly created question automatically
         const newSelectedIds = [...selectedIds, newQuestion.id];
         onChange(newSelectedIds);
-        // Close the nested modal
         setIsNewQuestionModalOpen(false);
         return Promise.resolve();
       }
@@ -102,7 +91,6 @@ const CustomQuestionsModal: React.FC<CustomQuestionsModalProps> = ({
     }
   };
   
-  // Effect to refresh questions when modal opens
   useEffect(() => {
     if (isOpen) {
       refreshQuestions().catch(err => {

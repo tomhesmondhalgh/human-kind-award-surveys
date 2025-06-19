@@ -4,7 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { CustomQuestion } from '../types/customQuestions';
-import { fixCustomQuestionTypes } from '../utils/typeConversions';
 
 export const useSurveyData = (surveyId: string | null) => {
   const [customQuestions, setCustomQuestions] = useState<CustomQuestion[]>([]);
@@ -33,7 +32,18 @@ export const useSurveyData = (surveyId: string | null) => {
           return;
         }
 
-        const convertedQuestions = fixCustomQuestionTypes(data || []);
+        // Simple type conversion without using the utility function to avoid deep instantiation
+        const convertedQuestions: CustomQuestion[] = (data || []).map(question => ({
+          id: question.id,
+          text: question.text,
+          type: question.type === 'multiple_choice' ? 'multiple_choice' : 'text',
+          options: Array.isArray(question.options) ? question.options : [],
+          created_at: question.created_at,
+          archived: Boolean(question.archived),
+          creator_id: question.creator_id,
+          organization_id: question.organization_id
+        }));
+        
         setCustomQuestions(convertedQuestions);
       } catch (err: any) {
         console.error('Error fetching custom questions:', err);
