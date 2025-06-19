@@ -1,17 +1,13 @@
-import { supabase } from '@/integrations/supabase/client';
+
+import { completeSignOut } from './sessionUtils';
 
 export async function signOutUser(): Promise<void> {
   try {
-    const { error } = await supabase.auth.signOut();
-
-    if (error) {
-      console.error('Sign out error:', error);
-      throw error;
-    }
-
-    console.log('User signed out successfully');
+    console.log('Starting user sign out...');
+    await completeSignOut();
   } catch (error) {
     console.error('Error during sign out:', error);
-    // Handle error as needed
+    // Force redirect even if there's an error
+    window.location.href = '/login';
   }
 }

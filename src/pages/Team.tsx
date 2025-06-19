@@ -15,12 +15,14 @@ import OrganizationsList from '../components/team/OrganizationsList';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { validateAndRefreshSession } from '../utils/auth/sessionUtils';
+import { toast } from 'react-toastify';
 
 const Team = () => {
   const { user, isAuthenticated, authCheckComplete } = useAuth();
   const { currentOrganization, isLoading: orgLoading, error: orgError } = useOrganization();
   const [memberToDelete, setMemberToDelete] = React.useState<string | null>(null);
   const [activeTab, setActiveTab] = React.useState('members');
+  const [showDebugAuth, setShowDebugAuth] = React.useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -68,6 +70,21 @@ const Team = () => {
       await resendInvitation.mutateAsync(invitationId);
     } catch (error) {
       console.error('Failed to resend invitation:', error);
+    }
+  };
+
+  const handleForceReauth = async () => {
+    try {
+      const { cleanupAuthState } = await import('../utils/auth/sessionUtils');
+      console.log('Forcing auth cleanup and redirect...');
+      cleanupAuthState();
+      toast.info('Auth state cleared. Redirecting to login...');
+      setTimeout(() => {
+        window.location.href = '/login?returnTo=/team';
+      }, 1000);
+    } catch (error) {
+      console.error('Error during force re-auth:', error);
+      toast.error('Failed to clear auth state');
     }
   };
 
@@ -160,6 +177,32 @@ const Team = () => {
                   ? `Manage members and permissions for ${currentOrganization.name}`
                   : 'No organisation selected - please contact support to set up your organisation'}
               </p>
+              
+              {/* Debug Auth Button */}
+              <button 
+                onClick={() => setShowDebugAuth(!showDebugAuth)}
+                className="text-xs text-gray-400 hover:text-gray-600 mt-1"
+              >
+                {showDebugAuth ? 'Hide' : 'Show'} Auth Debug
+              </button>
+              
+              {showDebugAuth && (
+                <div className="mt-2 p-3 bg-gray-50 rounded-lg text-xs">
+                  <p><strong>User ID:</strong> {user?.id || 'None'}</p>
+                  <p><strong>Email:</strong> {user?.email || 'None'}</p>
+                  <p><strong>Authenticated:</strong> {isAuthenticated ? 'Yes' : 'No'}</p>
+                  <p><strong>Org ID:</strong> {currentOrganization?.id || 'None'}</p>
+                  <p><strong>Org Name:</strong> {currentOrganization?.name || 'None'}</p>
+                  <Button 
+                    onClick={handleForceReauth}
+                    size="sm" 
+                    variant="outline" 
+                    className="mt-2 text-xs"
+                  >
+                    Force Re-authenticate
+                  </Button>
+                </div>
+              )}
             </div>
 
             {currentOrganization && canManageTeam && (
