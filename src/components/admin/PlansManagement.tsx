@@ -1,64 +1,58 @@
-
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Textarea } from '../ui/textarea';
-import { Switch } from '../ui/switch';
-import { Badge } from '../ui/badge';
-import { Plus, Edit3, Trash2, Save, X } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { queryTable, insertIntoTable, updateTable, deleteFromTable } from '@/utils/supabaseHelpers';
+import { Plus, Edit, Trash2 } from 'lucide-react';
 
 interface Plan {
   id: string;
   name: string;
   description: string;
   price: number;
-  currency: string;
   features: string[];
-  is_active: boolean;
   is_popular: boolean;
-  sort_order: number;
   stripe_price_id?: string;
-  duration_months?: number;
   purchase_type?: string;
+  duration_months?: number;
+  sort_order: number;
 }
 
-const PlansManagement: React.FC = () => {
+const PlansManagement = () => {
   const [plans, setPlans] = useState<Plan[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
-
-  const defaultPlan: Partial<Plan> = {
+  const [newPlan, setNewPlan] = useState<Omit<Plan, 'id'>>({
     name: '',
     description: '',
     price: 0,
-    currency: 'GBP',
     features: [],
-    is_active: true,
     is_popular: false,
-    sort_order: 0,
-    duration_months: 12,
-    purchase_type: 'subscription'
-  };
+    sort_order: 0
+  });
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchPlans();
   }, []);
 
   const fetchPlans = async () => {
+    setLoading(true);
     try {
-      const { data, error } = await queryTable<Plan>('plans', '*');
+      const { data, error } = await supabase
+        .from('plans')
+        .select('*')
+        .order('sort_order', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
-      // Sort by sort_order
-      const sortedData = (data || []).sort((a, b) => a.sort_order - b.sort_order);
-      setPlans(sortedData);
-    } catch (error) {
+      setPlans(data || []);
+    } catch (error: any) {
       console.error('Error fetching plans:', error);
       toast.error('Failed to load plans');
     } finally {
@@ -66,238 +60,289 @@ const PlansManagement: React.FC = () => {
     }
   };
 
-  const handleSave = async (plan: Plan) => {
-    try {
-      const planData = {
-        name: plan.name,
-        description: plan.description,
-        price: plan.price,
-        currency: plan.currency,
-        features: plan.features,
-        is_active: plan.is_active,
-        is_popular: plan.is_popular,
-        sort_order: plan.sort_order,
-        stripe_price_id: plan.stripe_price_id,
-        duration_months: plan.duration_months,
-        purchase_type: plan.purchase_type
-      };
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setNewPlan(prev => ({ ...prev, [name]: value }));
+  };
 
-      if (plan.id) {
-        // Update existing plan
-        const { error } = await updateTable('plans', planData, plan.id);
-        if (error) throw error;
-        toast.success('Plan updated successfully');
-      } else {
-        // Create new plan
-        const { error } = await insertIntoTable('plans', planData);
-        if (error) throw error;
-        toast.success('Plan created successfully');
+  const handleFeatureChange = (index: number, value: string) => {
+    const updatedFeatures = [...newPlan.features];
+    updatedFeatures[index] = value;
+    setNewPlan(prev => ({ ...prev, features: updatedFeatures }));
+  };
+
+  const addFeature = () => {
+    setNewPlan(prev => ({ ...prev, features: [...prev.features, ''] }));
+  };
+
+  const removeFeature = (index: number) => {
+    const updatedFeatures = [...newPlan.features];
+    updatedFeatures.splice(index, 1);
+    setNewPlan(prev => ({ ...prev, features: updatedFeatures }));
+  };
+
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = e.target;
+    setNewPlan(prev => ({ ...prev, [name]: checked }));
+  };
+
+  const createPlan = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('plans')
+        .insert([newPlan])
+        .select();
+
+      if (error) {
+        throw error;
       }
 
-      setEditingPlan(null);
-      setIsCreating(false);
-      fetchPlans();
-    } catch (error) {
-      console.error('Error saving plan:', error);
-      toast.error('Failed to save plan');
+      setPlans([...plans, ...data]);
+      setNewPlan({
+        name: '',
+        description: '',
+        price: 0,
+        features: [],
+        is_popular: false,
+        sort_order: 0
+      });
+      toast.success('Plan created successfully');
+    } catch (error: any) {
+      console.error('Error creating plan:', error);
+      toast.error('Failed to create plan');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDelete = async (planId: string) => {
-    if (!confirm('Are you sure you want to delete this plan?')) return;
-
-    try {
-      const { error } = await deleteFromTable('plans', planId);
-      if (error) throw error;
-
-      toast.success('Plan deleted successfully');
-      fetchPlans();
-    } catch (error) {
-      console.error('Error deleting plan:', error);
-      toast.error('Failed to delete plan');
+  const startEditing = (planId: string) => {
+    setEditingPlanId(planId);
+    const planToEdit = plans.find(plan => plan.id === planId);
+    if (planToEdit) {
+      setNewPlan({
+        name: planToEdit.name,
+        description: planToEdit.description,
+        price: planToEdit.price,
+        features: planToEdit.features,
+        is_popular: planToEdit.is_popular,
+        sort_order: planToEdit.sort_order
+      });
     }
-  };
-
-  const startEditing = (plan: Plan) => {
-    setEditingPlan({ ...plan });
-    setIsCreating(false);
-  };
-
-  const startCreating = () => {
-    setEditingPlan({ ...defaultPlan, id: '' } as Plan);
-    setIsCreating(true);
   };
 
   const cancelEditing = () => {
-    setEditingPlan(null);
-    setIsCreating(false);
+    setEditingPlanId(null);
+    setNewPlan({
+      name: '',
+      description: '',
+      price: 0,
+      features: [],
+      is_popular: false,
+      sort_order: 0
+    });
   };
 
-  if (loading) {
-    return <div className="flex justify-center p-8">Loading plans...</div>;
-  }
+  const updatePlan = async () => {
+    if (!editingPlanId) return;
+
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from('plans')
+        .update(newPlan)
+        .eq('id', editingPlanId);
+
+      if (error) {
+        throw error;
+      }
+
+      setPlans(plans.map(plan => plan.id === editingPlanId ? { ...plan, ...newPlan } : plan));
+      setEditingPlanId(null);
+      setNewPlan({
+        name: '',
+        description: '',
+        price: 0,
+        features: [],
+        is_popular: false,
+        sort_order: 0
+      });
+      toast.success('Plan updated successfully');
+    } catch (error: any) {
+      console.error('Error updating plan:', error);
+      toast.error('Failed to update plan');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deletePlan = async (planId: string) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from('plans')
+        .delete()
+        .eq('id', planId);
+
+      if (error) {
+        throw error;
+      }
+
+      setPlans(plans.filter(plan => plan.id !== planId));
+      toast.success('Plan deleted successfully');
+    } catch (error: any) {
+      console.error('Error deleting plan:', error);
+      toast.error('Failed to delete plan');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold">Plans Management</h2>
-          <p className="text-gray-600">Manage subscription plans and pricing</p>
-        </div>
-        <Button onClick={startCreating} disabled={!!editingPlan}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Plan
-        </Button>
-      </div>
-
-      {editingPlan && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{isCreating ? 'Create New Plan' : 'Edit Plan'}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+    <div className="container py-8">
+      <Card>
+        <CardHeader>
+          <CardTitle>Manage Plans</CardTitle>
+          <CardDescription>Create, edit, and manage subscription plans</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="name">Plan Name</Label>
+                <Label htmlFor="name">Name</Label>
                 <Input
+                  type="text"
                   id="name"
-                  value={editingPlan.name}
-                  onChange={(e) => setEditingPlan({ ...editingPlan, name: e.target.value })}
+                  name="name"
+                  value={newPlan.name}
+                  onChange={handleInputChange}
                 />
               </div>
               <div>
                 <Label htmlFor="price">Price</Label>
                 <Input
-                  id="price"
                   type="number"
-                  value={editingPlan.price}
-                  onChange={(e) => setEditingPlan({ ...editingPlan, price: parseFloat(e.target.value) })}
+                  id="price"
+                  name="price"
+                  value={newPlan.price}
+                  onChange={handleInputChange}
                 />
               </div>
             </div>
-
             <div>
               <Label htmlFor="description">Description</Label>
-              <Textarea
+              <Input
+                type="text"
                 id="description"
-                value={editingPlan.description}
-                onChange={(e) => setEditingPlan({ ...editingPlan, description: e.target.value })}
+                name="description"
+                value={newPlan.description}
+                onChange={handleInputChange}
               />
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="currency">Currency</Label>
-                <Input
-                  id="currency"
-                  value={editingPlan.currency}
-                  onChange={(e) => setEditingPlan({ ...editingPlan, currency: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="sort_order">Sort Order</Label>
-                <Input
-                  id="sort_order"
-                  type="number"
-                  value={editingPlan.sort_order}
-                  onChange={(e) => setEditingPlan({ ...editingPlan, sort_order: parseInt(e.target.value) })}
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="is_active"
-                  checked={editingPlan.is_active}
-                  onCheckedChange={(checked) => setEditingPlan({ ...editingPlan, is_active: checked })}
-                />
-                <Label htmlFor="is_active">Active</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="is_popular"
-                  checked={editingPlan.is_popular}
-                  onCheckedChange={(checked) => setEditingPlan({ ...editingPlan, is_popular: checked })}
-                />
-                <Label htmlFor="is_popular">Popular</Label>
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={cancelEditing}>
-                <X className="h-4 w-4 mr-2" />
-                Cancel
-              </Button>
-              <Button onClick={() => handleSave(editingPlan)}>
-                <Save className="h-4 w-4 mr-2" />
-                Save
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid gap-4">
-        {plans.map((plan) => (
-          <Card key={plan.id}>
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    {plan.name}
-                    {plan.is_popular && <Badge variant="secondary">Popular</Badge>}
-                    {!plan.is_active && <Badge variant="outline">Inactive</Badge>}
-                  </CardTitle>
-                  <CardDescription>{plan.description}</CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => startEditing(plan)}
-                    disabled={!!editingPlan}
-                  >
-                    <Edit3 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDelete(plan.id)}
-                    disabled={!!editingPlan}
-                    className="text-red-600 hover:text-red-700"
-                  >
+            <div>
+              <Label>Features</Label>
+              {newPlan.features.map((feature, index) => (
+                <div key={index} className="flex items-center space-x-2 mb-2">
+                  <Input
+                    type="text"
+                    value={feature}
+                    onChange={(e) => handleFeatureChange(index, e.target.value)}
+                    className="flex-grow"
+                  />
+                  <Button type="button" variant="ghost" size="sm" onClick={() => removeFeature(index)}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
+              ))}
+              <Button type="button" variant="secondary" size="sm" onClick={addFeature}>
+                Add Feature
+              </Button>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Label htmlFor="is_popular">Is Popular</Label>
+              <Input
+                type="checkbox"
+                id="is_popular"
+                name="is_popular"
+                checked={newPlan.is_popular}
+                onChange={handleCheckboxChange}
+              />
+            </div>
+            <div>
+              <Label htmlFor="sort_order">Sort Order</Label>
+              <Input
+                type="number"
+                id="sort_order"
+                name="sort_order"
+                value={newPlan.sort_order}
+                onChange={handleInputChange}
+              />
+            </div>
+            {editingPlanId ? (
+              <div className="flex justify-end space-x-2">
+                <Button variant="ghost" onClick={cancelEditing}>
+                  Cancel
+                </Button>
+                <Button onClick={updatePlan} disabled={loading}>
+                  Update Plan
+                </Button>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-2xl font-bold">
-                    {plan.currency} {plan.price}
-                    {plan.duration_months && (
-                      <span className="text-sm font-normal text-gray-600">
-                        /{plan.duration_months} months
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-sm text-gray-600">Sort order: {plan.sort_order}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-gray-600">
-                    Features: {Array.isArray(plan.features) ? plan.features.length : 0}
-                  </p>
-                  {plan.stripe_price_id && (
-                    <p className="text-xs text-gray-500">Stripe: {plan.stripe_price_id}</p>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            ) : (
+              <Button onClick={createPlan} disabled={loading}>
+                Create Plan
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-8">
+        <CardHeader>
+          <CardTitle>Current Plans</CardTitle>
+          <CardDescription>View and manage existing subscription plans</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-4">Loading plans...</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead>Popular</TableHead>
+                    <TableHead>Sort Order</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {plans.map(plan => (
+                    <TableRow key={plan.id}>
+                      <TableCell>{plan.name}</TableCell>
+                      <TableCell>{plan.price}</TableCell>
+                      <TableCell>
+                        {plan.is_popular ? <Badge>Yes</Badge> : <Badge variant="outline">No</Badge>}
+                      </TableCell>
+                      <TableCell>{plan.sort_order}</TableCell>
+                      <TableCell className="text-right">
+                        <Button type="button" variant="ghost" size="sm" onClick={() => startEditing(plan.id)}>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </Button>
+                        <Button type="button" variant="destructive" size="sm" onClick={() => deletePlan(plan.id)}>
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

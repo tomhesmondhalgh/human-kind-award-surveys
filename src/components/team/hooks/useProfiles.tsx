@@ -1,47 +1,63 @@
-
 import { useState, useEffect } from 'react';
-import { ProfileData } from '@/types/supabase-overrides';
-import { queryTableWithIn } from '@/utils/supabaseHelpers';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '../../../contexts/AuthContext';
 
-export const useProfiles = (userIds: string[]) => {
-  const [profiles, setProfiles] = useState<ProfileData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+interface Profile {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string;
+  role: string | null;
+  created_at: string;
+}
+
+export const useProfiles = (organizationId: string | undefined) => {
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchProfiles = async () => {
-      if (userIds.length === 0) {
-        setProfiles([]);
-        setLoading(false);
+      if (!organizationId) {
+        console.warn('Organization ID is undefined, skipping profile fetch.');
+        setIsLoading(false);
         return;
       }
 
+      setIsLoading(true);
+      setError(null);
+
       try {
-        setLoading(true);
-        
-        const { data, error } = await queryTableWithIn<ProfileData>(
-          'profiles',
-          '*',
-          'id',
-          userIds
-        );
+        const { data, error } = await supabase
+          .from('profiles')
+          .select(`
+            id,
+            first_name,
+            last_name,
+            email,
+            role,
+            created_at
+          `)
+          .eq('organization_id', organizationId);
 
         if (error) {
           console.error('Error fetching profiles:', error);
-          throw error;
+          setError(error);
+        } else {
+          setProfiles(data || []);
         }
-
-        setProfiles(data || []);
       } catch (err: any) {
-        console.error('Error in fetchProfiles:', err);
-        setError(err.message);
+        console.error('Unexpected error fetching profiles:', err);
+        setError(new Error(err.message || 'An unexpected error occurred'));
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
     fetchProfiles();
-  }, [userIds]);
+  }, [organizationId, user]);
 
-  return { profiles, loading, error };
+  return { profiles, isLoading, error };
 };
+

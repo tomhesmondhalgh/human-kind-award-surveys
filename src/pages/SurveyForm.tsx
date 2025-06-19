@@ -1,5 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { useSurveyData } from '../hooks/useSurveyData';
@@ -9,6 +13,17 @@ import SurveyNotFound from '../components/survey-form/SurveyNotFound';
 import SurveyFormWrapper from '../components/survey-form/SurveyFormWrapper';
 import { CustomQuestionsProvider } from '../contexts/CustomQuestionsContext';
 import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const FormSchema = z.object({
   name: z.string().min(2, {
@@ -41,6 +56,14 @@ interface SurveyFormProps {
   onPreviewSurvey?: () => void;
   onSendSurvey?: () => void;
 }
+
+const fixCustomQuestionTypes = (questions: any[]) => {
+  return questions.map(q => ({
+    ...q,
+    question_text: q.text || q.question_text,
+    type: q.type || 'text'
+  }));
+};
 
 const SurveyForm: React.FC<SurveyFormProps> = ({ 
   initialData, 

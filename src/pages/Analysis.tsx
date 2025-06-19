@@ -1,251 +1,306 @@
-
-import React, { useState, useEffect, useRef } from 'react';
-import { toast } from "sonner";
-import MainLayout from '../components/layout/MainLayout';
-import { 
-  getSurveyOptions, 
-  getRecommendationScore, 
-  getLeavingContemplation, 
-  getDetailedWellbeingResponses, 
-  getTextResponses, 
-  getCustomQuestionResponses 
-} from '../utils/analysisUtils';
-import { getSurveySummary } from '../utils/summaryUtils';
-import { generatePDF, sendReportByEmail } from '../utils/reportUtils';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import ScreenOrientationOverlay from '../components/ui/ScreenOrientationOverlay';
-import { useOrientation } from '../hooks/useOrientation';
-import { useSubscription } from '../hooks/useSubscription';
-import NoDataDisplay from '../components/analysis/NoDataDisplay';
-import SurveyControls from '../components/analysis/SurveyControls';
-import DataWrapper from '../components/analysis/DataWrapper';
+import { useOrganization } from '../contexts/OrganizationContext';
+import { supabase } from '@/integrations/supabase/client';
+import { getSurveyResponses, getCustomQuestionResponses, getSurveyTemplate } from '../utils/reportUtils';
+import { generatePDF } from '../utils/actionPlan/generatePDF';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertTriangle, Download, Mail } from 'lucide-react';
+import { toast } from 'sonner';
 
 const Analysis = () => {
   const { user } = useAuth();
-  const analysisRef = useRef<HTMLDivElement>(null);
-  const [loading, setLoading] = useState(true);
-  const [surveyOptions, setSurveyOptions] = useState<any[]>([]);
-  const [selectedSurvey, setSelectedSurvey] = useState<string>("");
-  const [selectedTimeRange, setSelectedTimeRange] = useState<string>("all-time");
-  const [customDateRange, setCustomDateRange] = useState<{
-    from: Date | undefined;
-    to: Date | undefined;
-  }>({
-    from: undefined,
-    to: undefined
-  });
-  const [recommendationScore, setRecommendationScore] = useState({
-    score: 0,
-    nationalAverage: 0
-  });
-  const [leavingContemplation, setLeavingContemplation] = useState<Record<string, number>>({});
-  const [detailedResponses, setDetailedResponses] = useState<any[]>([]);
-  const [textResponses, setTextResponses] = useState({
-    doingWell: [],
-    improvements: []
-  });
-  const [customQuestionResponses, setCustomQuestionResponses] = useState<any[]>([]);
-  const [summary, setSummary] = useState<any>({});
-  const [noData, setNoData] = useState(false);
-  const [exportLoading, setExportLoading] = useState(false);
-  const [overlayDismissed, setOverlayDismissed] = useState(false);
-  const { orientation, isMobile } = useOrientation();
-  const { hasAccess, isLoading: subscriptionLoading } = useSubscription();
-  const [hasNationalAccess, setHasNationalAccess] = useState(false);
+  const { currentOrganization } = useOrganization();
+  const [searchParams] = useSearchParams();
+  const surveyId = searchParams.get('surveyId');
   
-  useEffect(() => {
-    const checkAccess = async () => {
-      if (user) {
-        const foundationAccess = await hasAccess('foundation');
-        setHasNationalAccess(foundationAccess);
-      }
-    };
-    
-    checkAccess();
-  }, [user, hasAccess]);
+  const [survey, setSurvey] = useState<any>(null);
+  const [responses, setResponses] = useState<any[]>([]);
+  const [customResponses, setCustomResponses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState<any>({
+    totalResponses: 0,
+    averageScore: 0,
+    sentimentBreakdown: {
+      positive: 0,
+      neutral: 0,
+      negative: 0
+    }
+  });
 
   useEffect(() => {
-    const loadSurveyOptions = async () => {
-      try {
-        if (!user) return;
-        
-        console.log('Fetching survey options for user:', user.id);
-        const options = await getSurveyOptions(user.id);
-        console.log('Fetched survey options:', options);
-        
-        setSurveyOptions(options);
-        
-        if (options.length === 0) {
-          setNoData(true);
-        } else {
-          setSelectedSurvey(options[0]?.id || "");
-        }
-        
+    const fetchSurveyData = async () => {
+      if (!surveyId) {
+        setError('No survey ID provided');
         setLoading(false);
-      } catch (error) {
-        console.error('Error loading survey options:', error);
-        toast.error("Failed to load surveys");
-        setLoading(false);
-        setNoData(true);
+        return;
       }
-    };
-    
-    loadSurveyOptions();
-  }, [user]);
 
-  useEffect(() => {
-    const loadData = async () => {
-      if (!selectedSurvey) return;
       try {
         setLoading(true);
-        let startDate = "";
-        let endDate = "";
-        if (selectedTimeRange === "last-30-days") {
-          const thirtyDaysAgo = new Date();
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-          startDate = thirtyDaysAgo.toISOString().split('T')[0];
-        } else if (selectedTimeRange === "last-90-days") {
-          const ninetyDaysAgo = new Date();
-          ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-          startDate = ninetyDaysAgo.toISOString().split('T')[0];
-        } else if (selectedTimeRange === "custom-range" && customDateRange.from) {
-          startDate = customDateRange.from.toISOString().split('T')[0];
-          if (customDateRange.to) {
-            endDate = customDateRange.to.toISOString().split('T')[0];
+        setError(null);
+
+        // Fetch survey template
+        const surveyTemplate = await getSurveyTemplate(surveyId);
+        if (!surveyTemplate) {
+          throw new Error('Survey not found');
+        }
+        setSurvey(surveyTemplate);
+
+        // Fetch responses
+        const surveyResponses = await getSurveyResponses(surveyId);
+        if (!surveyResponses) {
+          throw new Error('Failed to fetch survey responses');
+        }
+        setResponses(surveyResponses);
+
+        // Fetch custom question responses for each response
+        const allCustomResponses = [];
+        for (const response of surveyResponses) {
+          const customQuestionResponses = await getCustomQuestionResponses(response.id);
+          if (customQuestionResponses) {
+            allCustomResponses.push(...customQuestionResponses);
           }
         }
-        const [recommendationScoreData, leavingContemplationData, detailedResponsesData, textResponsesData, customQuestionResponsesData] = await Promise.all([
-          getRecommendationScore(selectedSurvey, startDate, endDate), 
-          getLeavingContemplation(selectedSurvey, startDate, endDate), 
-          getDetailedWellbeingResponses(selectedSurvey, startDate, endDate), 
-          getTextResponses(selectedSurvey, startDate, endDate),
-          getCustomQuestionResponses(selectedSurvey, startDate, endDate)
-        ]);
-        
-        setRecommendationScore(recommendationScoreData);
-        setLeavingContemplation(leavingContemplationData);
-        setDetailedResponses(detailedResponsesData);
-        setTextResponses(textResponsesData);
-        setCustomQuestionResponses(customQuestionResponsesData);
-        
-        const summaryData = await getSurveySummary(selectedSurvey, recommendationScoreData, leavingContemplationData, detailedResponsesData, textResponsesData);
-        setSummary(summaryData);
-      } catch (error) {
-        console.error('Error loading data:', error);
-        toast.error("Failed to load data for selected survey");
+        setCustomResponses(allCustomResponses);
+
+        // Calculate statistics
+        calculateStats(surveyResponses);
+      } catch (err: any) {
+        console.error('Error fetching survey data:', err);
+        setError(err.message || 'An error occurred while fetching survey data');
       } finally {
         setLoading(false);
       }
     };
-    loadData();
-  }, [selectedSurvey, selectedTimeRange, customDateRange]);
 
-  const handleSurveyChange = (value: string) => {
-    setSelectedSurvey(value);
-  };
+    fetchSurveyData();
+  }, [surveyId]);
 
-  const handleTimeRangeChange = (value: string) => {
-    setSelectedTimeRange(value);
-    if (value !== "custom-range") {
-      setCustomDateRange({
-        from: undefined,
-        to: undefined
+  const calculateStats = (responses: any[]) => {
+    if (!responses || responses.length === 0) {
+      setStats({
+        totalResponses: 0,
+        averageScore: 0,
+        sentimentBreakdown: {
+          positive: 0,
+          neutral: 0,
+          negative: 0
+        }
       });
+      return;
     }
-  };
 
-  const handleCustomDateRangeChange = (range: { from: Date | undefined; to: Date | undefined }) => {
-    setCustomDateRange(range);
-  };
+    // Calculate total responses
+    const totalResponses = responses.length;
 
-  const getSurveyName = () => {
-    const survey = surveyOptions.find(s => s.id === selectedSurvey);
-    return survey ? survey.name : '';
+    // Calculate average recommendation score
+    const recommendationScores = responses
+      .map(r => parseInt(r.recommendation_score))
+      .filter(score => !isNaN(score));
+    
+    const averageScore = recommendationScores.length > 0 
+      ? Math.round(recommendationScores.reduce((a, b) => a + b, 0) / recommendationScores.length * 10) / 10
+      : 0;
+
+    // Calculate sentiment breakdown (simplified)
+    let positive = 0;
+    let neutral = 0;
+    let negative = 0;
+
+    responses.forEach(response => {
+      const score = parseInt(response.recommendation_score);
+      if (!isNaN(score)) {
+        if (score >= 8) positive++;
+        else if (score >= 5) neutral++;
+        else negative++;
+      }
+    });
+
+    setStats({
+      totalResponses,
+      averageScore,
+      sentimentBreakdown: {
+        positive: Math.round((positive / totalResponses) * 100),
+        neutral: Math.round((neutral / totalResponses) * 100),
+        negative: Math.round((negative / totalResponses) * 100)
+      }
+    });
   };
 
   const handleExportPDF = async () => {
     try {
-      setExportLoading(true);
-      if (!analysisRef.current) {
-        toast.error("Cannot generate PDF. Report content not found.");
+      if (!currentOrganization?.id) {
+        toast.error('Organization ID is missing');
         return;
       }
-      const surveyName = getSurveyName();
-      const fileName = `${surveyName.replace(/\s+/g, '-').toLowerCase()}-analysis.pdf`;
-      await generatePDF(analysisRef, fileName);
-      toast.success("PDF generated successfully!");
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      toast.error("Failed to generate PDF report");
-    } finally {
-      setExportLoading(false);
+
+      const result = await generatePDF(currentOrganization.id);
+      
+      if (result.success) {
+        toast.success('PDF generated successfully');
+      } else {
+        toast.error(`Failed to generate PDF: ${result.error}`);
+      }
+    } catch (err: any) {
+      console.error('Error generating PDF:', err);
+      toast.error('Failed to generate PDF');
     }
   };
 
-  const handleExportReport = async () => {
+  const handleEmailReport = async () => {
     try {
-      setExportLoading(true);
-      if (!user?.email) {
-        toast.error("User email not found. Cannot send report.");
+      if (!surveyId || !user?.email) {
+        toast.error('Missing required information');
         return;
       }
-      const surveyName = getSurveyName();
-      const leavingData = Object.entries(leavingContemplation).map(([name, value]) => ({
-        name,
-        value
-      }));
-      await sendReportByEmail(user.email, selectedSurvey, surveyName, summary, recommendationScore, leavingData, detailedResponses, textResponses);
-      toast.success("Report sent to your email!");
-    } catch (error) {
-      console.error("Error sending report:", error);
-      toast.error("Failed to send report to email");
-    } finally {
-      setExportLoading(false);
+
+      const { error } = await supabase.functions.invoke('email-survey-report', {
+        body: { surveyId, email: user.email }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast.success('Report has been emailed to you');
+    } catch (err: any) {
+      console.error('Error emailing report:', err);
+      toast.error('Failed to email report');
     }
   };
 
-  const shouldShowOverlay = isMobile && orientation === 'portrait' && !overlayDismissed;
+  if (loading) {
+    return (
+      <div className="container mx-auto p-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading survey analysis...</p>
+        </div>
+      </div>
+    );
+  }
 
-  if (noData) {
-    return <NoDataDisplay />;
+  if (error) {
+    return (
+      <div className="container mx-auto p-4">
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (!survey) {
+    return (
+      <div className="container mx-auto p-4">
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>Survey not found</AlertDescription>
+        </Alert>
+      </div>
+    );
   }
 
   return (
-    <MainLayout>
-      {shouldShowOverlay && <ScreenOrientationOverlay onDismiss={() => setOverlayDismissed(true)} />}
-      
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <div className="mb-10 text-center">
-          <h1 className="text-3xl font-bold mb-2">Survey Analysis</h1>
-          <p className="text-gray-600">Compare your school's results with national benchmarks</p>
+    <div className="container mx-auto p-4 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">{survey.name} Analysis</h1>
+        <div className="flex space-x-2">
+          <Button variant="outline" onClick={handleEmailReport}>
+            <Mail className="mr-2 h-4 w-4" />
+            Email Report
+          </Button>
+          <Button variant="outline" onClick={handleExportPDF}>
+            <Download className="mr-2 h-4 w-4" />
+            Export PDF
+          </Button>
         </div>
-
-        <SurveyControls 
-          surveyOptions={surveyOptions}
-          selectedSurvey={selectedSurvey}
-          selectedTimeRange={selectedTimeRange}
-          customDateRange={customDateRange}
-          exportLoading={exportLoading}
-          onSurveyChange={handleSurveyChange}
-          onTimeRangeChange={handleTimeRangeChange}
-          onCustomDateRangeChange={handleCustomDateRangeChange}
-          onExportReport={handleExportReport}
-          onExportPDF={handleExportPDF}
-        />
-
-        <DataWrapper 
-          isLoading={loading || subscriptionLoading}
-          summary={summary}
-          recommendationScore={recommendationScore}
-          leavingContemplation={leavingContemplation}
-          detailedResponses={detailedResponses}
-          textResponses={textResponses}
-          customQuestionResponses={customQuestionResponses}
-          hasNationalAccess={hasNationalAccess}
-          analysisRef={analysisRef}
-        />
       </div>
-    </MainLayout>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Survey Overview</CardTitle>
+          <CardDescription>
+            Created on {new Date(survey.created_at).toLocaleDateString()}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="text-lg font-medium mb-2">Total Responses</h3>
+              <p className="text-3xl font-bold">{stats.totalResponses}</p>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="text-lg font-medium mb-2">Average Score</h3>
+              <p className="text-3xl font-bold">{stats.averageScore}/10</p>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="text-lg font-medium mb-2">Sentiment</h3>
+              <div className="flex items-center space-x-2">
+                <div className="h-4 bg-green-500 rounded" style={{ width: `${stats.sentimentBreakdown.positive}%` }}></div>
+                <div className="h-4 bg-yellow-500 rounded" style={{ width: `${stats.sentimentBreakdown.neutral}%` }}></div>
+                <div className="h-4 bg-red-500 rounded" style={{ width: `${stats.sentimentBreakdown.negative}%` }}></div>
+              </div>
+              <div className="flex justify-between text-xs mt-1">
+                <span>{stats.sentimentBreakdown.positive}% Positive</span>
+                <span>{stats.sentimentBreakdown.neutral}% Neutral</span>
+                <span>{stats.sentimentBreakdown.negative}% Negative</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {responses.length === 0 ? (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-8">
+              <h3 className="text-lg font-medium mb-2">No Responses Yet</h3>
+              <p className="text-gray-500">
+                There are no responses to this survey yet. Check back later or share the survey link with more people.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle>Response Details</CardTitle>
+              <CardDescription>
+                Detailed breakdown of survey responses
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {/* Response details would go here */}
+              <p>Detailed analysis of {responses.length} responses</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Custom Questions</CardTitle>
+              <CardDescription>
+                Responses to custom questions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {customResponses.length > 0 ? (
+                <p>Analysis of {customResponses.length} custom question responses</p>
+              ) : (
+                <p>No custom question responses available</p>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
+    </div>
   );
 };
 

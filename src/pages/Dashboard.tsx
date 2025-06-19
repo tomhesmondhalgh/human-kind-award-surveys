@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
@@ -8,10 +9,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import { checkForClosedSurveys } from '../utils/survey/templates';
+import { useDashboardData } from '../hooks/useDashboardData';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const { currentOrganization, organizations, isLoading, error } = useOrganization();
+  const { 
+    totalSurveys, 
+    totalRespondents, 
+    responseRate, 
+    benchmarkScore, 
+    recentSurveys,
+    isLoading: isDashboardLoading 
+  } = useDashboardData();
 
   useEffect(() => {
     checkForClosedSurveys();
@@ -54,8 +64,17 @@ const Dashboard: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-6">
-          <StatsGrid />
-          <RecentSurveysList />
+          <StatsGrid 
+            totalSurveys={totalSurveys}
+            totalRespondents={totalRespondents}
+            responseRate={responseRate}
+            benchmarkScore={benchmarkScore}
+            isLoading={isDashboardLoading}
+          />
+          <RecentSurveysList 
+            surveys={recentSurveys || []}
+            isLoading={isDashboardLoading}
+          />
         </CardContent>
       </Card>
       <GettingStartedGuide />

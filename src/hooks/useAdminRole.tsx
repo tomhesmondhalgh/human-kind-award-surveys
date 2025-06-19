@@ -1,92 +1,49 @@
-
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
-import { getCacheItem, setCacheItem, clearCacheItem } from '@/utils/cache/cacheUtils';
-import { queryTable } from '@/utils/supabaseHelpers';
-import { ProfileData } from '@/types/supabase-overrides';
 
-// Cache expiry time in seconds (5 minutes)
-const CACHE_EXPIRY = 5 * 60;
-
-export function useAdminRole() {
-  const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState(true);
+export const useAdminRole = () => {
   const { user } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-  // Clear cache for a specific user
-  const clearCache = useCallback((userId: string) => {
-    clearCacheItem(`admin_status_${userId}`);
-  }, []);
-
-  // Function to check if user has admin role with caching
-  const checkAdminRole = useCallback(async () => {
-    if (!user) {
-      setIsAdmin(false);
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      // Check cache first
-      const cacheKey = `admin_status_${user.id}`;
-      const cachedStatus = getCacheItem<boolean>(cacheKey);
-      
-      if (cachedStatus !== null) {
-        console.log('Using cached admin status for user:', user.id);
-        setIsAdmin(cachedStatus);
+  useEffect(() => {
+    const checkAdminRole = async () => {
+      if (!user) {
+        setIsAdmin(false);
         setIsLoading(false);
         return;
       }
 
-      console.log('Fetching fresh admin status for user:', user.id);
       setIsLoading(true);
-      
-      // Query the profiles table to check if the user has admin status
-      const { data, error } = await queryTable<ProfileData>(
-        'profiles',
-        'is_admin',
-        { id: user.id as any }
-      );
-      
-      if (error) {
-        console.error('Error checking admin status:', error);
+      setError(null);
+
+      try {
+        const { data, error } = await supabase
+          .from('organization_members')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('organization_id', process.env.NEXT_PUBLIC_ORGANIZATION_ID)
+          .single();
+
+        if (error) {
+          throw error;
+        }
+
+        setIsAdmin(data?.role === 'admin');
+      } catch (err) {
+        console.error('Error fetching admin role:', err);
+        setError(err instanceof Error ? err : new Error('Unknown error loading admin role'));
         setIsAdmin(false);
-      } else {
-        // Safe property access with type checking
-        const isUserAdmin = data && data.length > 0 && data[0] && 
-          typeof data[0] === 'object' && 'is_admin' in data[0] 
-          ? !!data[0].is_admin 
-          : false;
-        console.log('Admin status from database:', isUserAdmin);
-        setIsAdmin(isUserAdmin);
-        
-        // Update cache
-        setCacheItem(cacheKey, isUserAdmin, CACHE_EXPIRY);
+      } finally {
+        setIsLoading(false);
       }
-      
-    } catch (error) {
-      console.error('Error in admin role check:', error);
-      setIsAdmin(false);
-    } finally {
-      setIsLoading(false);
-    }
+    };
+
+    checkAdminRole();
   }, [user]);
 
-  useEffect(() => {
-    checkAdminRole();
-  }, [user, checkAdminRole]);
+  return { isAdmin, isLoading, error };
+};
 
-  // Expose method to force refresh the admin status
-  const refreshAdminStatus = useCallback(() => {
-    if (user) {
-      clearCache(user.id);
-      checkAdminRole();
-    }
-  }, [user, clearCache, checkAdminRole]);
-
-  return { 
-    isAdmin, 
-    isLoading,
-    refreshAdminStatus
-  };
-}

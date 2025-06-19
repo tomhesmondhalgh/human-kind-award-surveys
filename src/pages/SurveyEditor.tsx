@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
@@ -58,7 +59,7 @@ const SurveyEditor: React.FC = () => {
     fetchSurvey();
   }, [surveyId, currentOrganization?.id]);
 
-  const handleSave = async (surveyData: any) => {
+  const handleSubmit = async (surveyData: any, customQuestionIds: string[]) => {
     if (!surveyId) {
       toast.error('Survey ID is missing');
       return;
@@ -117,8 +118,11 @@ const SurveyEditor: React.FC = () => {
       <h1 className="text-2xl font-bold mb-4">Edit Survey</h1>
       <SurveyForm
         initialData={survey}
-        onSave={handleSave}
+        onSubmit={handleSubmit}
         isPreview={isPreview}
+        submitButtonText="Save Changes"
+        isEdit={true}
+        surveyId={surveyId}
       />
     </div>
   );

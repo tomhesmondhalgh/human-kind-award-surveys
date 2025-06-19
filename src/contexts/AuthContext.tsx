@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../integrations/supabase/client';
@@ -26,16 +27,16 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const { user, isAuthenticated, isLoading, error } = useAuthState();
+  const { user, isAuthenticated, isLoading, authError: stateError } = useAuthState();
   const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (error) {
-      setAuthError(error.message);
+    if (stateError) {
+      setAuthError(stateError.message);
     } else {
       setAuthError(null);
     }
-  }, [error]);
+  }, [stateError]);
 
   const signOut = async () => {
     try {

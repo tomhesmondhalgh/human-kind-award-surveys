@@ -1,177 +1,194 @@
-
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
-import { Eye, Edit3, Archive, Calendar, Users, Link } from 'lucide-react';
-import { toast } from 'sonner';
+import React, { useState } from 'react';
+import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
+import { SurveyWithResponses } from '../../utils/surveyUtils';
+import { getSurveyStatus } from '../../utils/survey/status';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal, Edit, Eye, BarChart3, Send, Archive, Trash2 } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
-import { updateTable } from '@/utils/supabaseHelpers';
-
-interface Survey {
-  id: string;
-  name: string;
-  date: string;
-  close_date?: string;
-  status: string;
-  emails?: string;
-  created_at: string;
-}
+import { useMediaQuery } from '@/hooks/use-media-query';
+import { Card } from "@/components/ui/card";
+import { toast } from 'sonner';
 
 interface SurveyListProps {
-  surveys: Survey[];
-  onArchive?: (surveyId: string) => void;
-  onRefresh?: () => void;
+  surveys: SurveyWithResponses[];
+  refreshList: () => void;
 }
 
-const SurveyList: React.FC<SurveyListProps> = ({ surveys, onArchive, onRefresh }) => {
+const SurveyList: React.FC<SurveyListProps> = ({ surveys, refreshList }) => {
   const navigate = useNavigate();
+  const isMobile = useMediaQuery("(max-width: 768px)");
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Sent':
-        return 'bg-green-100 text-green-800';
-      case 'Completed':
-        return 'bg-blue-100 text-blue-800';
-      case 'Archived':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-yellow-100 text-yellow-800';
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString('en-GB', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return dateString;
     }
   };
 
-  const handleViewResults = (surveyId: string) => {
-    navigate(`/analysis?survey=${surveyId}`);
+  const handleViewAnalysis = (surveyId: string) => {
+    navigate(`/analysis?surveyId=${surveyId}`);
   };
 
   const handleEditSurvey = (surveyId: string) => {
-    navigate(`/survey-editor?id=${surveyId}`);
+    navigate(`/surveys/edit?id=${surveyId}`);
+  };
+
+  const handlePreviewSurvey = (surveyId: string) => {
+    navigate(`/survey-form?id=${surveyId}&preview=true`);
+  };
+
+  const handleSendSurvey = (surveyId: string) => {
+    navigate(`/surveys/edit?id=${surveyId}`);
   };
 
   const handleArchiveSurvey = async (surveyId: string) => {
     try {
-      const { error } = await updateTable('survey_templates', { status: 'Archived' }, surveyId);
-      if (error) throw error;
+      setIsDeleting(true);
+      const { error } = await supabase
+        .from('survey_templates')
+        .update({ status: 'Archived' })
+        .eq('id', surveyId);
+
+      if (error) {
+        throw error;
+      }
 
       toast.success('Survey archived successfully');
-      if (onArchive) onArchive(surveyId);
-      if (onRefresh) onRefresh();
+      refreshList();
     } catch (error) {
       console.error('Error archiving survey:', error);
       toast.error('Failed to archive survey');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
-  const handleCopyLink = async (surveyId: string) => {
-    const surveyUrl = `${window.location.origin}/survey/${surveyId}`;
-    
+  const handleDeleteSurvey = async (surveyId: string) => {
     try {
-      await navigator.clipboard.writeText(surveyUrl);
-      toast.success('Survey link copied to clipboard');
+      setIsDeleting(true);
+      const { error } = await supabase
+        .from('survey_templates')
+        .delete()
+        .eq('id', surveyId);
+
+      if (error) {
+        throw error;
+      }
+
+      toast.success('Survey deleted successfully');
+      refreshList();
     } catch (error) {
-      console.error('Error copying to clipboard:', error);
-      toast.error('Failed to copy link');
+      console.error('Error deleting survey:', error);
+      toast.error('Failed to delete survey');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
-  const getEmailCount = (emails: string | undefined) => {
-    if (!emails) return 0;
-    return emails.split(',').filter(email => email.trim()).length;
-  };
+  const renderDropdownMenu = (survey: SurveyWithResponses) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="h-8 w-8 p-0">
+          <span className="sr-only">Open menu</span>
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => handleViewAnalysis(survey.id)}>
+          <BarChart3 className="mr-2 h-4 w-4" />
+          View Analysis
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleEditSurvey(survey.id)}>
+          <Edit className="mr-2 h-4 w-4" />
+          Edit Survey
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handlePreviewSurvey(survey.id)}>
+          <Eye className="mr-2 h-4 w-4" />
+          Preview
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleSendSurvey(survey.id)}>
+          <Send className="mr-2 h-4 w-4" />
+          Send
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleArchiveSurvey(survey.id)}>
+          <Archive className="mr-2 h-4 w-4" />
+          Archive
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleDeleteSurvey(survey.id)} disabled={isDeleting}>
+          <Trash2 className="mr-2 h-4 w-4" />
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
-  if (surveys.length === 0) {
+  if (!isMobile) {
     return (
-      <div className="text-center py-12">
-        <div className="text-gray-500">
-          <p className="text-lg mb-2">No surveys found</p>
-          <p className="text-sm">Create your first survey to get started</p>
-        </div>
-      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Survey</TableHead>
+            <TableHead>Date</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Responses</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {surveys.map((survey) => {
+            const status = getSurveyStatus(survey.date, survey.close_date);
+
+            return (
+              <TableRow key={survey.id}>
+                <TableCell className="font-medium">{survey.name}</TableCell>
+                <TableCell>{formatDate(survey.date)}</TableCell>
+                <TableCell>
+                  <Badge variant="outline">{status}</Badge>
+                </TableCell>
+                <TableCell>{survey.responses}</TableCell>
+                <TableCell className="text-right">
+                  {renderDropdownMenu(survey)}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
     );
   }
 
   return (
-    <div className="grid gap-4">
-      {surveys.map((survey) => (
-        <Card key={survey.id} className="hover:shadow-md transition-shadow">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">{survey.name}</CardTitle>
-              <Badge className={getStatusColor(survey.status)}>
-                {survey.status}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center gap-4 text-sm text-gray-600">
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  <span>Created: {new Date(survey.date).toLocaleDateString()}</span>
-                </div>
-                {survey.close_date && (
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    <span>Closes: {new Date(survey.close_date).toLocaleDateString()}</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-1">
-                  <Users className="h-4 w-4" />
-                  <span>{getEmailCount(survey.emails)} recipients</span>
-                </div>
+    <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+      {surveys.map((survey) => {
+        const status = getSurveyStatus(survey.date, survey.close_date);
+
+        return (
+          <Card key={survey.id} className="bg-white shadow-md rounded-lg overflow-hidden">
+            <div className="p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-800">{survey.name}</h3>
+                <Badge variant="outline">{status}</Badge>
               </div>
-              
-              <div className="flex gap-2 flex-wrap">
-                {survey.status !== 'Archived' && (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleViewResults(survey.id)}
-                      className="flex items-center gap-1"
-                    >
-                      <Eye className="h-4 w-4" />
-                      View Results
-                    </Button>
-                    
-                    {survey.status !== 'Completed' && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditSurvey(survey.id)}
-                        className="flex items-center gap-1"
-                      >
-                        <Edit3 className="h-4 w-4" />
-                        Edit
-                      </Button>
-                    )}
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleCopyLink(survey.id)}
-                      className="flex items-center gap-1"
-                    >
-                      <Link className="h-4 w-4" />
-                      Copy Link
-                    </Button>
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleArchiveSurvey(survey.id)}
-                      className="flex items-center gap-1 text-red-600 hover:text-red-700"
-                    >
-                      <Archive className="h-4 w-4" />
-                      Archive
-                    </Button>
-                  </>
-                )}
+              <p className="text-gray-600 mt-2">Date: {formatDate(survey.date)}</p>
+              <p className="text-gray-600">Responses: {survey.responses}</p>
+              <div className="mt-4 flex justify-end">
+                {renderDropdownMenu(survey)}
               </div>
             </div>
-          </CardContent>
-        </Card>
-      ))}
+          </Card>
+        );
+      })}
     </div>
   );
 };

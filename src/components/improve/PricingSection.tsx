@@ -1,4 +1,3 @@
-
 import React from 'react';
 import PlanCard, { PlanType } from './PlanCard';
 import { useSubscription } from '../../hooks/useSubscription';
@@ -6,7 +5,24 @@ import { useSubscriptionPlans } from '../../hooks/useSubscriptionPlans';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../hooks/use-toast';
 
-const PricingSection: React.FC = () => {
+interface Plan {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  features: string[];
+  is_popular: boolean;
+  stripe_price_id?: string;
+  purchase_type?: string;
+  duration_months?: number;
+  sort_order: number;
+}
+
+interface PricingSectionProps {
+  plans: Plan[];
+}
+
+const PricingSection: React.FC<PricingSectionProps> = ({ plans }) => {
   const navigate = useNavigate();
   const {
     subscription,
@@ -18,8 +34,6 @@ const PricingSection: React.FC = () => {
   } = useSubscription();
   
   const {
-    plans,
-    isLoading: isPlansLoading,
     formatPrice
   } = useSubscriptionPlans();
   
@@ -95,7 +109,7 @@ const PricingSection: React.FC = () => {
   };
 
   // Show loading state when plans are loading
-  if (isPlansLoading || isSubscriptionLoading) {
+  if (isSubscriptionLoading) {
     return (
       <div className="mt-12 text-center">
         <h2 className="text-2xl font-bold text-center mb-10 py-[30px]">Loading Plans...</h2>
@@ -106,62 +120,53 @@ const PricingSection: React.FC = () => {
     );
   }
 
-  // Convert database plans to display format
-  const displayPlans = plans.map(plan => {
-    const planType = plan.name.toLowerCase() as PlanType;
-    const price = formatPrice(plan.price);
-    const priceSubtext = plan.price > 0 
-      ? `+ VAT (${plan.purchase_type === 'subscription' ? `${plan.duration_months ? plan.duration_months/12 : 3}-year subscription` : 'one-off payment'})`
-      : undefined;
-    
-    // Special case for legacy plan - skip showing it
-    if (planType === 'legacy') {
-      return null;
-    }
-    
-    return {
-      title: plan.name,
-      description: plan.description,
-      price: plan.price === 0 ? "Free" : price,
-      priceSubtext,
-      features: plan.features.map(feature => ({ text: feature })),
-      planType,
-      isPopular: plan.is_popular,
-      onButtonClick: () => {
-        if (planType === 'free') {
-          navigate('/dashboard');
-        } else if (isFree || isSubscriptionLoading || 
-            (planType === 'progress' && isFoundation) || 
-            (planType === 'premium' && (isFoundation || isProgress))) {
-          // Only handle standard plan types, excluding legacy
-          if (planType === 'foundation' || planType === 'progress' || planType === 'premium') {
-            handleUpgrade(plan.stripe_price_id || '', planType, plan.purchase_type || 'subscription');
-          }
-        }
-      },
-      buttonText: getButtonText(planType),
-      buttonVariant: getButtonVariant(planType),
-      disabled: (planType === 'foundation' && (isFoundation || isProgress || isPremium)) ||
-                (planType === 'progress' && (isProgress || isPremium)) ||
-                (planType === 'premium' && isPremium)
-    };
-  }).filter(Boolean); // Filter out null values (legacy plan)
-
-  // Sort plans by sort_order
-  displayPlans.sort((a, b) => {
-    const aOrder = plans.find(p => p.name.toLowerCase() === a.planType)?.sort_order || 0;
-    const bOrder = plans.find(p => p.name.toLowerCase() === b.planType)?.sort_order || 0;
-    return aOrder - bOrder;
-  });
-
   return (
     <div className="mt-12">
       <h2 className="text-2xl font-bold text-center mb-10 py-[30px]">Choose the Right Plan for Your Organisation</h2>
       
       <div className="grid md:grid-cols-4 gap-8">
-        {displayPlans.map((plan, index) => (
-          <PlanCard key={index} {...plan} />
-        ))}
+        {plans.map((plan, index) => {
+          const planType = plan.name.toLowerCase() as PlanType;
+          const price = formatPrice(plan.price);
+          const priceSubtext = plan.price > 0 
+            ? `+ VAT (${plan.purchase_type === 'subscription' ? `${plan.duration_months ? plan.duration_months/12 : 3}-year subscription` : 'one-off payment'})`
+            : undefined;
+          
+          // Special case for legacy plan - skip showing it
+          if (planType === 'legacy') {
+            return null;
+          }
+          
+          return (
+            <PlanCard 
+              key={index} 
+              title={plan.name}
+              description={plan.description}
+              price={plan.price === 0 ? "Free" : price}
+              priceSubtext={priceSubtext}
+              features={plan.features.map(feature => ({ text: feature }))}
+              planType={planType}
+              isPopular={plan.is_popular}
+              onButtonClick={() => {
+                if (planType === 'free') {
+                  navigate('/dashboard');
+                } else if (isFree || isSubscriptionLoading || 
+                    (planType === 'progress' && isFoundation) || 
+                    (planType === 'premium' && (isFoundation || isProgress))) {
+                  // Only handle standard plan types, excluding legacy
+                  if (planType === 'foundation' || planType === 'progress' || planType === 'premium') {
+                    handleUpgrade(plan.stripe_price_id || '', planType, plan.purchase_type || 'subscription');
+                  }
+                }
+              }}
+              buttonText={getButtonText(planType)}
+              buttonVariant={getButtonVariant(planType)}
+              disabled={(planType === 'foundation' && (isFoundation || isProgress || isPremium)) ||
+                        (planType === 'progress' && (isProgress || isPremium)) ||
+                        (planType === 'premium' && isPremium)}
+            />
+          );
+        }).filter(Boolean)}
       </div>
       
       <div className="mt-8 text-center text-sm text-gray-500">
