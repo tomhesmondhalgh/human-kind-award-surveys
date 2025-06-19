@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import MainLayout from '../components/layout/MainLayout';
 import { useOrganization } from '../contexts/OrganizationContext';
@@ -15,7 +16,7 @@ import OrganizationsList from '../components/team/OrganizationsList';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { validateAndRefreshSession } from '../utils/auth/sessionUtils';
-import { toast } from 'react-toastify';
+import { toast } from 'sonner';
 
 const Team = () => {
   const { user, isAuthenticated, authCheckComplete } = useAuth();
