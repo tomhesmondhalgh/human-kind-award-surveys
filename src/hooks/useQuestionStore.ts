@@ -53,11 +53,17 @@ export const useQuestionStore = () => {
     fetchQuestions();
   }, [user]);
 
-  const createQuestion = async (question: Omit<CustomQuestion, 'id' | 'created_at'>) => {
+  const createQuestion = async (question: Omit<CustomQuestion, 'id' | 'created_at' | 'archived' | 'creator_id'>) => {
     try {
+      const questionPayload = {
+        ...question,
+        creator_id: user?.id,
+        archived: false
+      };
+
       const { data, error } = await supabase
         .from('custom_questions')
-        .insert([question])
+        .insert([questionPayload])
         .select();
 
       if (error) {

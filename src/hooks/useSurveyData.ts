@@ -1,8 +1,10 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { CustomQuestion } from '../types/customQuestions';
+import { fixCustomQuestionTypes } from '../utils/typeConversions';
 
 export const useSurveyData = (surveyId: string | null) => {
   const [customQuestions, setCustomQuestions] = useState<CustomQuestion[]>([]);
@@ -31,7 +33,8 @@ export const useSurveyData = (surveyId: string | null) => {
           return;
         }
 
-        setCustomQuestions(data || []);
+        const convertedQuestions = fixCustomQuestionTypes(data || []);
+        setCustomQuestions(convertedQuestions);
       } catch (err: any) {
         console.error('Error fetching custom questions:', err);
         setError(err.message);
@@ -49,4 +52,3 @@ export const useSurveyData = (surveyId: string | null) => {
     error,
   };
 };
-
