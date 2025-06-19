@@ -51,7 +51,13 @@ const PlansManagement = () => {
         throw error;
       }
 
-      setPlans(data || []);
+      // Transform the data to match our Plan interface
+      const transformedPlans = (data || []).map(plan => ({
+        ...plan,
+        features: Array.isArray(plan.features) ? plan.features : []
+      }));
+
+      setPlans(transformedPlans);
     } catch (error: any) {
       console.error('Error fetching plans:', error);
       toast.error('Failed to load plans');
@@ -98,7 +104,12 @@ const PlansManagement = () => {
         throw error;
       }
 
-      setPlans([...plans, ...data]);
+      const transformedData = (data || []).map(plan => ({
+        ...plan,
+        features: Array.isArray(plan.features) ? plan.features : []
+      }));
+
+      setPlans([...plans, ...transformedData]);
       setNewPlan({
         name: '',
         description: '',

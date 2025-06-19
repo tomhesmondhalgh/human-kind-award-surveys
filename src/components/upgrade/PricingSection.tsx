@@ -12,8 +12,6 @@ import { Label } from '../../components/ui/label';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import RedemptionCodeDialog from './RedemptionCodeDialog';
-import { queryTable } from '@/utils/supabaseHelpers';
-import { ProfileData } from '@/types/supabase-overrides';
 
 interface UserProfile {
   firstName: string;
@@ -107,31 +105,30 @@ const PricingSection: React.FC = () => {
       if (!user) return;
       
       try {
-        const { data, error } = await queryTable<ProfileData>(
-          'profiles',
-          'first_name, last_name, school_name, school_address',
-          { id: user.id }
-        );
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, school_name, school_address')
+          .eq('id', user.id)
+          .single();
         
         if (error) {
           console.error('Error fetching user profile:', error);
           return;
         }
         
-        if (data && data.length > 0) {
-          const profile = data[0];
+        if (data) {
           setUserProfile({
-            firstName: profile.first_name || '',
-            lastName: profile.last_name || '',
+            firstName: data.first_name || '',
+            lastName: data.last_name || '',
             email: user.email || '',
-            schoolName: profile.school_name || '',
-            schoolAddress: profile.school_address || ''
+            schoolName: data.school_name || '',
+            schoolAddress: data.school_address || ''
           });
 
           setInvoiceDetails({
-            schoolName: profile.school_name || '',
-            address: profile.school_address || '',
-            contactName: `${profile.first_name || ''} ${profile.last_name || ''}`.trim(),
+            schoolName: data.school_name || '',
+            address: data.school_address || '',
+            contactName: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
             contactEmail: user.email || '',
             purchaseOrderNumber: '',
             additionalInformation: ''
@@ -389,7 +386,7 @@ const PricingSection: React.FC = () => {
           } else if (isFree || isSubscriptionLoading || 
               (planType === 'progress' && isFoundation) || 
               (planType === 'premium' && (isFoundation || isProgress))) {
-            handleUpgrade(plan.stripe_price_id || '', upgradePlanType, plan.purchase_type || 'subscription');
+            handleUpgrade(plan.stripe_price_id || '', upgradePlanType, (plan.purchase_type as 'subscription' | 'one-time') || 'subscription');
           }
         }),
         buttonText: getButtonText(planType),
@@ -399,10 +396,10 @@ const PricingSection: React.FC = () => {
                   (planType === 'premium' && isPremium),
         hasInvoiceOption: planType !== 'free',
         onCardPayment: () => isPaidPlan ? 
-          handleUpgrade(plan.stripe_price_id || '', upgradePlanType, plan.purchase_type || 'subscription') : 
+          handleUpgrade(plan.stripe_price_id || '', upgradePlanType, (plan.purchase_type as 'subscription' | 'one-time') || 'subscription') : 
           navigate('/dashboard'),
         onInvoiceRequest: () => isPaidPlan ? 
-          openInvoiceDialog(upgradePlanType, plan.purchase_type || 'subscription') : 
+          openInvoiceDialog(upgradePlanType, (plan.purchase_type as 'subscription' | 'one-time') || 'subscription') : 
           null
       };
     });

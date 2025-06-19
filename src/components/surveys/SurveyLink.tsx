@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { Button } from '../ui/button';
+import { Input } from '../ui/input';
 import { Copy, Check } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 
 interface SurveyLinkProps {
   surveyUrl: string;
@@ -49,4 +50,3 @@ const SurveyLink: React.FC<SurveyLinkProps> = ({ surveyUrl }) => {
 };
 
 export default SurveyLink;
-

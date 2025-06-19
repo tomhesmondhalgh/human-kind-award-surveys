@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -6,7 +7,6 @@ interface Profile {
   id: string;
   first_name: string | null;
   last_name: string | null;
-  email: string;
   role: string | null;
   created_at: string;
 }
@@ -35,17 +35,18 @@ export const useProfiles = (organizationId: string | undefined) => {
             id,
             first_name,
             last_name,
-            email,
-            role,
             created_at
-          `)
-          .eq('organization_id', organizationId);
+          `);
 
         if (error) {
           console.error('Error fetching profiles:', error);
           setError(error);
         } else {
-          setProfiles(data || []);
+          const transformedProfiles = (data || []).map(profile => ({
+            ...profile,
+            role: 'member' // Default role since we don't have this in profiles table
+          }));
+          setProfiles(transformedProfiles);
         }
       } catch (err: any) {
         console.error('Unexpected error fetching profiles:', err);
@@ -60,4 +61,3 @@ export const useProfiles = (organizationId: string | undefined) => {
 
   return { profiles, isLoading, error };
 };
-

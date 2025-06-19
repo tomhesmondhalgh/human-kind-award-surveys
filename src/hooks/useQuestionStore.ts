@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
@@ -6,52 +7,58 @@ import { CustomQuestion } from '../types/customQuestions';
 export const useQuestionStore = () => {
   const { user } = useAuth();
   const [questions, setQuestions] = useState<CustomQuestion[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchQuestions = async () => {
-      if (!user) {
-        setLoading(false);
-        return;
-      }
+  const fetchQuestions = async (showArchived: boolean = false) => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
 
-      setLoading(true);
-      setError(null);
+    setIsLoading(true);
+    setError(null);
 
-      try {
-        const { data, error } = await supabase
-          .from('custom_questions')
-          .select('*')
-          .eq('creator_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          setError(error.message);
-        } else {
-          setQuestions(data || []);
-        }
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchQuestions();
-  }, [user]);
-
-  const addQuestion = async (question: Omit<CustomQuestion, 'id' | 'created_at'>) => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('custom_questions')
-        .insert([question])
-        .select()
+        .select('*')
+        .eq('creator_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (!showArchived) {
+        query = query.eq('archived', false);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         setError(error.message);
       } else {
-        setQuestions([...questions, data![0]]);
+        setQuestions(data || []);
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchQuestions();
+  }, [user]);
+
+  const createQuestion = async (question: Omit<CustomQuestion, 'id' | 'created_at'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('custom_questions')
+        .insert([question])
+        .select();
+
+      if (error) {
+        setError(error.message);
+      } else if (data) {
+        setQuestions([...questions, data[0]]);
       }
     } catch (err: any) {
       setError(err.message);
@@ -64,12 +71,12 @@ export const useQuestionStore = () => {
         .from('custom_questions')
         .update(updates)
         .eq('id', id)
-        .select()
+        .select();
 
       if (error) {
         setError(error.message);
-      } else {
-        setQuestions(questions.map(q => (q.id === id ? data![0] : q)));
+      } else if (data) {
+        setQuestions(questions.map(q => (q.id === id ? data[0] : q)));
       }
     } catch (err: any) {
       setError(err.message);
@@ -81,7 +88,7 @@ export const useQuestionStore = () => {
       const { error } = await supabase
         .from('custom_questions')
         .delete()
-        .eq('id', id)
+        .eq('id', id);
 
       if (error) {
         setError(error.message);
@@ -95,9 +102,10 @@ export const useQuestionStore = () => {
 
   return {
     questions,
-    loading,
+    isLoading,
     error,
-    addQuestion,
+    fetchQuestions,
+    createQuestion,
     updateQuestion,
     deleteQuestion,
   };

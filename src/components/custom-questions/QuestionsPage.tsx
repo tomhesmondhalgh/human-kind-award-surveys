@@ -23,7 +23,7 @@ export default function QuestionsPage() {
       await fetchQuestions(showArchived);
     };
     loadQuestions();
-  }, [showArchived]);
+  }, [showArchived, fetchQuestions]);
 
   useEffect(() => {
     const checkEditPermission = async () => {
