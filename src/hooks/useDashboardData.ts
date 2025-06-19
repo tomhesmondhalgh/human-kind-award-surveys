@@ -2,8 +2,8 @@
 import { useState, useEffect } from 'react';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { getDashboardStats } from '@/utils/survey/dashboardStats';
-import { getSurveyTemplates } from '@/utils/survey/templates';
-import type { SurveyWithResponses } from '@/types/survey';
+import { getRecentSurveys } from '@/utils/survey/templates';
+import type { SurveyWithResponses } from '@/utils/types/survey';
 
 export function useDashboardData() {
   const { currentOrganization } = useOrganization();
@@ -38,7 +38,7 @@ export function useDashboardData() {
         }
 
         // Fetch recent surveys (limit to 5 most recent)
-        const { surveys: recentSurveys } = await getSurveyTemplates(currentOrganization.id, 1, 5);
+        const recentSurveys = await getRecentSurveys(5, currentOrganization.id);
         if (recentSurveys) {
           setSurveys(recentSurveys);
         }
