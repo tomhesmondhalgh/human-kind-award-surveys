@@ -3,11 +3,23 @@ import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { cleanupAuthState } from './sessionUtils';
+import { detectStorageCapabilities, getBestStorage, cleanupAllAuthStorage } from './storageUtils';
+
+interface RetryConfig {
+  maxAttempts: number;
+  baseDelay: number;
+  maxDelay: number;
+}
+
+const DEFAULT_RETRY_CONFIG: RetryConfig = {
+  maxAttempts: 3,
+  baseDelay: 1000,
+  maxDelay: 5000
+};
 
 /**
- * Hook for managing authentication state
- * This is the core hook that tracks user authentication state
- * and provides consistent session management
+ * Hook for managing authentication state with enhanced fallback mechanisms
+ * Provides robust session management even when browser storage is blocked
  */
 export const useAuthState = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -15,19 +27,167 @@ export const useAuthState = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [authCheckComplete, setAuthCheckComplete] = useState(false);
   const [authError, setAuthError] = useState<Error | null>(null);
+  const [storageCapabilities, setStorageCapabilities] = useState<any>(null);
+
+  /**
+   * Exponential backoff delay calculation
+   */
+  const calculateDelay = (attempt: number, config: RetryConfig): number => {
+    const delay = config.baseDelay * Math.pow(2, attempt - 1);
+    return Math.min(delay, config.maxDelay);
+  };
+
+  /**
+   * Retry function with exponential backoff
+   */
+  const retryWithBackoff = async <T>(
+    operation: () => Promise<T>,
+    config: RetryConfig = DEFAULT_RETRY_CONFIG,
+    context: string = 'operation'
+  ): Promise<T> => {
+    let lastError: Error;
+
+    for (let attempt = 1; attempt <= config.maxAttempts; attempt++) {
+      try {
+        console.log(`🔄 Attempting ${context} (${attempt}/${config.maxAttempts})`);
+        const result = await operation();
+        if (attempt > 1) {
+          console.log(`✅ ${context} succeeded on attempt ${attempt}`);
+        }
+        return result;
+      } catch (error) {
+        lastError = error as Error;
+        console.warn(`⚠️ ${context} failed on attempt ${attempt}:`, error);
+
+        if (attempt < config.maxAttempts) {
+          const delay = calculateDelay(attempt, config);
+          console.log(`⏳ Retrying ${context} in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+
+    console.error(`❌ ${context} failed after ${config.maxAttempts} attempts`);
+    throw lastError!;
+  };
+
+  /**
+   * Verify session via direct API call (fallback method)
+   */
+  const verifySessionViaAPI = async (): Promise<{ session: Session | null; user: User | null }> => {
+    try {
+      console.log('🔍 Verifying session via direct API call...');
+      
+      // Try to get user directly (bypasses storage)
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !userData.user) {
+        console.log('❌ No valid user found via API');
+        return { session: null, user: null };
+      }
+
+      // If we have a user, try to get the session
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.warn('⚠️ Session retrieval failed, but user exists:', sessionError);
+        // User exists but session is problematic - this is a partial success
+        return { session: null, user: userData.user };
+      }
+
+      console.log('✅ Session verified via API');
+      return { session: sessionData.session, user: userData.user };
+    } catch (error) {
+      console.error('❌ API verification failed:', error);
+      throw error;
+    }
+  };
+
+  /**
+   * Enhanced session initialization with progressive fallbacks
+   */
+  const initializeAuth = async () => {
+    try {
+      console.log('🚀 Starting enhanced auth initialization...');
+      
+      // Step 1: Detect storage capabilities
+      const capabilities = detectStorageCapabilities();
+      setStorageCapabilities(capabilities);
+      
+      const bestStorage = getBestStorage();
+      console.log(`📱 Best available storage: ${bestStorage}`);
+
+      // Step 2: Try standard session retrieval with retry
+      try {
+        const sessionResult = await retryWithBackoff(
+          async () => {
+            const { data, error } = await supabase.auth.getSession();
+            if (error) throw error;
+            return data;
+          },
+          DEFAULT_RETRY_CONFIG,
+          'session retrieval'
+        );
+
+        if (sessionResult.session) {
+          console.log('✅ Session retrieved successfully');
+          return { session: sessionResult.session, user: sessionResult.session.user };
+        } else {
+          console.log('ℹ️ No session found via standard method');
+        }
+      } catch (sessionError) {
+        console.warn('⚠️ Standard session retrieval failed, trying fallback...', sessionError);
+      }
+
+      // Step 3: Fallback to direct API verification
+      if (bestStorage === 'none') {
+        console.log('🔄 No storage available, using API verification...');
+        return await verifySessionViaAPI();
+      }
+
+      // Step 4: Try API verification anyway as final fallback
+      try {
+        const apiResult = await verifySessionViaAPI();
+        if (apiResult.user) {
+          console.log('✅ Fallback API verification successful');
+          return apiResult;
+        }
+      } catch (apiError) {
+        console.warn('⚠️ API verification also failed:', apiError);
+      }
+
+      // Step 5: No authentication found
+      console.log('ℹ️ No valid authentication found');
+      return { session: null, user: null };
+
+    } catch (error) {
+      console.error('💥 Auth initialization failed completely:', error);
+      throw error;
+    }
+  };
 
   useEffect(() => {
-    console.log('🔐 Auth state hook initializing');
+    console.log('🔐 Enhanced auth state hook initializing');
     let mounted = true;
 
-    // Add a timeout to ensure we don't get stuck in loading state
+    // Enhanced timeout with better error messaging
     const timeoutId = setTimeout(() => {
       if (isLoading && mounted) {
-        console.warn('⚠️ Auth initialization timed out after 5 seconds');
+        const capabilities = detectStorageCapabilities();
+        const hasAnyStorage = capabilities.localStorage || capabilities.sessionStorage;
+        
+        if (!hasAnyStorage) {
+          console.error('⚠️ Auth timeout: No storage mechanisms available');
+          setAuthError(new Error('Browser storage is blocked. Please enable cookies and local storage.'));
+        } else {
+          console.warn('⚠️ Auth initialization timed out after 10 seconds');
+          setAuthError(new Error('Authentication initialization timed out. Please refresh the page.'));
+        }
+        
         setIsLoading(false);
         setAuthCheckComplete(true);
       }
-    }, 5000);
+    }, 10000); // Increased timeout to 10 seconds
 
     // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
@@ -38,8 +198,7 @@ export const useAuthState = () => {
         hasSession: !!newSession,
         userId: newSession?.user?.id,
         email: newSession?.user?.email,
-        expiresAt: newSession?.expires_at ? new Date(newSession.expires_at * 1000) : null,
-        accessToken: newSession?.access_token ? `${newSession.access_token.substring(0, 20)}...` : null
+        expiresAt: newSession?.expires_at ? new Date(newSession.expires_at * 1000) : null
       });
       
       // Handle different auth events
@@ -49,8 +208,8 @@ export const useAuthState = () => {
           break;
         case 'SIGNED_OUT':
           console.log('🚪 User signed out');
-          // Clean up any remaining auth state
-          cleanupAuthState();
+          // Enhanced cleanup for all storage mechanisms
+          cleanupAllAuthStorage();
           break;
         case 'TOKEN_REFRESHED':
           console.log('🔄 Token refreshed');
@@ -70,109 +229,62 @@ export const useAuthState = () => {
       setAuthError(null);
     });
 
-    // Get initial session with enhanced debugging
-    const initializeAuth = async () => {
+    // Enhanced initial session retrieval
+    const initAuth = async () => {
       try {
-        console.log('🚀 Attempting to get initial session...');
-        
-        // First, check what's in localStorage
-        const storageKeys = Object.keys(localStorage).filter(key => 
-          key.includes('supabase') || key.includes('sb-')
-        );
-        console.log('🗄️ Auth-related localStorage keys:', storageKeys);
-        
-        const { data, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('❌ Error getting initial session:', error);
-          setAuthError(error);
-          if (mounted) {
-            setIsLoading(false);
-            setAuthCheckComplete(true);
-          }
-          return;
-        }
+        const result = await initializeAuth();
         
         if (mounted) {
-          const sessionExists = !!data.session;
-          console.log('📋 Initial session retrieved:', 
-            sessionExists 
-              ? `✅ Session exists (user: ${data.session!.user.email})` 
-              : '❌ No session found'
-          );
-          
-          if (data.session) {
-            const expiresAt = new Date(data.session.expires_at! * 1000);
-            const now = new Date();
-            const isExpired = expiresAt <= now;
-            const timeToExpiry = expiresAt.getTime() - now.getTime();
-            
-            console.log('⏰ Session timing:', {
-              expiresAt: expiresAt.toISOString(),
-              now: now.toISOString(),
-              isExpired,
-              timeToExpiryMinutes: Math.round(timeToExpiry / (1000 * 60))
-            });
-            
-            if (isExpired) {
-              console.warn('⚠️ Session appears to be expired');
-              // Try to refresh the session
-              const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-              if (refreshError) {
-                console.error('❌ Failed to refresh expired session:', refreshError);
-                // Clean up and force re-authentication
-                cleanupAuthState();
-                setSession(null);
-                setUser(null);
-              } else {
-                console.log('✅ Session refreshed successfully');
-                setSession(refreshData.session);
-                setUser(refreshData.session?.user ?? null);
-              }
-            } else {
-              setSession(data.session);
-              setUser(data.session.user);
-            }
-          } else {
-            setSession(null);
-            setUser(null);
-          }
-          
+          setSession(result.session);
+          setUser(result.user);
           setIsLoading(false);
           setAuthCheckComplete(true);
+          setAuthError(null);
         }
       } catch (error) {
-        console.error('💥 Exception getting initial session:', error);
-        setAuthError(error as Error);
+        console.error('💥 Auth initialization error:', error);
         if (mounted) {
+          setAuthError(error as Error);
           setIsLoading(false);
           setAuthCheckComplete(true);
+          
+          // If storage is completely blocked, provide helpful guidance
+          const capabilities = detectStorageCapabilities();
+          if (!capabilities.localStorage && !capabilities.sessionStorage) {
+            setAuthError(new Error(
+              'Browser storage is blocked by tracking prevention. ' +
+              'Please adjust your browser settings to allow storage for this site.'
+            ));
+          }
         }
       }
     };
     
-    initializeAuth();
+    initAuth();
 
     // Clean up
     return () => {
-      console.log('🧹 Cleaning up auth subscription');
+      console.log('🧹 Cleaning up enhanced auth subscription');
       mounted = false;
       clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, []);
 
-  // Log current auth state for debugging
+  // Enhanced logging for current auth state
   useEffect(() => {
-    console.log('📊 Current auth state:', {
+    console.log('📊 Current enhanced auth state:', {
       isAuthenticated: !!user && !!session,
       isLoading,
       authCheckComplete,
       userId: user?.id,
       userEmail: user?.email,
-      hasError: !!authError
+      hasError: !!authError,
+      errorMessage: authError?.message,
+      storageType: getBestStorage(),
+      storageCapabilities
     });
-  }, [user, session, isLoading, authCheckComplete, authError]);
+  }, [user, session, isLoading, authCheckComplete, authError, storageCapabilities]);
 
   return {
     user,
@@ -180,6 +292,7 @@ export const useAuthState = () => {
     isLoading,
     isAuthenticated: !!user && !!session,
     authCheckComplete,
-    authError
+    authError,
+    storageCapabilities
   };
 };

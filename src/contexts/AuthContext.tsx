@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { useAuthState } from '@/utils/auth/useAuthState';
@@ -13,6 +12,8 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   authCheckComplete: boolean;
+  authError: Error | null;
+  storageCapabilities: any;
   signIn: (email: string, password: string) => Promise<{ error: any; success: boolean }>;
   signUp: (email: string, password: string, userData?: any) => Promise<{ error: any; success: boolean; user?: User }>;
   signOut: () => Promise<void>;
@@ -25,6 +26,8 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   isAuthenticated: false,
   authCheckComplete: false,
+  authError: null,
+  storageCapabilities: null,
   signIn: async () => ({ error: null, success: false }),
   signUp: async () => ({ error: null, success: false }),
   signOut: async () => {},
@@ -34,23 +37,59 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Use the central auth state hook for state management
-  const { user, session, isLoading, isAuthenticated, authCheckComplete } = useAuthState();
+  // Use the enhanced auth state hook for state management
+  const { user, session, isLoading, isAuthenticated, authCheckComplete, authError, storageCapabilities } = useAuthState();
 
-  // Sign in handler
+  // Enhanced sign in handler with better error messages
   const signIn = async (email: string, password: string) => {
-    return signInWithEmail(email, password);
+    try {
+      const result = await signInWithEmail(email, password);
+      
+      // If sign in fails due to storage issues, provide helpful guidance
+      if (!result.success && authError?.message.includes('storage')) {
+        return {
+          ...result,
+          error: {
+            ...result.error,
+            message: result.error.message + ' Try adjusting your browser privacy settings to allow storage for this site.'
+          }
+        };
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Enhanced sign in error:', error);
+      return { error: error as Error, success: false };
+    }
   };
 
-  // Sign up handler
+  // Enhanced sign up handler
   const signUp = async (email: string, password: string, userData?: any) => {
-    const response = await signUpWithEmail(email, password, userData);
-    return response;
+    try {
+      const response = await signUpWithEmail(email, password, userData);
+      
+      // Provide storage-aware guidance
+      if (storageCapabilities && !storageCapabilities.localStorage) {
+        console.warn('⚠️ localStorage not available - session may not persist');
+      }
+      
+      return response;
+    } catch (error) {
+      console.error('Enhanced sign up error:', error);
+      return { error: error as Error, success: false };
+    }
   };
 
-  // Sign out handler
+  // Enhanced sign out handler
   const signOut = async () => {
-    await signOutUser();
+    try {
+      await signOutUser();
+    } catch (error) {
+      console.error('Enhanced sign out error:', error);
+      // Even if sign out fails, ensure local cleanup
+      const { cleanupAuthState } = await import('../utils/auth/sessionUtils');
+      cleanupAuthState();
+    }
   };
 
   // Profile completion handler
@@ -70,6 +109,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isLoading,
         isAuthenticated,
         authCheckComplete,
+        authError,
+        storageCapabilities,
         signIn,
         signUp,
         signOut,
