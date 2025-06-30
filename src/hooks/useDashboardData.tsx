@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { getDashboardStats } from '../utils/survey/dashboardStats';
 import { getAllSurveyTemplates } from '../utils/survey/templates';
+import { countSurveyResponses } from '../utils/survey/responses';
 import { SurveyWithResponses } from '../utils/surveyUtils';
 
 export const useDashboardData = () => {
@@ -82,14 +83,19 @@ export const useDashboardData = () => {
 
         // Fetch recent surveys
         const surveyTemplates = await getAllSurveyTemplates(currentOrganization.id);
-        const recentSurveys = surveyTemplates
-          .slice(0, 5)
-          .map(template => ({
-            ...template,
-            responses: template.response_count || 0
-          })) as SurveyWithResponses[];
         
-        setSurveys(recentSurveys);
+        // Get response counts for each survey
+        const surveysWithResponses = await Promise.all(
+          surveyTemplates.slice(0, 5).map(async (template) => {
+            const responseCount = await countSurveyResponses(template.id);
+            return {
+              ...template,
+              responses: responseCount
+            };
+          })
+        );
+        
+        setSurveys(surveysWithResponses as SurveyWithResponses[]);
         
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
