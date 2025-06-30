@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { useAuthState } from '@/utils/auth/useAuthState';
@@ -5,6 +6,7 @@ import { signInWithEmail } from '@/utils/auth/signIn';
 import { signUpWithEmail } from '@/utils/auth/signUp';
 import { signOutUser } from '@/utils/auth/signOut';
 import { completeUserProfile } from '@/utils/auth/profileManagement';
+import { useEnhancedSession } from '@/hooks/useEnhancedSession';
 
 interface AuthContextType {
   user: User | null;
@@ -14,10 +16,19 @@ interface AuthContextType {
   authCheckComplete: boolean;
   authError: Error | null;
   storageCapabilities: any;
+  // Enhanced session properties
+  isSessionHealthy: boolean;
+  sessionHealthIssues: string[];
+  lastSessionRefresh: Date | null;
+  // Methods
   signIn: (email: string, password: string) => Promise<{ error: any; success: boolean }>;
   signUp: (email: string, password: string, userData?: any) => Promise<{ error: any; success: boolean; user?: User }>;
   signOut: () => Promise<void>;
   completeUserProfile: (userData: any) => Promise<{ error: any; success: boolean }>;
+  // Enhanced session methods
+  refreshSession: () => Promise<void>;
+  validateSession: () => Promise<boolean>;
+  forceLogout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -28,19 +39,35 @@ const AuthContext = createContext<AuthContextType>({
   authCheckComplete: false,
   authError: null,
   storageCapabilities: null,
+  isSessionHealthy: true,
+  sessionHealthIssues: [],
+  lastSessionRefresh: null,
   signIn: async () => ({ error: null, success: false }),
   signUp: async () => ({ error: null, success: false }),
   signOut: async () => {},
   completeUserProfile: async () => ({ error: null, success: false }),
+  refreshSession: async () => {},
+  validateSession: async () => false,
+  forceLogout: () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Use the enhanced auth state hook for state management
+  // Use the original auth state hook for backwards compatibility
   const { user, session, isLoading, isAuthenticated, authCheckComplete, authError, storageCapabilities } = useAuthState();
 
-  // Enhanced sign in handler with better error messages
+  // Use enhanced session management for additional capabilities
+  const {
+    isHealthy: isSessionHealthy,
+    healthIssues: sessionHealthIssues,
+    lastRefresh: lastSessionRefresh,
+    refreshSession,
+    validateSession,
+    forceLogout
+  } = useEnhancedSession();
+
+  // Enhanced sign in handler with session monitoring integration
   const signIn = async (email: string, password: string) => {
     try {
       const result = await signInWithEmail(email, password);
@@ -54,6 +81,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             message: result.error.message + ' Try adjusting your browser privacy settings to allow storage for this site.'
           }
         };
+      }
+      
+      // After successful sign in, validate the session
+      if (result.success) {
+        setTimeout(() => {
+          validateSession();
+        }, 100);
       }
       
       return result;
@@ -80,15 +114,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Enhanced sign out handler
+  // Enhanced sign out handler with session cleanup
   const signOut = async () => {
     try {
+      // Force logout through session monitor for cross-tab coordination
+      forceLogout();
+      
+      // Also perform traditional sign out
       await signOutUser();
     } catch (error) {
       console.error('Enhanced sign out error:', error);
-      // Even if sign out fails, ensure local cleanup
-      const { cleanupAuthState } = await import('../utils/auth/sessionUtils');
-      cleanupAuthState();
+      // Even if sign out fails, ensure cleanup via forceLogout
+      forceLogout();
     }
   };
 
@@ -111,10 +148,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         authCheckComplete,
         authError,
         storageCapabilities,
+        isSessionHealthy,
+        sessionHealthIssues,
+        lastSessionRefresh,
         signIn,
         signUp,
         signOut,
         completeUserProfile: handleCompleteUserProfile,
+        refreshSession,
+        validateSession,
+        forceLogout,
       }}
     >
       {children}
