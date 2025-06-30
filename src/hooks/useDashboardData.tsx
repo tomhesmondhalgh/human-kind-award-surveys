@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { getDashboardStats } from '../utils/survey/dashboardStats';
-import { getSurveyTemplates } from '../utils/survey/templates';
+import { getAllSurveyTemplates } from '../utils/survey/templates';
 import { SurveyWithResponses } from '../utils/surveyUtils';
 
 export const useDashboardData = () => {
@@ -81,7 +81,7 @@ export const useDashboardData = () => {
         }
 
         // Fetch recent surveys
-        const surveyTemplates = await getSurveyTemplates(currentOrganization.id);
+        const surveyTemplates = await getAllSurveyTemplates(currentOrganization.id);
         const recentSurveys = surveyTemplates
           .slice(0, 5)
           .map(template => ({
