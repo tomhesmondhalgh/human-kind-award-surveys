@@ -38,7 +38,6 @@ import Index from './pages/Index';
 
 // Import public pages that don't use MainLayout
 import PublicSurveyForm from './pages/PublicSurveyForm';
-import SurveyForm from './pages/SurveyForm';
 import SurveyComplete from './pages/SurveyComplete';
 import SurveyClosed from './pages/SurveyClosed';
 import AcceptInvitation from './pages/AcceptInvitation';
@@ -73,7 +72,6 @@ function App() {
                         
                         {/* Public survey pages - no MainLayout */}
                         <Route path="/survey/:surveyId" element={<PublicSurveyForm />} />
-                        <Route path="/survey-form/:surveyId" element={<SurveyForm />} />
                         <Route path="/survey-complete" element={<SurveyComplete />} />
                         <Route path="/survey-closed" element={<SurveyClosed />} />
                         <Route path="/accept-invitation" element={<AcceptInvitation />} />

@@ -1,11 +1,10 @@
 
 import React from 'react';
-import MainLayout from '../components/layout/MainLayout';
 import PageTitle from '../components/ui/PageTitle';
 
 const SurveyComplete = () => {
   return (
-    <MainLayout>
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-brandPurple-50">
       <div className="page-container max-w-3xl mx-auto py-8">
         <PageTitle
           title="Thank You for Completing the Survey!"
@@ -41,7 +40,7 @@ const SurveyComplete = () => {
           The National Staff Wellbeing Survey is committed to improving working conditions for education professionals across the country.
         </p>
       </div>
-    </MainLayout>
+    </div>
   );
 };
 
