@@ -1,6 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import MainLayout from '../components/layout/MainLayout';
 import AuthForm from '../components/auth/AuthForm';
 import PageTitle from '../components/ui/PageTitle';
 import { useAuth } from '../contexts/AuthContext';
@@ -119,7 +119,7 @@ const SignUp = () => {
   };
 
   return (
-    <MainLayout>
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-brandPurple-50">
       <div className="page-container">
         <PageTitle 
           title={invitation ? `Join ${invitation.organizations.school_name}` : "Create your account"} 
@@ -140,7 +140,7 @@ const SignUp = () => {
           invitationData={invitation}
         />
       </div>
-    </MainLayout>
+    </div>
   );
 };
 

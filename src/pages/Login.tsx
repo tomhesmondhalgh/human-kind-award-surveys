@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import MainLayout from '../components/layout/MainLayout';
 import AuthForm from '../components/auth/AuthForm';
 import PageTitle from '../components/ui/PageTitle';
 import { useAuth } from '../contexts/AuthContext';
@@ -86,7 +85,7 @@ const Login = () => {
   };
 
   return (
-    <MainLayout>
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-brandPurple-50">
       <div className="page-container">
         <PageTitle 
           title="Welcome back" 
@@ -99,7 +98,7 @@ const Login = () => {
           isLoading={isSubmitting || isLoading} 
         />
       </div>
-    </MainLayout>
+    </div>
   );
 };
 

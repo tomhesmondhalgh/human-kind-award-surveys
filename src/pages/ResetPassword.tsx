@@ -1,8 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Lock } from 'lucide-react';
 import { toast } from '../services/toastService';
-import MainLayout from '../components/layout/MainLayout';
 import PageTitle from '../components/ui/PageTitle';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -77,7 +77,7 @@ const ResetPassword = () => {
 
   if (!isValidToken) {
     return (
-      <MainLayout>
+      <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-brandPurple-50">
         <div className="page-container">
           <PageTitle 
             title="Invalid Reset Link" 
@@ -96,12 +96,12 @@ const ResetPassword = () => {
             </Button>
           </div>
         </div>
-      </MainLayout>
+      </div>
     );
   }
 
   return (
-    <MainLayout>
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-brandPurple-50">
       <div className="page-container">
         <PageTitle 
           title="Reset Your Password" 
@@ -166,7 +166,7 @@ const ResetPassword = () => {
           </form>
         </div>
       </div>
-    </MainLayout>
+    </div>
   );
 };
 

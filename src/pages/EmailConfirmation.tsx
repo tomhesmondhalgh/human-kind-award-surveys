@@ -1,7 +1,6 @@
 
 import React, { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import MainLayout from '../components/layout/MainLayout';
 import PageTitle from '../components/ui/PageTitle';
 import { Button } from '../components/ui/button';
 import { Loader2, Mail, ArrowLeft } from 'lucide-react';
@@ -48,7 +47,7 @@ const EmailConfirmation = () => {
   }, [userData]);
 
   return (
-    <MainLayout>
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-brandPurple-50">
       <div className="page-container max-w-md mx-auto text-center">
         <div className="mb-8">
           <div className="flex justify-center mb-6">
@@ -96,7 +95,7 @@ const EmailConfirmation = () => {
           </div>
         </div>
       </div>
-    </MainLayout>
+    </div>
   );
 };
 

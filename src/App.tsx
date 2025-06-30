@@ -20,6 +20,29 @@ import { StripeProvider } from './contexts/StripeContext';
 import { Toaster } from '@/components/ui/sonner';
 import AuthErrorBoundary from './components/error/AuthErrorBoundary';
 
+// Import additional pages that need to be in the protected routes
+import Admin from './pages/Admin';
+import Team from './pages/Team';
+import Profile from './pages/Profile';
+import Analysis from './pages/Analysis';
+import ActionPlan from './pages/ActionPlan';
+import Improve from './pages/Improve';
+import Accredit from './pages/Accredit';
+import Upgrade from './pages/Upgrade';
+import Purchases from './pages/Purchases';
+import CustomQuestions from './pages/CustomQuestions';
+import EmailConfirmation from './pages/EmailConfirmation';
+import PaymentSuccess from './pages/PaymentSuccess';
+import SurveyEditor from './pages/SurveyEditor';
+import Index from './pages/Index';
+
+// Import public pages that don't use MainLayout
+import PublicSurveyForm from './pages/PublicSurveyForm';
+import SurveyForm from './pages/SurveyForm';
+import SurveyComplete from './pages/SurveyComplete';
+import SurveyClosed from './pages/SurveyClosed';
+import AcceptInvitation from './pages/AcceptInvitation';
+
 // Create a QueryClient instance
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,10 +65,23 @@ function App() {
                   <StripeProvider>
                     <div className="min-h-screen bg-gray-50">
                       <Routes>
+                        {/* Standalone auth pages - no MainLayout */}
                         <Route path="/login" element={<Login />} />
                         <Route path="/signup" element={<SignUp />} />
                         <Route path="/reset-password" element={<ResetPassword />} />
-
+                        <Route path="/email-confirmation" element={<EmailConfirmation />} />
+                        
+                        {/* Public survey pages - no MainLayout */}
+                        <Route path="/survey/:surveyId" element={<PublicSurveyForm />} />
+                        <Route path="/survey-form/:surveyId" element={<SurveyForm />} />
+                        <Route path="/survey-complete" element={<SurveyComplete />} />
+                        <Route path="/survey-closed" element={<SurveyClosed />} />
+                        <Route path="/accept-invitation" element={<AcceptInvitation />} />
+                        
+                        {/* Payment and upgrade pages - no MainLayout for standalone use */}
+                        <Route path="/payment-success" element={<PaymentSuccess />} />
+                        
+                        {/* Protected routes using MainLayout with nested routing */}
                         <Route
                           path="/"
                           element={
@@ -54,10 +90,22 @@ function App() {
                             </ProtectedRoute>
                           }
                         >
-                          <Route index element={<Dashboard />} />
+                          <Route index element={<Index />} />
                           <Route path="dashboard" element={<Dashboard />} />
                           <Route path="surveys" element={<Surveys />} />
+                          <Route path="surveys/new" element={<SurveyEditor />} />
+                          <Route path="surveys/:id/edit" element={<SurveyEditor />} />
                           <Route path="settings" element={<Settings />} />
+                          <Route path="admin" element={<Admin />} />
+                          <Route path="team" element={<Team />} />
+                          <Route path="profile" element={<Profile />} />
+                          <Route path="analysis" element={<Analysis />} />
+                          <Route path="action-plan" element={<ActionPlan />} />
+                          <Route path="improve" element={<Improve />} />
+                          <Route path="accredit" element={<Accredit />} />
+                          <Route path="upgrade" element={<Upgrade />} />
+                          <Route path="purchases" element={<Purchases />} />
+                          <Route path="custom-questions" element={<CustomQuestions />} />
                         </Route>
 
                         <Route path="*" element={<NotFound />} />

@@ -1,6 +1,6 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import MainLayout from '../components/layout/MainLayout';
 import { Button } from '../components/ui/button';
 import { toast } from '../services/toastService';
 import { useEffect, useState } from 'react';
@@ -70,7 +70,7 @@ const PaymentSuccess = () => {
   }, []);
 
   return (
-    <MainLayout>
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-brandPurple-50">
       <div className="container mx-auto px-4 py-16 text-center">
         <div className="bg-white p-8 rounded-lg shadow-md max-w-2xl mx-auto">
           <div className="mb-6">
@@ -118,7 +118,7 @@ const PaymentSuccess = () => {
           </div>
         </div>
       </div>
-    </MainLayout>
+    </div>
   );
 };
 
