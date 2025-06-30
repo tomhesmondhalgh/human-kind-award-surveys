@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
+import MainLayout from '../components/layout/MainLayout';
 
 const Index = () => {
   const features = [
@@ -23,7 +24,7 @@ const Index = () => {
   ];
 
   return (
-    <>
+    <MainLayout>
       {/* Hero Section */}
       <section 
         className="relative py-16 md:py-24 overflow-hidden"
@@ -136,7 +137,7 @@ const Index = () => {
           </Link>
         </div>
       </section>
-    </>
+    </MainLayout>
   );
 };
 

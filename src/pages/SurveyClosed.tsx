@@ -1,13 +1,14 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import MainLayout from '../components/layout/MainLayout';
 import PageTitle from '../components/ui/PageTitle';
 
 const SurveyClosed = () => {
   const navigate = useNavigate();
   
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-brandPurple-50">
+    <MainLayout>
       <div className="page-container max-w-3xl mx-auto py-8">
         <PageTitle
           title="Survey Closed"
@@ -49,7 +50,7 @@ const SurveyClosed = () => {
           </div>
         </div>
       </div>
-    </div>
+    </MainLayout>
   );
 };
 

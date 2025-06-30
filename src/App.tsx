@@ -1,123 +1,109 @@
 
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-
-import MainLayout from './components/layout/MainLayout';
-import Dashboard from './pages/Dashboard';
-import Surveys from './pages/Surveys';
-import Settings from './pages/Settings';
-import Login from './pages/Login';
-import SignUp from './pages/SignUp';
-import ResetPassword from './pages/ResetPassword';
-import NotFound from './pages/NotFound';
-import ProtectedRoute from './components/auth/ProtectedRoute';
+import { Toaster } from 'sonner';
 import { AuthProvider } from './contexts/AuthContext';
 import { OrganizationProvider } from './contexts/OrganizationContext';
-import { CustomQuestionsProvider } from './contexts/CustomQuestionsContext';
 import { TestingModeProvider } from './contexts/TestingModeContext';
-import { StripeProvider } from './contexts/StripeContext';
-import { Toaster } from '@/components/ui/sonner';
-import AuthErrorBoundary from './components/error/AuthErrorBoundary';
+import { CustomQuestionsProvider } from './contexts/CustomQuestionsContext';
+import StripeProvider from './components/stripe/StripeProvider';
+import ProtectedRoute from './components/auth/ProtectedRoute';
+import ErrorBoundary from './components/error/ErrorBoundary';
+import CustomScriptsLoader from './components/layout/CustomScriptsLoader';
 
-// Import additional pages that need to be in the protected routes
-import Admin from './pages/Admin';
-import Team from './pages/Team';
-import Profile from './pages/Profile';
-import Analysis from './pages/Analysis';
-import ActionPlan from './pages/ActionPlan';
-import Improve from './pages/Improve';
-import Accredit from './pages/Accredit';
-import Upgrade from './pages/Upgrade';
-import Purchases from './pages/Purchases';
-import CustomQuestions from './pages/CustomQuestions';
-import EmailConfirmation from './pages/EmailConfirmation';
-import PaymentSuccess from './pages/PaymentSuccess';
-import SurveyEditor from './pages/SurveyEditor';
+// Page imports
 import Index from './pages/Index';
-
-// Import public pages that don't use MainLayout
+import Login from './pages/Login';
+import SignUp from './pages/SignUp';
+import Dashboard from './pages/Dashboard';
+import Surveys from './pages/Surveys';
+import Team from './pages/Team';
+import Analysis from './pages/Analysis';
+import Improve from './pages/Improve';
+import Profile from './pages/Profile';
+import Admin from './pages/Admin';
 import PublicSurveyForm from './pages/PublicSurveyForm';
 import SurveyComplete from './pages/SurveyComplete';
 import SurveyClosed from './pages/SurveyClosed';
+import EmailConfirmation from './pages/EmailConfirmation';
+import ResetPassword from './pages/ResetPassword';
+import PaymentSuccess from './pages/PaymentSuccess';
+import SurveyEditor from './pages/SurveyEditor';
+import Purchases from './pages/Purchases';
+import CustomQuestions from './pages/CustomQuestions';
+import Upgrade from './pages/Upgrade';
+import NotFound from './pages/NotFound';
+import Accredit from './pages/Accredit';
 import AcceptInvitation from './pages/AcceptInvitation';
 
-// Create a QueryClient instance
+// Create a query client
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 3,
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      retry: 1,
+      refetchOnWindowFocus: false,
     },
   },
 });
 
 function App() {
   return (
-    <Router>
+    <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <AuthErrorBoundary enableRecovery={true}>
-          <AuthProvider>
-            <OrganizationProvider>
+        <AuthProvider>
+          <OrganizationProvider>
+            <TestingModeProvider>
               <CustomQuestionsProvider>
-                <TestingModeProvider>
-                  <StripeProvider>
-                    <div className="min-h-screen bg-gray-50">
+                <StripeProvider>
+                  <Router>
+                    <div className="App">
+                      <CustomScriptsLoader />
                       <Routes>
-                        {/* Standalone auth pages - no MainLayout */}
+                        {/* Public routes */}
+                        <Route path="/" element={<Index />} />
                         <Route path="/login" element={<Login />} />
                         <Route path="/signup" element={<SignUp />} />
-                        <Route path="/reset-password" element={<ResetPassword />} />
                         <Route path="/email-confirmation" element={<EmailConfirmation />} />
-                        
-                        {/* Public survey pages - no MainLayout */}
-                        <Route path="/survey/:surveyId" element={<PublicSurveyForm />} />
+                        <Route path="/reset-password" element={<ResetPassword />} />
+                        <Route path="/survey/:id" element={<PublicSurveyForm />} />
                         <Route path="/survey-complete" element={<SurveyComplete />} />
                         <Route path="/survey-closed" element={<SurveyClosed />} />
                         <Route path="/accept-invitation" element={<AcceptInvitation />} />
                         
-                        {/* Payment and upgrade pages - no MainLayout for standalone use */}
-                        <Route path="/payment-success" element={<PaymentSuccess />} />
-                        
-                        {/* Protected routes using MainLayout with nested routing */}
-                        <Route
-                          path="/"
-                          element={
-                            <ProtectedRoute>
-                              <MainLayout />
-                            </ProtectedRoute>
-                          }
-                        >
-                          <Route index element={<Index />} />
-                          <Route path="dashboard" element={<Dashboard />} />
-                          <Route path="surveys" element={<Surveys />} />
-                          <Route path="surveys/new" element={<SurveyEditor />} />
-                          <Route path="surveys/:id/edit" element={<SurveyEditor />} />
-                          <Route path="settings" element={<Settings />} />
-                          <Route path="admin" element={<Admin />} />
-                          <Route path="team" element={<Team />} />
-                          <Route path="profile" element={<Profile />} />
-                          <Route path="analysis" element={<Analysis />} />
-                          <Route path="action-plan" element={<ActionPlan />} />
-                          <Route path="improve" element={<Improve />} />
-                          <Route path="accredit" element={<Accredit />} />
-                          <Route path="upgrade" element={<Upgrade />} />
-                          <Route path="purchases" element={<Purchases />} />
-                          <Route path="custom-questions" element={<CustomQuestions />} />
+                        {/* Protected routes */}
+                        <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
+                          <Route path="/dashboard" element={<Dashboard />} />
+                          <Route path="/surveys" element={<Surveys />} />
+                          <Route path="/team" element={<Team />} />
+                          <Route path="/analysis" element={<Analysis />} />
+                          <Route path="/improve" element={<Improve />} />
+                          <Route path="/profile" element={<Profile />} />
+                          <Route path="/admin" element={<Admin />} />
+                          <Route path="/survey-form/:id" element={<Navigate to={`/survey-editor`} replace />} />
+                          <Route path="/payment-success" element={<PaymentSuccess />} />
+                          <Route path="/survey-editor" element={<SurveyEditor />} />
+                          <Route path="/survey-editor/:id" element={<SurveyEditor />} />
+                          <Route path="/purchases" element={<Purchases />} />
+                          <Route path="/custom-questions" element={<CustomQuestions />} />
+                          <Route path="/upgrade" element={<Upgrade />} />
+                          <Route path="/accredit" element={<Accredit />} />
                         </Route>
-
-                        <Route path="*" element={<NotFound />} />
+                        
+                        {/* Fallback routes */}
+                        <Route path="/404" element={<NotFound />} />
+                        <Route path="*" element={<Navigate to="/404" replace />} />
                       </Routes>
-                      <Toaster />
+                      <Toaster position="top-right" />
                     </div>
-                  </StripeProvider>
-                </TestingModeProvider>
+                  </Router>
+                </StripeProvider>
               </CustomQuestionsProvider>
-            </OrganizationProvider>
-          </AuthProvider>
-        </AuthErrorBoundary>
+            </TestingModeProvider>
+          </OrganizationProvider>
+        </AuthProvider>
       </QueryClientProvider>
-    </Router>
+    </ErrorBoundary>
   );
 }
 
