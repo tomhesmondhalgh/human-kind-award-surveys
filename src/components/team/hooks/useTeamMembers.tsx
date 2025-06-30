@@ -83,20 +83,38 @@ export function useTeamMembers(organizationId?: string) {
       if (!organizationId) throw new Error('No organization selected');
       
       try {
+        console.log('🚀 Starting invitation process...', { email, role, organizationId });
+
         // Check session before making the request
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          console.error('❌ Session error:', sessionError);
+          throw new Error(`Session error: ${sessionError.message}`);
+        }
+        
         if (!session?.user) {
+          console.error('❌ No authenticated session');
           throw new Error('Not authenticated - please log in again');
         }
 
-        console.log('Sending invitation:', { email, role, organizationId, userId: session.user.id });
+        console.log('✅ Session validated, user:', session.user.id);
 
+        // Generate invitation token and expiry
         const token = crypto.randomUUID();
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
         
+        console.log('📝 Creating invitation in database...', {
+          email,
+          organizationId,
+          role,
+          invitedBy: session.user.id,
+          token: token.substring(0, 8) + '...',
+          expiresAt: expiresAt.toISOString()
+        });
+
         // Create the invitation in the database
-        const { data: invitation, error } = await supabase
+        const { data: invitation, error: dbError } = await supabase
           .from('organization_invitations')
           .insert({
             email,
@@ -112,26 +130,52 @@ export function useTeamMembers(organizationId?: string) {
           `)
           .single();
           
-        if (error) {
-          console.error('Invitation creation error:', error);
-          throw error;
+        if (dbError) {
+          console.error('❌ Database invitation creation error:', {
+            error: dbError,
+            message: dbError.message,
+            details: dbError.details,
+            hint: dbError.hint,
+            code: dbError.code
+          });
+          
+          // Provide specific error messages based on the error type
+          if (dbError.message?.includes('permission denied')) {
+            throw new Error('Permission denied - you may not have admin rights for this organisation');
+          } else if (dbError.message?.includes('violates row-level security')) {
+            throw new Error('Access denied - please check your organisation permissions');
+          } else if (dbError.message?.includes('duplicate key')) {
+            throw new Error('An invitation for this email already exists');
+          } else {
+            throw new Error(`Database error: ${dbError.message}`);
+          }
         }
         
-        console.log('Invitation created successfully:', invitation);
+        console.log('✅ Invitation created in database:', invitation?.id);
 
-        // Get inviter profile separately
-        const { data: inviterProfile } = await supabase
+        // Get inviter profile for email
+        const { data: inviterProfile, error: profileError } = await supabase
           .from('profiles')
           .select('first_name, last_name')
           .eq('id', session.user.id)
           .single();
 
-        // Send the invitation email
+        if (profileError) {
+          console.warn('⚠️ Could not fetch inviter profile:', profileError);
+        }
+
         const inviterName = inviterProfile 
           ? `${inviterProfile.first_name || ''} ${inviterProfile.last_name || ''}`.trim() || 'A colleague'
           : 'A colleague';
 
-        const { error: emailError } = await supabase.functions.invoke('send-team-invitation', {
+        console.log('📧 Sending invitation email...', {
+          to: email,
+          organizationName: invitation.organizations?.name || 'your organization',
+          inviterName
+        });
+
+        // Send the invitation email
+        const { data: emailData, error: emailError } = await supabase.functions.invoke('send-team-invitation', {
           body: {
             email,
             organizationName: invitation.organizations?.name || 'your organization',
@@ -142,37 +186,50 @@ export function useTeamMembers(organizationId?: string) {
         });
 
         if (emailError) {
-          console.error('Email sending error:', emailError);
+          console.error('❌ Email sending error:', emailError);
           // Don't throw here - the invitation was created successfully, just log the email error
           toast.error('Invitation created but email failed to send. You can resend it from the pending invitations list.');
+          return invitation;
         } else {
-          console.log('Invitation email sent successfully');
+          console.log('✅ Invitation email sent successfully:', emailData);
         }
         
         return invitation;
       } catch (error) {
-        console.error('Error sending invitation:', error);
+        console.error('❌ Error in sendInvitation:', error);
         throw error;
       }
     },
     onSuccess: () => {
+      console.log('🎉 Invitation process completed successfully');
       toast.success('Invitation sent successfully');
       setIsInviteModalOpen(false);
       queryClient.invalidateQueries({ queryKey: ['organizationMembers', organizationId] });
       queryClient.invalidateQueries({ queryKey: ['organizationInvitations', organizationId] });
     },
     onError: (error: any) => {
-      console.error('Invitation mutation error:', error);
+      console.error('❌ Invitation mutation error:', error);
+      
+      let errorMessage = 'Failed to send invitation';
+      
       if (error.message?.includes('Not authenticated')) {
-        toast.error('Authentication required - please refresh the page and log in again');
-      } else {
-        toast.error('Failed to send invitation');
+        errorMessage = 'Authentication required - please refresh the page and log in again';
+      } else if (error.message?.includes('Permission denied')) {
+        errorMessage = 'You do not have permission to invite members to this organisation';
+      } else if (error.message?.includes('Access denied')) {
+        errorMessage = 'Access denied - please check your organisation permissions';
+      } else if (error.message) {
+        errorMessage = error.message;
       }
+      
+      toast.error(errorMessage);
     }
   });
 
   const resendInvitation = useMutation({
     mutationFn: async (invitationId: string) => {
+      console.log('🔄 Resending invitation:', invitationId);
+      
       // Check session before making the request
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
@@ -189,7 +246,10 @@ export function useTeamMembers(organizationId?: string) {
         .eq('id', invitationId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error fetching invitation for resend:', error);
+        throw new Error(`Failed to fetch invitation: ${error.message}`);
+      }
 
       // Get inviter profile separately
       const { data: inviterProfile } = await supabase
@@ -213,25 +273,35 @@ export function useTeamMembers(organizationId?: string) {
         }
       });
 
-      if (emailError) throw emailError;
+      if (emailError) {
+        console.error('❌ Error resending invitation email:', emailError);
+        throw new Error(`Failed to resend email: ${emailError.message}`);
+      }
       
+      console.log('✅ Invitation resent successfully');
       return invitation;
     },
     onSuccess: () => {
       toast.success('Invitation email resent successfully');
     },
     onError: (error: any) => {
-      console.error('Resend invitation error:', error);
+      console.error('❌ Resend invitation error:', error);
+      
+      let errorMessage = 'Failed to resend invitation';
       if (error.message?.includes('Not authenticated')) {
-        toast.error('Authentication required - please refresh the page and log in again');
-      } else {
-        toast.error('Failed to resend invitation');
+        errorMessage = 'Authentication required - please refresh the page and log in again';
+      } else if (error.message) {
+        errorMessage = error.message;
       }
+      
+      toast.error(errorMessage);
     }
   });
   
   const removeMember = useMutation({
     mutationFn: async (memberId: string) => {
+      console.log('🗑️ Removing member:', memberId);
+      
       // Check session before making the request
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
@@ -243,19 +313,28 @@ export function useTeamMembers(organizationId?: string) {
         .delete()
         .eq('id', memberId);
         
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error removing member:', error);
+        throw new Error(`Failed to remove member: ${error.message}`);
+      }
+      
+      console.log('✅ Member removed successfully');
     },
     onSuccess: () => {
       toast.success('Team member removed');
       queryClient.invalidateQueries({ queryKey: ['organizationMembers', organizationId] });
     },
     onError: (error: any) => {
-      console.error('Remove member error:', error);
+      console.error('❌ Remove member error:', error);
+      
+      let errorMessage = 'Failed to remove team member';
       if (error.message?.includes('Not authenticated')) {
-        toast.error('Authentication required - please refresh the page and log in again');
-      } else {
-        toast.error('Failed to remove team member');
+        errorMessage = 'Authentication required - please refresh the page and log in again';
+      } else if (error.message) {
+        errorMessage = error.message;
       }
+      
+      toast.error(errorMessage);
     }
   });
   
