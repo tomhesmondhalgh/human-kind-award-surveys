@@ -7,6 +7,9 @@ import { signUpWithEmail } from '@/utils/auth/signUp';
 import { signOutUser } from '@/utils/auth/signOut';
 import { completeUserProfile } from '@/utils/auth/profileManagement';
 import { useEnhancedSession } from '@/hooks/useEnhancedSession';
+import { withErrorRecovery } from '@/utils/auth/errorRecovery';
+import { classifyError, getUserFriendlyMessage } from '@/utils/auth/errorClassification';
+import { toast } from 'sonner';
 
 interface AuthContextType {
   user: User | null;
@@ -20,7 +23,7 @@ interface AuthContextType {
   isSessionHealthy: boolean;
   sessionHealthIssues: string[];
   lastSessionRefresh: Date | null;
-  // Methods
+  // Methods with enhanced error recovery
   signIn: (email: string, password: string) => Promise<{ error: any; success: boolean }>;
   signUp: (email: string, password: string, userData?: any) => Promise<{ error: any; success: boolean; user?: User }>;
   signOut: () => Promise<void>;
@@ -67,18 +70,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     forceLogout
   } = useEnhancedSession();
 
-  // Enhanced sign in handler with session monitoring integration
-  const signIn = async (email: string, password: string) => {
-    try {
+  // Enhanced sign in handler with error recovery and classification
+  const signIn = withErrorRecovery(
+    async (email: string, password: string) => {
+      console.log('🔐 Enhanced sign in with error recovery');
+      
       const result = await signInWithEmail(email, password);
       
-      // If sign in fails due to storage issues, provide helpful guidance
-      if (!result.success && authError?.message.includes('storage')) {
+      // If sign in fails, classify and handle the error
+      if (!result.success && result.error) {
+        const classifiedError = classifyError(result.error);
+        const userMessage = getUserFriendlyMessage(classifiedError);
+        
+        // Show appropriate toast based on error classification
+        if (classifiedError.isRecoverable) {
+          toast.warning(userMessage, {
+            description: classifiedError.suggestedActions[0],
+            duration: 4000
+          });
+        } else {
+          toast.error(userMessage, {
+            description: classifiedError.suggestedActions[0],
+            duration: 6000
+          });
+        }
+        
         return {
           ...result,
           error: {
             ...result.error,
-            message: result.error.message + ' Try adjusting your browser privacy settings to allow storage for this site.'
+            classifiedError,
+            userMessage
           }
         };
       }
@@ -88,55 +110,179 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setTimeout(() => {
           validateSession();
         }, 100);
+        
+        toast.success('Welcome back!', {
+          description: 'You have been successfully logged in.',
+          duration: 3000
+        });
       }
       
       return result;
-    } catch (error) {
-      console.error('Enhanced sign in error:', error);
-      return { error: error as Error, success: false };
+    },
+    {
+      maxRetries: 2,
+      onProgress: (state) => {
+        console.log('🔄 Sign in recovery progress:', state);
+        if (state.attempts.length > 1) {
+          toast.info('Retrying login...', {
+            description: 'Attempting to resolve the connection issue.',
+            duration: 3000
+          });
+        }
+      },
+      onFailure: (finalError) => {
+        console.error('❌ Sign in recovery failed:', finalError);
+        const userMessage = getUserFriendlyMessage(finalError);
+        toast.error(userMessage, {
+          description: 'Please try again or contact support if the issue persists.',
+          duration: 8000
+        });
+      }
     }
-  };
+  );
 
-  // Enhanced sign up handler
-  const signUp = async (email: string, password: string, userData?: any) => {
-    try {
+  // Enhanced sign up handler with error recovery
+  const signUp = withErrorRecovery(
+    async (email: string, password: string, userData?: any) => {
+      console.log('📝 Enhanced sign up with error recovery');
+      
       const response = await signUpWithEmail(email, password, userData);
       
-      // Provide storage-aware guidance
+      // Handle storage-related warnings
       if (storageCapabilities && !storageCapabilities.localStorage) {
-        console.warn('⚠️ localStorage not available - session may not persist');
+        toast.warning('Limited browser storage detected', {
+          description: 'Your session may not persist between browser sessions.',
+          duration: 5000
+        });
+      }
+      
+      if (response.success) {
+        toast.success('Account created successfully!', {
+          description: 'Please check your email to verify your account.',
+          duration: 5000
+        });
+      } else if (response.error) {
+        const classifiedError = classifyError(response.error);
+        const userMessage = getUserFriendlyMessage(classifiedError);
+        
+        toast.error(userMessage, {
+          description: classifiedError.suggestedActions[0],
+          duration: 6000
+        });
       }
       
       return response;
-    } catch (error) {
-      console.error('Enhanced sign up error:', error);
-      return { error: error as Error, success: false };
+    },
+    {
+      maxRetries: 1,
+      onFailure: (finalError) => {
+        console.error('❌ Sign up recovery failed:', finalError);
+        const userMessage = getUserFriendlyMessage(finalError);
+        toast.error(userMessage, {
+          description: 'Please try again with different details or contact support.',
+          duration: 8000
+        });
+      }
     }
-  };
+  );
 
-  // Enhanced sign out handler with session cleanup
-  const signOut = async () => {
-    try {
-      // Force logout through session monitor for cross-tab coordination
-      forceLogout();
+  // Enhanced sign out handler with error recovery and session cleanup
+  const signOut = withErrorRecovery(
+    async () => {
+      console.log('🚪 Enhanced sign out with error recovery');
       
-      // Also perform traditional sign out
-      await signOutUser();
-    } catch (error) {
-      console.error('Enhanced sign out error:', error);
-      // Even if sign out fails, ensure cleanup via forceLogout
-      forceLogout();
+      try {
+        // Force logout through session monitor for cross-tab coordination
+        forceLogout();
+        
+        // Also perform traditional sign out
+        await signOutUser();
+        
+        toast.success('Logged out successfully', {
+          description: 'You have been safely logged out.',
+          duration: 3000
+        });
+      } catch (error) {
+        console.error('⚠️ Sign out error:', error);
+        
+        // Even if sign out fails, ensure cleanup via forceLogout
+        forceLogout();
+        
+        // Classify and handle the error
+        const classifiedError = classifyError(error as Error);
+        
+        if (classifiedError.isRecoverable) {
+          toast.warning('Logout completed with issues', {
+            description: 'You have been logged out, but some cleanup may be incomplete.',
+            duration: 4000
+          });
+        } else {
+          toast.error('Logout error', {
+            description: 'Please refresh the page to complete logout.',
+            duration: 5000
+          });
+        }
+        
+        throw error;
+      }
+    },
+    {
+      maxRetries: 1,
+      onFailure: (finalError) => {
+        console.error('❌ Sign out recovery failed:', finalError);
+        // Force a page refresh as last resort
+        window.location.reload();
+      }
     }
-  };
+  );
 
-  // Profile completion handler
-  const handleCompleteUserProfile = async (userData: any) => {
-    if (!user) {
-      return { error: new Error('User not authenticated'), success: false };
+  // Enhanced profile completion handler
+  const handleCompleteUserProfile = withErrorRecovery(
+    async (userData: any) => {
+      if (!user) {
+        const error = new Error('User not authenticated');
+        const classifiedError = classifyError(error);
+        const userMessage = getUserFriendlyMessage(classifiedError);
+        
+        toast.error(userMessage, {
+          description: 'Please log in first.',
+          duration: 4000
+        });
+        
+        return { error, success: false };
+      }
+      
+      const result = await completeUserProfile(user.id, userData);
+      
+      if (result.success) {
+        toast.success('Profile updated successfully!', {
+          description: 'Your profile information has been saved.',
+          duration: 3000
+        });
+      } else if (result.error) {
+        const classifiedError = classifyError(result.error);
+        const userMessage = getUserFriendlyMessage(classifiedError);
+        
+        toast.error(userMessage, {
+          description: classifiedError.suggestedActions[0],
+          duration: 5000
+        });
+      }
+      
+      return result;
+    },
+    {
+      maxRetries: 2,
+      onFailure: (finalError) => {
+        console.error('❌ Profile completion recovery failed:', finalError);
+        const userMessage = getUserFriendlyMessage(finalError);
+        toast.error(userMessage, {
+          description: 'Please try again or contact support.',
+          duration: 6000
+        });
+      }
     }
-    
-    return completeUserProfile(user.id, userData);
-  };
+  );
 
   return (
     <AuthContext.Provider
