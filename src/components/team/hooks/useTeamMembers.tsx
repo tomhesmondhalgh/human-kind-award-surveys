@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,19 +20,24 @@ export function useTeamMembers(organizationId?: string) {
       if (!organizationId) return [];
       
       try {
-        // Debug: Check current session
+        console.log('🔍 Phase 1: Starting team members query with authentication verification');
+        
+        // Phase 1: Authentication State Verification
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        console.log('Team members query - Session check:', {
+        console.log('✅ Phase 1 - Session check:', {
           hasSession: !!session,
           userId: session?.user?.id,
           organizationId,
-          sessionError
+          sessionError,
+          authUid: session?.user?.id
         });
 
         if (!session?.user) {
-          console.warn('No authenticated session found when querying team members');
-          throw new Error('Not authenticated');
+          console.error('❌ Phase 1 FAILED: No authenticated session found');
+          throw new Error('Not authenticated - session validation failed');
         }
+
+        console.log('✅ Phase 1 PASSED: Valid session found, proceeding to data query');
 
         // Updated query to work with the new foreign key constraints
         const { data, error } = await supabase
@@ -49,18 +53,18 @@ export function useTeamMembers(organizationId?: string) {
           .eq('organization_id', organizationId);
           
         if (error) {
-          console.error('Team members query error:', error);
+          console.error('❌ Team members query error:', error);
           throw error;
         }
         
-        console.log('Team members fetched successfully:', data?.length || 0, 'members');
+        console.log('✅ Team members fetched successfully:', data?.length || 0, 'members');
         
         return (data || []).map(membership => ({
           ...membership,
           profile: membership.profiles
         })) as OrganizationMember[];
       } catch (error) {
-        console.error('Error fetching organization members:', error);
+        console.error('💥 Error fetching organization members:', error);
         throw error;
       }
     },
@@ -83,28 +87,110 @@ export function useTeamMembers(organizationId?: string) {
       if (!organizationId) throw new Error('No organization selected');
       
       try {
-        console.log('🚀 Starting invitation process...', { email, role, organizationId });
+        console.log('🚀 === TEAM INVITATION DEBUG FLOW START ===');
+        console.log('📋 Invitation request:', { email, role, organizationId });
 
-        // Check session before making the request
+        // PHASE 1: Authentication State Verification
+        console.log('🔍 PHASE 1: Authentication State Verification');
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        console.log('📊 Phase 1 - Session Analysis:', {
+          hasSession: !!session,
+          userId: session?.user?.id,
+          userEmail: session?.user?.email,
+          sessionError: sessionError?.message,
+          expiresAt: session?.expires_at ? new Date(session.expires_at * 1000) : null,
+          isExpired: session?.expires_at ? (session.expires_at * 1000) < Date.now() : true
+        });
+        
         if (sessionError) {
-          console.error('❌ Session error:', sessionError);
-          throw new Error(`Session error: ${sessionError.message}`);
+          console.error('❌ Phase 1 FAILED: Session error:', sessionError);
+          throw new Error(`Authentication error: ${sessionError.message}`);
         }
         
         if (!session?.user) {
-          console.error('❌ No authenticated session');
-          throw new Error('Not authenticated - please log in again');
+          console.error('❌ Phase 1 FAILED: No authenticated session');
+          throw new Error('Not authenticated - please log in again and try from /team page');
         }
 
-        console.log('✅ Session validated, user:', session.user.id);
+        console.log('✅ Phase 1 PASSED: Valid session found');
 
-        // Generate invitation token and expiry
+        // PHASE 2: Database Function Testing
+        console.log('🔍 PHASE 2: Database Permission Testing');
+        
+        try {
+          // Test auth.uid() function
+          const { data: currentUserEmail, error: emailError } = await supabase
+            .rpc('get_current_user_email');
+          
+          console.log('📧 Auth UID Test Result:', {
+            currentUserEmail,
+            emailError: emailError?.message,
+            expectedEmail: session.user.email,
+            matches: currentUserEmail === session.user.email
+          });
+
+          if (emailError) {
+            console.error('❌ Phase 2 FAILED: auth.uid() function error:', emailError);
+            throw new Error(`Database authentication error: ${emailError.message}`);
+          }
+
+          // Test organization membership permission
+          const { data: canManage, error: permissionError } = await supabase
+            .rpc('user_can_manage_org_membership', {
+              user_uuid: session.user.id,
+              org_id: organizationId
+            });
+
+          console.log('🏢 Organization Permission Test:', {
+            canManage,
+            permissionError: permissionError?.message,
+            userId: session.user.id,
+            organizationId,
+            function: 'user_can_manage_org_membership'
+          });
+
+          if (permissionError) {
+            console.error('❌ Phase 2 FAILED: Permission check error:', permissionError);
+            throw new Error(`Permission check failed: ${permissionError.message}`);
+          }
+
+          if (!canManage) {
+            console.error('❌ Phase 2 FAILED: User lacks admin permissions');
+            console.log('🔍 Checking raw membership data...');
+            
+            // Additional debugging: check raw membership
+            const { data: rawMembership, error: rawError } = await supabase
+              .from('organization_memberships')
+              .select('*')
+              .eq('user_id', session.user.id)
+              .eq('organization_id', organizationId)
+              .single();
+
+            console.log('📋 Raw Membership Check:', {
+              rawMembership,
+              rawError: rawError?.message,
+              hasAdminRole: rawMembership?.role === 'admin'
+            });
+
+            throw new Error('You do not have admin permissions for this organisation. Please contact an administrator.');
+          }
+
+          console.log('✅ Phase 2 PASSED: User has admin permissions');
+
+        } catch (dbError) {
+          console.error('💥 Phase 2 Database Error:', dbError);
+          throw dbError;
+        }
+
+        // PHASE 3: Database Invitation Creation
+        console.log('🔍 PHASE 3: Database Invitation Creation');
+        
         const token = crypto.randomUUID();
         const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
+        expiresAt.setDate(expiresAt.getDate() + 7);
         
-        console.log('📝 Creating invitation in database...', {
+        console.log('📝 Creating invitation with data:', {
           email,
           organizationId,
           role,
@@ -113,7 +199,6 @@ export function useTeamMembers(organizationId?: string) {
           expiresAt: expiresAt.toISOString()
         });
 
-        // Create the invitation in the database
         const { data: invitation, error: dbError } = await supabase
           .from('organization_invitations')
           .insert({
@@ -131,7 +216,7 @@ export function useTeamMembers(organizationId?: string) {
           .single();
           
         if (dbError) {
-          console.error('❌ Database invitation creation error:', {
+          console.error('❌ Phase 3 FAILED: Database invitation creation error:', {
             error: dbError,
             message: dbError.message,
             details: dbError.details,
@@ -139,11 +224,11 @@ export function useTeamMembers(organizationId?: string) {
             code: dbError.code
           });
           
-          // Provide specific error messages based on the error type
+          // Enhanced error messages
           if (dbError.message?.includes('permission denied')) {
-            throw new Error('Permission denied - you may not have admin rights for this organisation');
+            throw new Error('Database permission denied - RLS policy may be blocking access');
           } else if (dbError.message?.includes('violates row-level security')) {
-            throw new Error('Access denied - please check your organisation permissions');
+            throw new Error('Row-level security violation - check your admin permissions');
           } else if (dbError.message?.includes('duplicate key')) {
             throw new Error('An invitation for this email already exists');
           } else {
@@ -151,8 +236,11 @@ export function useTeamMembers(organizationId?: string) {
           }
         }
         
-        console.log('✅ Invitation created in database:', invitation?.id);
+        console.log('✅ Phase 3 PASSED: Invitation created in database:', invitation?.id);
 
+        // PHASE 4: Edge Function Email Sending
+        console.log('🔍 PHASE 4: Email Sending via Edge Function');
+        
         // Get inviter profile for email
         const { data: inviterProfile, error: profileError } = await supabase
           .from('profiles')
@@ -168,13 +256,13 @@ export function useTeamMembers(organizationId?: string) {
           ? `${inviterProfile.first_name || ''} ${inviterProfile.last_name || ''}`.trim() || 'A colleague'
           : 'A colleague';
 
-        console.log('📧 Sending invitation email...', {
+        console.log('📧 Sending invitation email with data:', {
           to: email,
           organizationName: invitation.organizations?.name || 'your organization',
-          inviterName
+          inviterName,
+          edgeFunctionName: 'send-team-invitation'
         });
 
-        // Send the invitation email
         const { data: emailData, error: emailError } = await supabase.functions.invoke('send-team-invitation', {
           body: {
             email,
@@ -186,17 +274,23 @@ export function useTeamMembers(organizationId?: string) {
         });
 
         if (emailError) {
-          console.error('❌ Email sending error:', emailError);
-          // Don't throw here - the invitation was created successfully, just log the email error
+          console.error('❌ Phase 4 WARNING: Email sending failed:', emailError);
           toast.error('Invitation created but email failed to send. You can resend it from the pending invitations list.');
           return invitation;
         } else {
-          console.log('✅ Invitation email sent successfully:', emailData);
+          console.log('✅ Phase 4 PASSED: Invitation email sent successfully:', emailData);
         }
         
+        console.log('🎉 === TEAM INVITATION DEBUG FLOW COMPLETE ===');
         return invitation;
+        
       } catch (error) {
-        console.error('❌ Error in sendInvitation:', error);
+        console.error('❌ === INVITATION FLOW FAILED ===');
+        console.error('💥 Final error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
         throw error;
       }
     },
@@ -214,9 +308,9 @@ export function useTeamMembers(organizationId?: string) {
       
       if (error.message?.includes('Not authenticated')) {
         errorMessage = 'Authentication required - please refresh the page and log in again';
-      } else if (error.message?.includes('Permission denied')) {
+      } else if (error.message?.includes('permission denied') || error.message?.includes('admin permissions')) {
         errorMessage = 'You do not have permission to invite members to this organisation';
-      } else if (error.message?.includes('Access denied')) {
+      } else if (error.message?.includes('Row-level security')) {
         errorMessage = 'Access denied - please check your organisation permissions';
       } else if (error.message) {
         errorMessage = error.message;
