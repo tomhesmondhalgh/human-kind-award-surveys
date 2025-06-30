@@ -6,7 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, XCircle, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { CheckCircle, XCircle, AlertCircle, Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { validateSessionWithDatabase, refreshAndValidateSession } from '@/utils/auth/sessionValidator';
 
 const AuthDebugPanel: React.FC = () => {
   const { user, session, isAuthenticated, isSessionHealthy, sessionHealthIssues } = useAuth();
@@ -14,13 +15,24 @@ const AuthDebugPanel: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [testResults, setTestResults] = useState<any>({});
   const [isRunningTests, setIsRunningTests] = useState(false);
+  const [sessionValidation, setSessionValidation] = useState<any>(null);
 
   const runAuthTests = async () => {
     setIsRunningTests(true);
     const results: any = {};
 
     try {
-      // Test 1: Basic session check
+      // Test 1: Enhanced Session Validation
+      console.log('🔍 Testing enhanced session validation...');
+      const validationResult = await validateSessionWithDatabase();
+      results.enhancedSessionValidation = {
+        success: validationResult.isValid,
+        data: validationResult,
+        error: validationResult.error
+      };
+      setSessionValidation(validationResult);
+
+      // Test 2: Basic session check
       console.log('🔍 Testing basic session...');
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       results.sessionCheck = {
@@ -29,7 +41,7 @@ const AuthDebugPanel: React.FC = () => {
         error: sessionError
       };
 
-      // Test 2: User retrieval
+      // Test 3: User retrieval
       console.log('🔍 Testing user retrieval...');
       const { data: userData, error: userError } = await supabase.auth.getUser();
       results.userCheck = {
@@ -38,7 +50,7 @@ const AuthDebugPanel: React.FC = () => {
         error: userError
       };
 
-      // Test 3: auth.uid() function test
+      // Test 4: auth.uid() function test
       console.log('🔍 Testing auth.uid() function...');
       try {
         const { data: uidTest, error: uidError } = await supabase
@@ -55,7 +67,7 @@ const AuthDebugPanel: React.FC = () => {
         };
       }
 
-      // Test 4: Organization membership test (if org exists)
+      // Test 5: Organization membership test (if org exists)
       if (currentOrganization?.id) {
         console.log('🔍 Testing organization membership...');
         try {
@@ -77,7 +89,7 @@ const AuthDebugPanel: React.FC = () => {
         }
       }
 
-      // Test 5: Direct organization memberships query
+      // Test 6: Direct organization memberships query
       if (user?.id) {
         console.log('🔍 Testing direct memberships query...');
         try {
@@ -104,6 +116,24 @@ const AuthDebugPanel: React.FC = () => {
       console.error('💥 Error running auth tests:', error);
       results.generalError = error;
       setTestResults(results);
+    } finally {
+      setIsRunningTests(false);
+    }
+  };
+
+  const handleSessionRefresh = async () => {
+    setIsRunningTests(true);
+    try {
+      console.log('🔄 Forcing session refresh...');
+      const result = await refreshAndValidateSession();
+      setSessionValidation(result);
+      
+      if (result.isValid) {
+        // Re-run tests after successful refresh
+        await runAuthTests();
+      }
+    } catch (error) {
+      console.error('💥 Session refresh failed:', error);
     } finally {
       setIsRunningTests(false);
     }
@@ -163,10 +193,10 @@ const AuthDebugPanel: React.FC = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <AlertCircle className="text-blue-600" />
-                Authentication Debug Panel
+                Enhanced Authentication Debug Panel
               </CardTitle>
               <CardDescription>
-                Current authentication state and test results
+                Current authentication state and enhanced session validation
               </CardDescription>
               <div className="flex gap-2">
                 <Button 
@@ -175,6 +205,15 @@ const AuthDebugPanel: React.FC = () => {
                   size="sm"
                 >
                   {isRunningTests ? 'Running Tests...' : 'Run Auth Tests'}
+                </Button>
+                <Button 
+                  onClick={handleSessionRefresh}
+                  disabled={isRunningTests}
+                  size="sm"
+                  variant="secondary"
+                >
+                  <RefreshCw size={16} className="mr-1" />
+                  Refresh Session
                 </Button>
                 <Button 
                   variant="outline" 
@@ -187,6 +226,31 @@ const AuthDebugPanel: React.FC = () => {
             </CardHeader>
             
             <CardContent className="space-y-6">
+              {/* Enhanced Session Validation */}
+              {sessionValidation && (
+                <div className="space-y-3">
+                  <h3 className="font-semibold">Enhanced Session Validation</h3>
+                  <div className="p-3 border rounded">
+                    <div className="flex items-center gap-2 mb-2">
+                      {sessionValidation.isValid ? (
+                        <CheckCircle size={16} className="text-green-600" />
+                      ) : (
+                        <XCircle size={16} className="text-red-600" />
+                      )}
+                      <span className="font-medium">
+                        JWT Database Sync: {sessionValidation.isValid ? 'VALID' : 'FAILED'}
+                      </span>
+                    </div>
+                    {sessionValidation.error && (
+                      <p className="text-sm text-red-600">{sessionValidation.error}</p>
+                    )}
+                    {sessionValidation.needsRefresh && (
+                      <Badge variant="destructive" className="mt-2">Needs Refresh</Badge>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Current Auth State */}
               <div className="space-y-3">
                 <h3 className="font-semibold">Current Authentication State</h3>
@@ -250,6 +314,7 @@ const AuthDebugPanel: React.FC = () => {
                 <div className="space-y-3">
                   <h3 className="font-semibold">Test Results</h3>
                   <div className="space-y-3">
+                    {renderTestResult('Enhanced Session Validation', testResults.enhancedSessionValidation)}
                     {renderTestResult('Session Check', testResults.sessionCheck)}
                     {renderTestResult('User Check', testResults.userCheck)}
                     {renderTestResult('Auth UID Test', testResults.authUidTest)}
