@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
@@ -16,12 +15,22 @@ const AuthDebugPanel: React.FC = () => {
   const [testResults, setTestResults] = useState<any>({});
   const [isRunningTests, setIsRunningTests] = useState(false);
   const [sessionValidation, setSessionValidation] = useState<any>(null);
+  const [jwtDebugInfo, setJwtDebugInfo] = useState<any>(null);
 
   const runAuthTests = async () => {
     setIsRunningTests(true);
     const results: any = {};
 
     try {
+      // Enhanced JWT debugging
+      console.log('🔍 Running enhanced JWT debugging...');
+      const jwtInfo = await debugJWTToken();
+      results.jwtDebug = {
+        success: jwtInfo.authUidTest?.success && jwtInfo.session?.exists,
+        data: jwtInfo,
+        error: jwtInfo.error
+      };
+
       // Test 1: Enhanced Session Validation
       console.log('🔍 Testing enhanced session validation...');
       const validationResult = await validateSessionWithDatabase();
@@ -139,6 +148,98 @@ const AuthDebugPanel: React.FC = () => {
     }
   };
 
+  const debugJWTToken = async () => {
+    console.log('🔍 Debug Panel: JWT Token Debugging...');
+    
+    try {
+      // Get session details
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      // Check stored token
+      const storedToken = localStorage.getItem('sb-bagaaqkmewkuwtudwnqw-auth-token');
+      let parsedStoredToken = null;
+      
+      if (storedToken) {
+        try {
+          parsedStoredToken = JSON.parse(storedToken);
+        } catch (e) {
+          console.error('Failed to parse stored token:', e);
+        }
+      }
+
+      // Test auth.uid() function
+      const { data: uidTest, error: uidError } = await supabase
+        .rpc('get_current_user_email');
+
+      // Test explicit JWT transmission
+      let explicitJWTTest = null;
+      if (sessionData.session?.access_token) {
+        try {
+          const { createClient } = await import('@supabase/supabase-js');
+          const explicitClient = createClient(
+            'https://bagaaqkmewkuwtudwnqw.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhZ2FhcWttZXdrdXd0dWR3bnF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA2NjQwMzIsImV4cCI6MjA1NjI0MDAzMn0.Eu_xDUDDk188oE0dB7W7KJ4oWjB6nQNuUBBnZUMrsvE',
+            {
+              auth: { persistSession: false },
+              global: {
+                headers: {
+                  'Authorization': `Bearer ${sessionData.session.access_token}`,
+                  'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhZ2FhcWttZXdrdXd0dWR3bnF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA2NjQwMzIsImV4cCI6MjA1NjI0MDAzMn0.Eu_xDUDDk188oE0dB7W7KJ4oWjB6nQNuUBBnZUMrsvE'
+                }
+              }
+            }
+          );
+
+          const { data: explicitUidTest, error: explicitUidError } = await explicitClient
+            .rpc('get_current_user_email');
+
+          explicitJWTTest = {
+            success: !explicitUidError,
+            email: explicitUidTest,
+            error: explicitUidError
+          };
+        } catch (error) {
+          explicitJWTTest = {
+            success: false,
+            error: error
+          };
+        }
+      }
+
+      const jwtInfo = {
+        session: {
+          exists: !!sessionData.session,
+          hasAccessToken: !!sessionData.session?.access_token,
+          tokenLength: sessionData.session?.access_token?.length,
+          expiresAt: sessionData.session?.expires_at,
+          tokenPreview: sessionData.session?.access_token?.substring(0, 30) + '...',
+          error: sessionError
+        },
+        storedToken: {
+          exists: !!storedToken,
+          hasAccessToken: !!parsedStoredToken?.access_token,
+          expiresAt: parsedStoredToken?.expires_at,
+          tokensMatch: parsedStoredToken?.access_token === sessionData.session?.access_token
+        },
+        authUidTest: {
+          success: !uidError,
+          email: uidTest,
+          error: uidError
+        },
+        explicitJWTTest
+      };
+
+      setJwtDebugInfo(jwtInfo);
+      return jwtInfo;
+
+    } catch (error) {
+      console.error('JWT debugging failed:', error);
+      const errorInfo = { error };
+      setJwtDebugInfo(errorInfo);
+      return errorInfo;
+    }
+  };
+
   const renderTestResult = (testName: string, result: any) => {
     if (!result) return null;
 
@@ -171,6 +272,59 @@ const AuthDebugPanel: React.FC = () => {
     );
   };
 
+  const renderJWTDebugInfo = () => {
+    if (!jwtDebugInfo) return null;
+
+    return (
+      <div className="space-y-3">
+        <h3 className="font-semibold">Enhanced JWT Token Debug</h3>
+        
+        {/* Session Info */}
+        <div className="border rounded p-3 space-y-2">
+          <h4 className="font-medium text-sm">Session Status</h4>
+          <div className="text-xs space-y-1">
+            <div>Session Exists: <span className={jwtDebugInfo.session?.exists ? 'text-green-600' : 'text-red-600'}>{jwtDebugInfo.session?.exists ? 'YES' : 'NO'}</span></div>
+            <div>Has Access Token: <span className={jwtDebugInfo.session?.hasAccessToken ? 'text-green-600' : 'text-red-600'}>{jwtDebugInfo.session?.hasAccessToken ? 'YES' : 'NO'}</span></div>
+            {jwtDebugInfo.session?.tokenLength && <div>Token Length: {jwtDebugInfo.session.tokenLength}</div>}
+            {jwtDebugInfo.session?.expiresAt && <div>Expires At: {new Date(jwtDebugInfo.session.expiresAt * 1000).toLocaleString()}</div>}
+            {jwtDebugInfo.session?.tokenPreview && <div>Token Preview: {jwtDebugInfo.session.tokenPreview}</div>}
+          </div>
+        </div>
+
+        {/* Stored Token Info */}
+        <div className="border rounded p-3 space-y-2">
+          <h4 className="font-medium text-sm">Stored Token Status</h4>
+          <div className="text-xs space-y-1">
+            <div>Stored Token Exists: <span className={jwtDebugInfo.storedToken?.exists ? 'text-green-600' : 'text-red-600'}>{jwtDebugInfo.storedToken?.exists ? 'YES' : 'NO'}</span></div>
+            <div>Tokens Match: <span className={jwtDebugInfo.storedToken?.tokensMatch ? 'text-green-600' : 'text-red-600'}>{jwtDebugInfo.storedToken?.tokensMatch ? 'YES' : 'NO'}</span></div>
+          </div>
+        </div>
+
+        {/* Auth UID Test */}
+        <div className="border rounded p-3 space-y-2">
+          <h4 className="font-medium text-sm">Database Auth Test</h4>
+          <div className="text-xs space-y-1">
+            <div>auth.uid() Works: <span className={jwtDebugInfo.authUidTest?.success ? 'text-green-600' : 'text-red-600'}>{jwtDebugInfo.authUidTest?.success ? 'YES' : 'NO'}</span></div>
+            {jwtDebugInfo.authUidTest?.email && <div>Returned Email: {jwtDebugInfo.authUidTest.email}</div>}
+            {jwtDebugInfo.authUidTest?.error && <div className="text-red-600">Error: {JSON.stringify(jwtDebugInfo.authUidTest.error)}</div>}
+          </div>
+        </div>
+
+        {/* Explicit JWT Test */}
+        {jwtDebugInfo.explicitJWTTest && (
+          <div className="border rounded p-3 space-y-2">
+            <h4 className="font-medium text-sm">Explicit JWT Test</h4>
+            <div className="text-xs space-y-1">
+              <div>Explicit JWT Works: <span className={jwtDebugInfo.explicitJWTTest.success ? 'text-green-600' : 'text-red-600'}>{jwtDebugInfo.explicitJWTTest.success ? 'YES' : 'NO'}</span></div>
+              {jwtDebugInfo.explicitJWTTest.email && <div>Returned Email: {jwtDebugInfo.explicitJWTTest.email}</div>}
+              {jwtDebugInfo.explicitJWTTest.error && <div className="text-red-600">Error: {JSON.stringify(jwtDebugInfo.explicitJWTTest.error)}</div>}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       {/* Toggle button - always visible in development */}
@@ -196,7 +350,7 @@ const AuthDebugPanel: React.FC = () => {
                 Enhanced Authentication Debug Panel
               </CardTitle>
               <CardDescription>
-                Current authentication state and enhanced session validation
+                Current authentication state and enhanced session validation with JWT debugging
               </CardDescription>
               <div className="flex gap-2">
                 <Button 
@@ -226,6 +380,9 @@ const AuthDebugPanel: React.FC = () => {
             </CardHeader>
             
             <CardContent className="space-y-6">
+              {/* JWT Debug Info */}
+              {renderJWTDebugInfo()}
+
               {/* Enhanced Session Validation */}
               {sessionValidation && (
                 <div className="space-y-3">
