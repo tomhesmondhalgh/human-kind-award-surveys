@@ -14,11 +14,11 @@ export class SessionAwareDb {
   static select = withDatabaseSession(async (table: string, query?: any) => {
     console.log(`🔍 Session-validated SELECT from ${table}`);
     
-    let dbQuery = supabase.from(table).select(query?.select || '*');
+    let dbQuery = (supabase as any).from(table).select(query?.select || '*');
     
     if (query?.eq) {
       Object.entries(query.eq).forEach(([column, value]) => {
-        dbQuery = dbQuery.eq(column, value as any);
+        dbQuery = dbQuery.eq(column, value);
       });
     }
     
@@ -48,7 +48,7 @@ export class SessionAwareDb {
   static insert = withDatabaseSession(async (table: string, data: any) => {
     console.log(`➕ Session-validated INSERT into ${table}`);
     
-    const { data: result, error } = await supabase
+    const { data: result, error } = await (supabase as any)
       .from(table)
       .insert(data)
       .select();
@@ -63,10 +63,10 @@ export class SessionAwareDb {
   static update = withDatabaseSession(async (table: string, data: any, where: any) => {
     console.log(`✏️ Session-validated UPDATE in ${table}`);
     
-    let query = supabase.from(table).update(data);
+    let query = (supabase as any).from(table).update(data);
     
     Object.entries(where).forEach(([column, value]) => {
-      query = query.eq(column, value as any);
+      query = query.eq(column, value);
     });
     
     const { data: result, error } = await query.select();
@@ -81,10 +81,10 @@ export class SessionAwareDb {
   static delete = withDatabaseSession(async (table: string, where: any) => {
     console.log(`🗑️ Session-validated DELETE from ${table}`);
     
-    let query = supabase.from(table).delete();
+    let query = (supabase as any).from(table).delete();
     
     Object.entries(where).forEach(([column, value]) => {
-      query = query.eq(column, value as any);
+      query = query.eq(column, value);
     });
     
     const { error } = await query;
@@ -99,7 +99,7 @@ export class SessionAwareDb {
   static rpc = withApiSession(async (functionName: string, params?: any) => {
     console.log(`⚡ Session-validated RPC call: ${functionName}`);
     
-    const { data, error } = await supabase.rpc(functionName, params);
+    const { data, error } = await (supabase as any).rpc(functionName, params);
     
     if (error) throw error;
     return data;
@@ -131,7 +131,7 @@ export const sessionDb = {
   
   // Organization operations
   getUserOrganizations: (userId: string) =>
-    SessionAwareDb.select('organization_members', { 
+    SessionAwareDb.select('organization_memberships', { 
       eq: { user_id: userId },
       select: '*, organization:organizations(*)'
     }),
