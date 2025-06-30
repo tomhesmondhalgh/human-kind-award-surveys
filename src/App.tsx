@@ -1,20 +1,15 @@
+
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import { QueryClient } from 'react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import MainLayout from './components/layout/MainLayout';
 import Dashboard from './pages/Dashboard';
 import Surveys from './pages/Surveys';
-import NewSurvey from './pages/NewSurvey';
-import EditSurvey from './pages/EditSurvey';
-import Responses from './pages/Responses';
 import Settings from './pages/Settings';
-import Billing from './pages/Billing';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
-import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
-import Pricing from './pages/Pricing';
 import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
@@ -25,10 +20,20 @@ import { StripeProvider } from './contexts/StripeContext';
 import { Toaster } from '@/components/ui/sonner';
 import AuthErrorBoundary from './components/error/AuthErrorBoundary';
 
+// Create a QueryClient instance
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 3,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
+
 function App() {
   return (
     <Router>
-      <QueryClient>
+      <QueryClientProvider client={queryClient}>
         <AuthErrorBoundary enableRecovery={true}>
           <AuthProvider>
             <OrganizationProvider>
@@ -39,9 +44,7 @@ function App() {
                       <Routes>
                         <Route path="/login" element={<Login />} />
                         <Route path="/signup" element={<SignUp />} />
-                        <Route path="/forgot-password" element={<ForgotPassword />} />
                         <Route path="/reset-password" element={<ResetPassword />} />
-                        <Route path="/pricing" element={<Pricing />} />
 
                         <Route
                           path="/"
@@ -54,11 +57,7 @@ function App() {
                           <Route index element={<Dashboard />} />
                           <Route path="dashboard" element={<Dashboard />} />
                           <Route path="surveys" element={<Surveys />} />
-                          <Route path="surveys/new" element={<NewSurvey />} />
-                          <Route path="surveys/:id/edit" element={<EditSurvey />} />
-                          <Route path="surveys/:id/responses" element={<Responses />} />
                           <Route path="settings" element={<Settings />} />
-                          <Route path="billing" element={<Billing />} />
                         </Route>
 
                         <Route path="*" element={<NotFound />} />
@@ -71,7 +70,7 @@ function App() {
             </OrganizationProvider>
           </AuthProvider>
         </AuthErrorBoundary>
-      </QueryClient>
+      </QueryClientProvider>
     </Router>
   );
 }
