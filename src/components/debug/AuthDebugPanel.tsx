@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
@@ -26,9 +27,9 @@ const AuthDebugPanel: React.FC = () => {
       console.log('🔍 Running enhanced JWT debugging...');
       const jwtInfo = await debugJWTToken();
       results.jwtDebug = {
-        success: jwtInfo.authUidTest?.success && jwtInfo.session?.exists,
+        success: !!(jwtInfo && typeof jwtInfo === 'object' && 'authUidTest' in jwtInfo && 'session' in jwtInfo && jwtInfo.authUidTest?.success && jwtInfo.session?.exists),
         data: jwtInfo,
-        error: jwtInfo.error
+        error: (jwtInfo && typeof jwtInfo === 'object' && 'error' in jwtInfo) ? jwtInfo.error : null
       };
 
       // Test 1: Enhanced Session Validation
@@ -274,6 +275,18 @@ const AuthDebugPanel: React.FC = () => {
 
   const renderJWTDebugInfo = () => {
     if (!jwtDebugInfo) return null;
+
+    // Handle error case safely
+    if ('error' in jwtDebugInfo && !('session' in jwtDebugInfo)) {
+      return (
+        <div className="space-y-3">
+          <h3 className="font-semibold">JWT Token Debug - Error</h3>
+          <div className="text-xs bg-red-100 p-2 rounded text-red-800">
+            <strong>Error:</strong> {JSON.stringify(jwtDebugInfo.error)}
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-3">
