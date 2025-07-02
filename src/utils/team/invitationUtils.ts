@@ -148,104 +148,45 @@ async function forceJWTTransmission() {
 }
 
 /**
- * Sends a team invitation with simplified, reliable approach
+ * Sends a team invitation using secure Edge Function approach
  */
 export async function sendTeamInvitation(data: InvitationData): Promise<InvitationResult> {
   try {
     console.log('🚀 Starting team invitation for:', data.email);
 
-    // Step 1: Validate session
-    const session = await ensureValidSession();
-    console.log('✅ Valid session confirmed');
-
-    // Step 2: Check permissions at application level (this works reliably)
-    const permissionResult = await OrganizationPermissionValidator.canManageOrgMembership(
-      session.user.id, 
-      data.organizationId
-    );
-
-    if (!permissionResult.hasPermission) {
-      console.error('❌ Permission check failed:', permissionResult.error);
-      return {
-        success: false,
-        error: permissionResult.error || 'You do not have admin permissions for this organisation'
-      };
-    }
-
-    console.log('✅ Permission check passed');
-
-    // Step 3: Create invitation (now allowed by simplified RLS policy)
-    const token = crypto.randomUUID();
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
-
-    const { data: invitation, error: dbError } = await supabase
-      .from('organization_invitations')
-      .insert({
+    // Call the secure edge function that handles all permission checks and database operations
+    const { data: result, error } = await supabase.functions.invoke('send-team-invitation-v2', {
+      body: {
         email: data.email,
-        organization_id: data.organizationId,
-        role: data.role as any,
-        token,
-        invited_by: session.user.id,
-        expires_at: expiresAt.toISOString()
-      })
-      .select(`
-        *,
-        organizations!organization_invitations_organization_id_fkey (name)
-      `)
-      .single();
+        role: data.role,
+        organizationId: data.organizationId
+      }
+    });
 
-    if (dbError) {
-      console.error('❌ Database error:', dbError);
+    if (error) {
+      console.error('❌ Edge function error:', error);
       return {
         success: false,
-        error: `Failed to create invitation: ${dbError.message}`
+        error: error.message || 'Failed to send invitation'
       };
     }
 
-    console.log('✅ Invitation created successfully');
-
-    // Step 4: Send Email (optional, non-blocking)
-    try {
-      const { data: inviterProfile } = await supabase
-        .from('profiles')
-        .select('first_name, last_name')
-        .eq('id', session.user.id)
-        .single();
-
-      const inviterName = inviterProfile 
-        ? `${inviterProfile.first_name || ''} ${inviterProfile.last_name || ''}`.trim() || 'A colleague'
-        : 'A colleague';
-
-      const { error: emailError } = await supabase.functions.invoke('send-team-invitation', {
-        body: {
-          email: data.email,
-          organizationName: invitation.organizations?.name || 'your organization',
-          role: data.role,
-          inviterName,
-          invitationToken: token
-        }
-      });
-
-      if (emailError) {
-        console.warn('⚠️ Email sending failed:', emailError);
-      } else {
-        console.log('✅ Email sent successfully');
-      }
-    } catch (emailError) {
-      console.warn('⚠️ Email error (non-blocking):', emailError);
+    if (!result.success) {
+      console.error('❌ Invitation failed:', result.error);
+      return {
+        success: false,
+        error: result.error
+      };
     }
 
-    console.log('🎉 Invitation process completed successfully');
-    
+    console.log('✅ Invitation sent successfully');
     return {
       success: true,
-      invitation
+      invitation: result.invitation
     };
 
   } catch (error) {
-    console.error('❌ === INVITATION FLOW FAILED ===');
-    console.error('💥 Final error:', error);
+    console.error('❌ Invitation failed:', error);
     return {
       success: false,
       error: `Invitation failed: ${(error as Error).message}`
