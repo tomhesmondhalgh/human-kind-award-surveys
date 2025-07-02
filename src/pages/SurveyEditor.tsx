@@ -19,6 +19,7 @@ import SurveyLoading from '../components/survey-form/SurveyLoading';
 import { sendUserToHubspot } from '../utils/auth';
 import ArchiveSurveyDialog from '../components/surveys/ArchiveSurveyDialog';
 import { validateEmails } from '../utils/survey/sendReminder';
+import { OrganizationPermissionValidator } from '@/utils/organizationPermissions';
 
 const SurveyEditor = () => {
   const { id } = useParams<{ id: string }>();
@@ -139,6 +140,24 @@ const SurveyEditor = () => {
         });
         return null;
       }
+
+      // Enhanced permission validation for survey creation/editing
+      console.log('🔒 Validating survey creation permissions...');
+      const permissionResult = await OrganizationPermissionValidator.validateOrganizationAccess(
+        user.id, 
+        currentOrganization.id, 
+        'survey_create'
+      );
+
+      if (!permissionResult.hasPermission) {
+        console.error('❌ Survey permission denied:', permissionResult.error);
+        toast.error("Permission denied", {
+          description: permissionResult.error || "You need editor permissions to create surveys."
+        });
+        setIsSubmitting(false);
+        return null;
+      }
+      console.log('✅ Survey permissions validated successfully');
 
       // Validate emails if this is a send action and using email distribution
       if (action === 'send' && data.distributionMethod === 'email' && data.recipients) {

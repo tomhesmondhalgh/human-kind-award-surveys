@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { ensureValidSession } from '@/utils/auth/sessionValidator';
+import { OrganizationPermissionValidator } from '@/utils/organizationPermissions';
 
 interface InvitationData {
   email: string;
@@ -181,49 +182,32 @@ export async function sendTeamInvitation(data: InvitationData): Promise<Invitati
     const clientToUse = jwtForceResult.success && jwtForceResult.client ? jwtForceResult.client : supabase;
     console.log('🎯 Using client:', jwtForceResult.success ? 'explicit JWT client' : 'default client');
 
-    // PHASE 3: Test Organization Permission with Enhanced Logging
-    console.log('🔍 PHASE 3: Organization Permission Verification');
+    // PHASE 3: Enhanced Organization Permission Verification
+    console.log('🔍 PHASE 3: Enhanced Organization Permission Verification');
     try {
-      console.log('🧪 Testing permission check with user_id:', session.user.id, 'org_id:', data.organizationId);
+      console.log('🧪 Using enhanced permission validator...');
       
-      const { data: canManage, error: permissionError } = await clientToUse
-        .rpc('user_can_manage_org_membership', {
-          user_uuid: session.user.id,
-          org_id: data.organizationId
-        });
+      const permissionResult = await OrganizationPermissionValidator.canManageOrgMembership(
+        session.user.id, 
+        data.organizationId
+      );
 
-      console.log('🧪 Permission check raw result:', {
-        canManage,
-        permissionError,
-        hasError: !!permissionError,
-        errorCode: permissionError?.code,
-        errorMessage: permissionError?.message,
-        errorDetails: permissionError?.details,
-        errorHint: permissionError?.hint
-      });
+      console.log('🧪 Enhanced permission result:', permissionResult);
 
-      if (permissionError) {
-        console.error('❌ Phase 3 FAILED: Permission check error:', permissionError);
+      if (!permissionResult.hasPermission) {
+        console.error('❌ Phase 3 FAILED: Enhanced permission check failed');
         return {
           success: false,
-          error: `Permission check failed: ${permissionError.message}. Debug info: JWT works=${jwtDebugResult.authUidWorks}, Force JWT=${jwtForceResult.success}`
+          error: `Permission denied: ${permissionResult.error || 'You do not have admin permissions for this organisation'}. Debug details: ${JSON.stringify(permissionResult.details)}`
         };
       }
 
-      if (!canManage) {
-        console.error('❌ Phase 3 FAILED: User lacks admin permissions');
-        return {
-          success: false,
-          error: `You do not have admin permissions for this organisation. Debug info: JWT works=${jwtDebugResult.authUidWorks}, Force JWT=${jwtForceResult.success}`
-        };
-      }
-
-      console.log('✅ Phase 3 PASSED: User has admin permissions');
+      console.log('✅ Phase 3 PASSED: Enhanced permission validation successful');
     } catch (error) {
       console.error('💥 Phase 3 Error:', error);
       return {
         success: false,
-        error: `Permission verification failed: ${(error as Error).message}. Debug info: JWT works=${jwtDebugResult.authUidWorks}, Force JWT=${jwtForceResult.success}`
+        error: `Enhanced permission verification failed: ${(error as Error).message}`
       };
     }
 
