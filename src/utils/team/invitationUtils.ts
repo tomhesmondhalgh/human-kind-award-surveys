@@ -154,12 +154,28 @@ export async function sendTeamInvitation(data: InvitationData): Promise<Invitati
   try {
     console.log('🚀 Starting team invitation for:', data.email);
 
-    // Call the secure edge function that handles all permission checks and database operations
+    // Get current session to ensure we have a valid token
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !sessionData.session) {
+      console.error('❌ No valid session:', sessionError);
+      return {
+        success: false,
+        error: 'Authentication session expired. Please log in again.'
+      };
+    }
+
+    console.log('✅ Valid session found, sending invitation with explicit auth header');
+
+    // Call the secure edge function with explicit authorization header
     const { data: result, error } = await supabase.functions.invoke('send-team-invitation-v2', {
       body: {
         email: data.email,
         role: data.role,
         organizationId: data.organizationId
+      },
+      headers: {
+        Authorization: `Bearer ${sessionData.session.access_token}`
       }
     });
 
@@ -171,11 +187,11 @@ export async function sendTeamInvitation(data: InvitationData): Promise<Invitati
       };
     }
 
-    if (!result.success) {
-      console.error('❌ Invitation failed:', result.error);
+    if (!result || !result.success) {
+      console.error('❌ Invitation failed:', result?.error || 'Unknown error');
       return {
         success: false,
-        error: result.error
+        error: result?.error || 'Failed to send invitation'
       };
     }
 
