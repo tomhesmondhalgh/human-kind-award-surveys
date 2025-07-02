@@ -148,186 +148,100 @@ async function forceJWTTransmission() {
 }
 
 /**
- * Sends a team invitation with enhanced debugging and JWT token management
+ * Sends a team invitation with simplified, reliable approach
  */
 export async function sendTeamInvitation(data: InvitationData): Promise<InvitationResult> {
   try {
-    console.log('🚀 === ENHANCED TEAM INVITATION FLOW START ===');
-    console.log('📋 Invitation request:', data);
+    console.log('🚀 Starting team invitation for:', data.email);
 
-    // PHASE 1: Enhanced Session Validation with JWT Debugging
-    console.log('🔍 PHASE 1: Enhanced Session Validation & JWT Debugging');
-    
-    const jwtDebugResult = await debugJWTToken();
-    console.log('🔍 JWT Debug Summary:', jwtDebugResult);
+    // Step 1: Validate session
+    const session = await ensureValidSession();
+    console.log('✅ Valid session confirmed');
 
-    let session;
-    try {
-      session = await ensureValidSession();
-      console.log('✅ Phase 1 PASSED: Valid session established');
-    } catch (error) {
-      console.error('❌ Phase 1 FAILED:', error);
+    // Step 2: Check permissions at application level (this works reliably)
+    const permissionResult = await OrganizationPermissionValidator.canManageOrgMembership(
+      session.user.id, 
+      data.organizationId
+    );
+
+    if (!permissionResult.hasPermission) {
+      console.error('❌ Permission check failed:', permissionResult.error);
       return {
         success: false,
-        error: `Authentication required: ${(error as Error).message}`
+        error: permissionResult.error || 'You do not have admin permissions for this organisation'
       };
     }
 
-    // PHASE 2: Force JWT Token Transmission Test
-    console.log('🚀 PHASE 2: Force JWT Token Transmission');
-    const jwtForceResult = await forceJWTTransmission();
-    console.log('🚀 JWT Force Result:', jwtForceResult);
+    console.log('✅ Permission check passed');
 
-    // Decide which client to use
-    const clientToUse = jwtForceResult.success && jwtForceResult.client ? jwtForceResult.client : supabase;
-    console.log('🎯 Using client:', jwtForceResult.success ? 'explicit JWT client' : 'default client');
+    // Step 3: Create invitation (now allowed by simplified RLS policy)
+    const token = crypto.randomUUID();
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
 
-    // PHASE 3: Enhanced Organization Permission Verification
-    console.log('🔍 PHASE 3: Enhanced Organization Permission Verification');
-    try {
-      console.log('🧪 Using enhanced permission validator...');
-      
-      const permissionResult = await OrganizationPermissionValidator.canManageOrgMembership(
-        session.user.id, 
-        data.organizationId
-      );
-
-      console.log('🧪 Enhanced permission result:', permissionResult);
-
-      if (!permissionResult.hasPermission) {
-        console.error('❌ Phase 3 FAILED: Enhanced permission check failed');
-        return {
-          success: false,
-          error: `Permission denied: ${permissionResult.error || 'You do not have admin permissions for this organisation'}. Debug details: ${JSON.stringify(permissionResult.details)}`
-        };
-      }
-
-      console.log('✅ Phase 3 PASSED: Enhanced permission validation successful');
-    } catch (error) {
-      console.error('💥 Phase 3 Error:', error);
-      return {
-        success: false,
-        error: `Enhanced permission verification failed: ${(error as Error).message}`
-      };
-    }
-
-    // PHASE 4: Create Invitation with Enhanced Logging
-    console.log('🔍 PHASE 4: Creating Invitation');
-    try {
-      const token = crypto.randomUUID();
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7);
-
-      console.log('🧪 Attempting invitation insert with:', {
+    const { data: invitation, error: dbError } = await supabase
+      .from('organization_invitations')
+      .insert({
         email: data.email,
         organization_id: data.organizationId,
-        role: data.role,
+        role: data.role as any,
         token,
         invited_by: session.user.id,
-        expires_at: expiresAt.toISOString(),
-        usingClient: jwtForceResult.success ? 'explicit' : 'default'
-      });
+        expires_at: expiresAt.toISOString()
+      })
+      .select(`
+        *,
+        organizations!organization_invitations_organization_id_fkey (name)
+      `)
+      .single();
 
-      const { data: invitation, error: dbError } = await clientToUse
-        .from('organization_invitations')
-        .insert({
-          email: data.email,
-          organization_id: data.organizationId,
-          role: data.role as any,
-          token,
-          invited_by: session.user.id,
-          expires_at: expiresAt.toISOString()
-        })
-        .select(`
-          *,
-          organizations!organization_invitations_organization_id_fkey (name)
-        `)
-        .single();
-
-      console.log('🧪 Invitation insert result:', {
-        success: !dbError,
-        invitation,
-        dbError,
-        errorCode: dbError?.code,
-        errorMessage: dbError?.message,
-        errorDetails: dbError?.details,
-        errorHint: dbError?.hint
-      });
-
-      if (dbError) {
-        console.error('❌ Phase 4 FAILED: Database error:', dbError);
-        
-        let errorMessage = `Database error: ${dbError.message}`;
-        
-        if (dbError.message?.includes('permission denied') || dbError.message?.includes('violates row-level security')) {
-          errorMessage += `. JWT Debug: auth.uid() works=${jwtDebugResult.authUidWorks}, Force JWT works=${jwtForceResult.success}`;
-          
-          // If standard client failed but force JWT might work, suggest retry
-          if (!jwtForceResult.success && jwtDebugResult.authUidWorks) {
-            errorMessage += '. Try refreshing the page and attempting again.';
-          }
-        }
-        
-        return {
-          success: false,
-          error: errorMessage
-        };
-      }
-
-      console.log('✅ Phase 4 PASSED: Invitation created');
-      
-      // PHASE 5: Send Email (optional, non-blocking)
-      console.log('🔍 PHASE 5: Sending Email');
-      try {
-        const { data: inviterProfile } = await supabase
-          .from('profiles')
-          .select('first_name, last_name')
-          .eq('id', session.user.id)
-          .single();
-
-        const inviterName = inviterProfile 
-          ? `${inviterProfile.first_name || ''} ${inviterProfile.last_name || ''}`.trim() || 'A colleague'
-          : 'A colleague';
-
-        const { error: emailError } = await supabase.functions.invoke('send-team-invitation', {
-          body: {
-            email: data.email,
-            organizationName: invitation.organizations?.name || 'your organization',
-            role: data.role,
-            inviterName,
-            invitationToken: token
-          }
-        });
-
-        if (emailError) {
-          console.warn('⚠️ Phase 5 WARNING: Email sending failed:', emailError);
-        } else {
-          console.log('✅ Phase 5 PASSED: Email sent successfully');
-        }
-      } catch (emailError) {
-        console.warn('⚠️ Phase 5 WARNING: Email error (non-blocking):', emailError);
-      }
-
-      console.log('🎉 === ENHANCED TEAM INVITATION FLOW COMPLETE ===');
-      console.log('🎯 Final Debug Summary:', {
-        jwtDebugWorked: jwtDebugResult.authUidWorks,
-        forceJWTWorked: jwtForceResult.success,
-        clientUsed: jwtForceResult.success ? 'explicit' : 'default',
-        invitationCreated: true
-      });
-      
-      return {
-        success: true,
-        invitation
-      };
-
-    } catch (error) {
-      console.error('💥 Phase 4 Error:', error);
+    if (dbError) {
+      console.error('❌ Database error:', dbError);
       return {
         success: false,
-        error: `Invitation creation failed: ${(error as Error).message}. Debug info: JWT works=${jwtDebugResult.authUidWorks}, Force JWT=${jwtForceResult.success}`
+        error: `Failed to create invitation: ${dbError.message}`
       };
     }
+
+    console.log('✅ Invitation created successfully');
+
+    // Step 4: Send Email (optional, non-blocking)
+    try {
+      const { data: inviterProfile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', session.user.id)
+        .single();
+
+      const inviterName = inviterProfile 
+        ? `${inviterProfile.first_name || ''} ${inviterProfile.last_name || ''}`.trim() || 'A colleague'
+        : 'A colleague';
+
+      const { error: emailError } = await supabase.functions.invoke('send-team-invitation', {
+        body: {
+          email: data.email,
+          organizationName: invitation.organizations?.name || 'your organization',
+          role: data.role,
+          inviterName,
+          invitationToken: token
+        }
+      });
+
+      if (emailError) {
+        console.warn('⚠️ Email sending failed:', emailError);
+      } else {
+        console.log('✅ Email sent successfully');
+      }
+    } catch (emailError) {
+      console.warn('⚠️ Email error (non-blocking):', emailError);
+    }
+
+    console.log('🎉 Invitation process completed successfully');
+    
+    return {
+      success: true,
+      invitation
+    };
 
   } catch (error) {
     console.error('❌ === INVITATION FLOW FAILED ===');
