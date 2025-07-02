@@ -9,6 +9,7 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
+// Create a single global instance to prevent "Multiple GoTrueClient instances" warning
 export const supabase = createClient<Database>(
   SUPABASE_URL, 
   SUPABASE_PUBLISHABLE_KEY,
@@ -17,21 +18,7 @@ export const supabase = createClient<Database>(
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: false,
-      storage: {
-        getItem: (key) => {
-          const item = localStorage.getItem(key);
-          console.log('Getting auth item:', key, item ? 'exists' : 'not found');
-          return item;
-        },
-        setItem: (key, value) => {
-          console.log('Setting auth item:', key);
-          localStorage.setItem(key, value);
-        },
-        removeItem: (key) => {
-          console.log('Removing auth item:', key);
-          localStorage.removeItem(key);
-        }
-      }
+      flowType: 'pkce'
     }
   }
 );

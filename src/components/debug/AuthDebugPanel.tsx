@@ -63,11 +63,10 @@ const AuthDebugPanel: React.FC = () => {
       // Test 4: auth.uid() function test
       console.log('🔍 Testing auth.uid() function...');
       try {
-        const { data: uidTest, error: uidError } = await supabase
-          .rpc('get_current_user_email');
+        const { data: userData, error: uidError } = await supabase.auth.getUser();
         results.authUidTest = {
-          success: !uidError && !!uidTest,
-          data: uidTest,
+          success: !uidError && !!userData.user,
+          data: userData.user?.email,
           error: uidError
         };
       } catch (error) {
@@ -169,8 +168,8 @@ const AuthDebugPanel: React.FC = () => {
       }
 
       // Test auth.uid() function
-      const { data: uidTest, error: uidError } = await supabase
-        .rpc('get_current_user_email');
+      const { data: userData, error: uidError } = await supabase.auth.getUser();
+      const uidTest = userData?.user?.email;
 
       // Test explicit JWT transmission
       let explicitJWTTest = null;
@@ -191,8 +190,8 @@ const AuthDebugPanel: React.FC = () => {
             }
           );
 
-          const { data: explicitUidTest, error: explicitUidError } = await explicitClient
-            .rpc('get_current_user_email');
+          const { data: explicitUserData, error: explicitUidError } = await explicitClient.auth.getUser();
+          const explicitUidTest = explicitUserData?.user?.email;
 
           explicitJWTTest = {
             success: !explicitUidError,

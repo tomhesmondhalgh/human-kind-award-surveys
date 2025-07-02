@@ -31,9 +31,9 @@ const JWTStatusIndicator: React.FC = () => {
       const hasToken = !!sessionData.session?.access_token;
 
       // Test auth.uid()
-      const { data: uidTest, error: uidError } = await supabase
-        .rpc('get_current_user_email');
-      const authUidWorks = !uidError && !!uidTest;
+      const { data: userData, error: uidError } = await supabase.auth.getUser();
+      const authUidWorks = !uidError && !!userData.user;
+      const uidTest = userData?.user?.email;
 
       setStatus({
         hasSession,

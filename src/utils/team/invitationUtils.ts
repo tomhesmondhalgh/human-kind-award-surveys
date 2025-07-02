@@ -51,8 +51,8 @@ async function debugJWTToken() {
 
     // Test auth.uid() function directly
     console.log('🧪 Testing auth.uid() function...');
-    const { data: uidTest, error: uidError } = await supabase
-      .rpc('get_current_user_email');
+    const { data: userData, error: uidError } = await supabase.auth.getUser();
+    const uidTest = userData?.user?.email;
     
     console.log('🧪 Auth UID test result:', {
       success: !uidError,
@@ -120,9 +120,9 @@ async function forceJWTTransmission() {
 
     console.log('🚀 Testing with explicit JWT client...');
     
-    // Test auth.uid() with explicit client
-    const { data: explicitUidTest, error: explicitUidError } = await explicitClient
-      .rpc('get_current_user_email');
+        // Test auth.uid() with explicit client
+        const { data: explicitUserData, error: explicitUidError } = await explicitClient.auth.getUser();
+        const explicitUidTest = explicitUserData?.user?.email;
     
     console.log('🚀 Explicit client auth test:', {
       success: !explicitUidError,

@@ -29,10 +29,9 @@ export async function validateSessionWithDatabase(): Promise<SessionValidationRe
       return { isValid: false, session: null, error: 'No active session' };
     }
     
-    // Step 2: Test JWT token with database by calling a function that uses auth.uid()
+    // Step 2: Test JWT token with database by calling auth.getUser()
     console.log('🔍 Testing JWT token with database...');
-    const { data: currentUserEmail, error: authError } = await supabase
-      .rpc('get_current_user_email');
+    const { data: userData, error: authError } = await supabase.auth.getUser();
     
     if (authError) {
       console.error('❌ JWT token validation failed:', authError);
@@ -44,8 +43,8 @@ export async function validateSessionWithDatabase(): Promise<SessionValidationRe
       };
     }
     
-    if (!currentUserEmail) {
-      console.error('❌ auth.uid() returned null in database');
+    if (!userData.user) {
+      console.error('❌ auth.getUser() returned null');
       return {
         isValid: false,
         session,
@@ -54,11 +53,11 @@ export async function validateSessionWithDatabase(): Promise<SessionValidationRe
       };
     }
     
-    // Step 3: Verify the email matches the session
-    if (currentUserEmail !== session.user.email) {
+    // Step 3: Verify the user ID matches the session
+    if (userData.user.id !== session.user.id) {
       console.error('❌ Session user mismatch:', {
-        sessionEmail: session.user.email,
-        dbEmail: currentUserEmail
+        sessionUserId: session.user.id,
+        dbUserId: userData.user.id
       });
       return {
         isValid: false,
