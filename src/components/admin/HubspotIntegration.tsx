@@ -44,8 +44,6 @@ const HubspotIntegration = () => {
       setNewUsersSyncStatus('inProgress');
       setNewUsersProgress(0);
       
-      console.log('Starting sync of all users to Hubspot list 5417');
-      
       // Call our edge function to handle the sync
       const { data, error: syncError } = await supabase.functions.invoke('sync-hubspot-users', {
         body: {
@@ -100,8 +98,6 @@ const HubspotIntegration = () => {
       setError(null);
       setSurveyCreatorsSyncStatus('inProgress');
       setSurveyCreatorsProgress(0);
-      
-      console.log('Starting sync of survey creators to Hubspot list 5418');
       
       // Call our edge function to handle the sync
       const { data, error: syncError } = await supabase.functions.invoke('sync-hubspot-users', {

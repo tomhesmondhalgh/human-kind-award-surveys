@@ -32,13 +32,11 @@ const CustomScriptsManagement = () => {
         // Check if we have a recent cache (last 30 seconds)
         const now = Date.now();
         if (adminScriptCache.content !== null && (now - adminScriptCache.timestamp) < 30000) {
-          console.log('Using cached script content for admin panel');
           setScriptContent(adminScriptCache.content || '');
           setIsLoading(false);
           return;
         }
         
-        console.log('Fetching script content for admin panel');
         const { data, error } = await supabase
           .from('custom_scripts')
           .select('*')
