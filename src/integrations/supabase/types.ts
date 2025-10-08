@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "12.2.3 (519615d)"
+  }
   public: {
     Tables: {
       action_plan_descriptors: {
@@ -1312,25 +1317,29 @@ export type Database = {
       admin_get_all_payments: {
         Args: Record<PropertyKey, never>
         Returns: {
-          id: string
-          subscription_id: string
           amount: number
-          payment_date: string
-          payment_method: Database["public"]["Enums"]["payment_method"]
-          created_at: string
-          payment_status: Database["public"]["Enums"]["payment_status"]
-          invoice_number: string
-          invoice_id: string
-          billing_postcode: string
           billing_address: string
-          billing_school_name: string
           billing_contact_email: string
           billing_contact_name: string
-          stripe_payment_id: string
+          billing_postcode: string
+          billing_school_name: string
+          created_at: string
           currency: string
+          id: string
+          invoice_id: string
+          invoice_number: string
+          payment_date: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          payment_status: Database["public"]["Enums"]["payment_status"]
           plan_type: string
           purchase_type: string
+          stripe_payment_id: string
+          subscription_id: string
         }[]
+      }
+      can_respond_to_custom_question: {
+        Args: { question_uuid: string; response_uuid: string }
+        Returns: boolean
       }
       count_email_responses: {
         Args: { survey_id: string }
@@ -1342,28 +1351,28 @@ export type Database = {
       }
       create_invitation_with_role: {
         Args: {
-          user_email: string
-          org_id: string
-          role_str: string
+          expiry_date: string
           invitation_token: string
           inviter_id: string
-          expiry_date: string
+          org_id: string
+          role_str: string
+          user_email: string
         }
         Returns: {
-          invitation_id: string
-          recipient_email: string
-          org_uuid: string
           creation_date: string
+          invitation_id: string
+          org_uuid: string
+          recipient_email: string
         }[]
       }
       create_or_update_profile: {
         Args: {
-          profile_id: string
           profile_first_name: string
-          profile_last_name: string
+          profile_id: string
           profile_job_title: string
-          profile_school_name: string
+          profile_last_name: string
           profile_school_address: string
+          profile_school_name: string
         }
         Returns: undefined
       }
@@ -1381,20 +1390,20 @@ export type Database = {
       get_user_organizations: {
         Args: { user_uuid: string }
         Returns: {
+          address: string
+          created_at: string
           id: string
           name: string
-          address: string
-          urn: string
-          created_at: string
-          updated_at: string
           role: Database["public"]["Enums"]["organization_role"]
+          updated_at: string
+          urn: string
         }[]
       }
       get_user_subscription: {
         Args: { user_uuid: string }
         Returns: {
-          plan: Database["public"]["Enums"]["plan_type"]
           is_active: boolean
+          plan: Database["public"]["Enums"]["plan_type"]
         }[]
       }
       is_owner: {
@@ -1407,57 +1416,57 @@ export type Database = {
       }
       redeem_code: {
         Args: {
-          user_uuid: string
           code_uuid: string
           plan: Database["public"]["Enums"]["plan_type"]
+          user_uuid: string
         }
         Returns: Json
       }
       user_can_access_custom_question_response: {
-        Args: { user_uuid: string; question_uuid: string }
+        Args: { question_uuid: string; user_uuid: string }
         Returns: boolean
       }
       user_can_access_progress_note: {
-        Args: { user_uuid: string; note_descriptor_id: string }
+        Args: { note_descriptor_id: string; user_uuid: string }
         Returns: boolean
       }
       user_can_access_survey_response: {
-        Args: { user_uuid: string; template_id: string }
+        Args: { template_id: string; user_uuid: string }
         Returns: boolean
       }
       user_can_edit_progress_note: {
-        Args: { user_uuid: string; note_descriptor_id: string }
+        Args: { note_descriptor_id: string; user_uuid: string }
         Returns: boolean
       }
       user_can_edit_survey: {
-        Args: { user_uuid: string; template_id: string }
+        Args: { template_id: string; user_uuid: string }
         Returns: boolean
       }
       user_can_manage_org_membership: {
-        Args: { user_uuid: string; org_id: string }
+        Args: { org_id: string; user_uuid: string }
         Returns: boolean
       }
       user_can_view_survey: {
-        Args: { user_uuid: string; template_id: string }
+        Args: { template_id: string; user_uuid: string }
         Returns: boolean
       }
       user_has_access: {
         Args: {
-          user_uuid: string
           required_plan: Database["public"]["Enums"]["plan_type"]
+          user_uuid: string
         }
         Returns: boolean
       }
       user_has_organization_role: {
-        Args: { user_uuid: string; org_id: string; required_role: string }
+        Args: { org_id: string; required_role: string; user_uuid: string }
         Returns: boolean
       }
       user_is_organization_admin: {
-        Args: { user_uuid: string; org_id: string }
+        Args: { org_id: string; user_uuid: string }
         Returns: boolean
       }
       user_is_organization_member: {
-        Args: { user_uuid: string; org_id: string }
+        Args: { org_id: string; user_uuid: string }
         Returns: boolean
       }
     }
@@ -1493,21 +1502,25 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database[Extract<keyof Database, "public">]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
@@ -1525,14 +1538,16 @@ export type Tables<
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
@@ -1548,14 +1563,16 @@ export type TablesInsert<
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
@@ -1571,14 +1588,16 @@ export type TablesUpdate<
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
@@ -1586,14 +1605,16 @@ export type Enums<
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
