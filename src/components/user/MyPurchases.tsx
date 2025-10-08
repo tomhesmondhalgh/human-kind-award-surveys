@@ -90,7 +90,8 @@ const MyPurchases = () => {
           subscription:subscriptions (
             id,
             plan_type,
-            purchase_type
+            purchase_type,
+            user_id
           )
         `).in('subscription_id', subscriptionIds).order('created_at', {
         ascending: false
@@ -98,7 +99,13 @@ const MyPurchases = () => {
       if (paymentError) {
         throw paymentError;
       }
-      const formattedPurchases = payments.map(item => ({
+      
+      // Filter to only show purchases for the current user
+      const userPurchases = payments?.filter(payment => 
+        payment.subscription?.user_id === user.id
+      ) || [];
+      
+      const formattedPurchases = userPurchases.map(item => ({
         ...item,
         plan_type: item.subscription?.plan_type || 'unknown',
         purchase_type: item.subscription?.purchase_type || 'unknown'
