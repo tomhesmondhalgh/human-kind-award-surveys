@@ -17,6 +17,9 @@ import ScreenOrientationOverlay from '../components/ui/ScreenOrientationOverlay'
 import { useOrientation } from '../hooks/useOrientation';
 import { useSubscription } from '../hooks/useSubscription';
 import { useNavigate } from 'react-router-dom';
+import BenefitsSection from '../components/upgrade/BenefitsSection';
+import IntroSection from '../components/upgrade/IntroSection';
+import PricingSection from '../components/pricing/PricingSection';
 
 const Improve = () => {
   const { user } = useAuth();

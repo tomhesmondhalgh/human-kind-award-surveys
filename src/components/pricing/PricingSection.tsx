@@ -6,12 +6,12 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '../../hooks/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
-import { Button } from '../../components/ui/button';
-import { Label } from '../../components/ui/label';
-import { Input } from '../../components/ui/input';
-import { Textarea } from '../../components/ui/textarea';
-import RedemptionCodeDialog from './RedemptionCodeDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
+import { Button } from '../ui/button';
+import { Label } from '../ui/label';
+import { Input } from '../ui/input';
+import { Textarea } from '../ui/textarea';
+import RedemptionCodeDialog from '../upgrade/RedemptionCodeDialog';
 
 interface UserProfile {
   firstName: string;
@@ -30,7 +30,19 @@ interface InvoiceDetails {
   additionalInformation?: string;
 }
 
-const PricingSection: React.FC = () => {
+interface PricingSectionProps {
+  showInvoiceOption?: boolean;
+  showRedemptionButton?: boolean;
+  title?: string;
+  cancelUrl?: string;
+}
+
+const PricingSection: React.FC<PricingSectionProps> = ({
+  showInvoiceOption = true,
+  showRedemptionButton = true,
+  title = "Choose the Right Plan for Your Organisation",
+  cancelUrl
+}) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
@@ -93,12 +105,12 @@ const PricingSection: React.FC = () => {
         description: 'Your payment process was cancelled.',
         variant: 'default',
       });
-      navigate('/upgrade', { replace: true });
+      navigate(location.pathname, { replace: true });
     } else if (params.get('payment') === 'success' || params.get('payment') === 'invoice-requested') {
       cleanupDialogState();
-      navigate('/upgrade', { replace: true });
+      navigate(location.pathname, { replace: true });
     }
-  }, [location.search, toast, navigate]);
+  }, [location.search, toast, navigate, location.pathname]);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -163,11 +175,13 @@ const PricingSection: React.FC = () => {
         description: 'Preparing your payment session...',
       });
 
+      const defaultCancelUrl = `${window.location.origin}${location.pathname}?payment=cancelled`;
+
       const { data, error } = await supabase.functions.invoke('create-payment-session', {
         body: {
           planId: planId,
           successUrl: `${window.location.origin}/dashboard?payment=success`,
-          cancelUrl: `${window.location.origin}/upgrade?payment=cancelled`,
+          cancelUrl: cancelUrl || defaultCancelUrl,
           billingDetails: {
             schoolName: userProfile?.schoolName || '',
             address: userProfile?.schoolAddress || '',
@@ -357,7 +371,6 @@ const PricingSection: React.FC = () => {
     );
   }
 
-  // Filter out legacy plans from the main display
   const displayPlans = plans
     .filter(plan => plan.name.toLowerCase() !== 'legacy')
     .map(plan => {
@@ -392,7 +405,7 @@ const PricingSection: React.FC = () => {
         disabled: (planType === 'foundation' && (isFoundation || isProgress || isPremium)) ||
                   (planType === 'progress' && (isProgress || isPremium)) ||
                   (planType === 'premium' && isPremium),
-        hasInvoiceOption: planType !== 'free',
+        hasInvoiceOption: showInvoiceOption && planType !== 'free',
         onCardPayment: () => isPaidPlan ? 
           handleUpgrade(plan.id, upgradePlanType, plan.purchase_type || 'subscription') : 
           navigate('/dashboard'),
@@ -410,7 +423,7 @@ const PricingSection: React.FC = () => {
 
   return (
     <div className="mt-12">
-      <h2 className="text-2xl font-bold text-center mb-10 py-[30px]">Choose the Right Plan for Your Organisation</h2>
+      <h2 className="text-2xl font-bold text-center mb-10 py-[30px]">{title}</h2>
       
       <div className="grid md:grid-cols-4 gap-8">
         {displayPlans.map((plan, index) => (
@@ -428,22 +441,28 @@ const PricingSection: React.FC = () => {
       <div className="mt-8 text-center text-sm text-gray-500">
         <p>
           Need help choosing the right plan? <a href="mailto:contact@humankindaward.com" className="text-brandPurple-600 underline">Contact our support team</a>
-          {" | "}
-          <button 
-            onClick={() => setShowRedemptionDialog(true)}
-            className="text-brandPurple-600 underline hover:text-brandPurple-700 transition-colors"
-          >
-            Have a code?
-          </button>
+          {showRedemptionButton && (
+            <>
+              {" | "}
+              <button 
+                onClick={() => setShowRedemptionDialog(true)}
+                className="text-brandPurple-600 underline hover:text-brandPurple-700 transition-colors"
+              >
+                Have a code?
+              </button>
+            </>
+          )}
         </p>
       </div>
 
-      <RedemptionCodeDialog 
-        open={showRedemptionDialog} 
-        onOpenChange={setShowRedemptionDialog} 
-      />
+      {showRedemptionButton && (
+        <RedemptionCodeDialog 
+          open={showRedemptionDialog} 
+          onOpenChange={setShowRedemptionDialog} 
+        />
+      )}
 
-      {showInvoiceDialog && (
+      {showInvoiceOption && showInvoiceDialog && (
         <Dialog 
           open={showInvoiceDialog} 
           onOpenChange={handleDialogClose}

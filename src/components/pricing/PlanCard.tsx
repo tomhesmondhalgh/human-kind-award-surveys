@@ -1,10 +1,10 @@
-import React, { ReactNode, useState } from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
+import React, { useState } from 'react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../ui/card';
+import { Button } from '../ui/button';
 import PlanFeatureItem from './PlanFeatureItem';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { ChevronDown } from 'lucide-react';
-import RedemptionCodeDialog from './RedemptionCodeDialog';
+import RedemptionCodeDialog from '../upgrade/RedemptionCodeDialog';
 
 export type PlanType = 'free' | 'foundation' | 'progress' | 'premium' | 'legacy';
 

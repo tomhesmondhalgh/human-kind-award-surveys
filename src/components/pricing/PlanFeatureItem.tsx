@@ -1,5 +1,4 @@
-
-import React, { ReactNode } from 'react';
+import React from 'react';
 import { Check, Trophy } from 'lucide-react';
 
 interface PlanFeatureItemProps {

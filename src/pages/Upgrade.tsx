@@ -5,7 +5,7 @@ import MainLayout from '../components/layout/MainLayout';
 import PageTitle from '../components/ui/PageTitle';
 import BenefitsSection from '../components/upgrade/BenefitsSection';
 import IntroSection from '../components/upgrade/IntroSection';
-import PricingSection from '../components/upgrade/PricingSection';
+import PricingSection from '../components/pricing/PricingSection';
 
 const Upgrade = () => {
   const location = useLocation();

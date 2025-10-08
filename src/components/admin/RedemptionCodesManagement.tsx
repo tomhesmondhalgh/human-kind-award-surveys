@@ -8,7 +8,7 @@ import { Label } from "../ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Switch } from "../ui/switch";
 import { Badge } from "../ui/badge";
-import { PlanType } from "../upgrade/PlanCard";
+import { PlanType } from "../pricing/PlanCard";
 import { 
   Copy, 
   Edit, 
