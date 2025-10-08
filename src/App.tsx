@@ -36,7 +36,6 @@ import Upgrade from './pages/Upgrade';
 import NotFound from './pages/NotFound';
 import Accredit from './pages/Accredit';
 import AcceptInvitation from './pages/AcceptInvitation';
-import PermissionTesting from './pages/PermissionTesting';
 
 // Create a query client
 const queryClient = new QueryClient({
@@ -89,7 +88,6 @@ function App() {
                            <Route path="/custom-questions" element={<CustomQuestions />} />
                            <Route path="/upgrade" element={<Upgrade />} />
                            <Route path="/accredit" element={<Accredit />} />
-                           <Route path="/permission-testing" element={<PermissionTesting />} />
                         </Route>
                         
                         {/* Fallback routes */}

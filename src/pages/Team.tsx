@@ -15,7 +15,6 @@ import OrganizationsList from '../components/team/OrganizationsList';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { validateAndRefreshSession } from '../utils/auth/sessionUtils';
-import JWTStatusIndicator from '../components/team/JWTStatusIndicator';
 
 const Team = () => {
   const { user, isAuthenticated, authCheckComplete } = useAuth();
@@ -173,9 +172,6 @@ const Team = () => {
               </Button>
             )}
           </div>
-
-          {/* JWT Status Indicator - only show in development or when there are issues */}
-          {(process.env.NODE_ENV === 'development' || membersError) && <JWTStatusIndicator />}
 
           {/* Show current organization info */}
           {currentOrganization && (

@@ -5,7 +5,6 @@ import { useAuth } from '../contexts/AuthContext';
 import StatsGrid from '../components/dashboard/StatsGrid';
 import RecentSurveysList from '../components/dashboard/RecentSurveysList';
 import GettingStartedGuide from '../components/dashboard/GettingStartedGuide';
-import RoleDiagnostic from '../components/debug/RoleDiagnostic';
 import { useDashboardData } from '../hooks/useDashboardData';
 
 const Dashboard = () => {
@@ -20,12 +19,6 @@ const Dashboard = () => {
             Welcome back{user?.user_metadata?.first_name ? `, ${user.user_metadata.first_name}` : ''}!
           </h1>
           <p className="text-gray-600">Here's what's happening with your surveys today.</p>
-        </div>
-
-        {/* Temporary Role Diagnostic Tool */}
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4 text-red-600">🔧 Role Diagnostic (Temporary)</h2>
-          <RoleDiagnostic />
         </div>
 
         {/* Show error state if there's an error */}
