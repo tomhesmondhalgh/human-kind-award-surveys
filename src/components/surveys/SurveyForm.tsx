@@ -21,7 +21,10 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 // Form schema
 const surveyFormSchema = z.object({
-  name: z.string().min(3, { message: 'Survey name must be at least 3 characters' }),
+  name: z.string()
+    .trim()
+    .min(1, { message: 'Survey name is required' })
+    .min(3, { message: 'Survey name must be at least 3 characters' }),
   date: z.date({
     required_error: 'Survey date is required',
   }),

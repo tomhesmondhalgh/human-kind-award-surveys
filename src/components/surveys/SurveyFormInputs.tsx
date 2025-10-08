@@ -47,9 +47,15 @@ const SurveyFormInputs: React.FC<SurveyFormInputsProps> = ({ form }) => {
         name="name"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Survey Name</FormLabel>
+            <FormLabel>
+              Survey Name <span className="text-destructive">*</span>
+            </FormLabel>
             <FormControl>
-              <Input placeholder="Enter survey name" {...field} />
+              <Input 
+                placeholder="Enter survey name" 
+                required
+                {...field} 
+              />
             </FormControl>
             <FormMessage />
           </FormItem>
