@@ -39,23 +39,21 @@ const Dashboard = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-8">
-            <StatsGrid 
-              totalSurveys={stats.totalSurveys}
-              totalRespondents={stats.totalRespondents}
-              responseRate={stats.responseRate}
-              benchmarkScore={stats.benchmarkScore}
-              isLoading={isLoading}
-            />
-            <RecentSurveysList 
-              surveys={surveys}
-              isLoading={isLoading}
-            />
-          </div>
-          <div>
-            <GettingStartedGuide />
-          </div>
+        <div className="space-y-8">
+          <GettingStartedGuide />
+          
+          <StatsGrid 
+            totalSurveys={stats.totalSurveys}
+            totalRespondents={stats.totalRespondents}
+            responseRate={stats.responseRate}
+            benchmarkScore={stats.benchmarkScore}
+            isLoading={isLoading}
+          />
+          
+          <RecentSurveysList 
+            surveys={surveys}
+            isLoading={isLoading}
+          />
         </div>
       </div>
     </MainLayout>
