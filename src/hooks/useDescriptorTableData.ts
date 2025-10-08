@@ -111,6 +111,10 @@ export function useDescriptorTableData(
     (descriptor.key_actions && descriptor.key_actions.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  const refetchDescriptors = useCallback(() => {
+    fetchDescriptors();
+  }, [fetchDescriptors]);
+
   return {
     descriptors: filteredDescriptors,
     isLoading,
@@ -126,6 +130,7 @@ export function useDescriptorTableData(
     handleDateChange,
     handleEditStart,
     handleEditSave,
-    setEditValue
+    setEditValue,
+    refetchDescriptors
   };
 }

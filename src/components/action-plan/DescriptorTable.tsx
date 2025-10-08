@@ -29,7 +29,8 @@ const DescriptorTable: React.FC<DescriptorTableProps> = ({ userId, section, onRe
     handleDateChange,
     handleEditStart,
     handleEditSave,
-    setEditValue
+    setEditValue,
+    refetchDescriptors
   } = useDescriptorTableData(userId, section, onRefreshSummary);
 
   if (isLoading && descriptors.length === 0) {
@@ -74,7 +75,10 @@ const DescriptorTable: React.FC<DescriptorTableProps> = ({ userId, section, onRe
           descriptorId={progressNoteId}
           isOpen={!!progressNoteId}
           onClose={() => setProgressNoteId(null)}
-          onSuccess={onRefreshSummary}
+          onSuccess={() => {
+            onRefreshSummary();
+            refetchDescriptors();
+          }}
         />
       )}
 
