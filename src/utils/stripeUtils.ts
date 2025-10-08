@@ -1,10 +1,10 @@
 import { supabase } from '@/integrations/supabase/client';
 
 // Function to create a payment session in the backend
-export const createPaymentSession = async (priceId: string, successUrl: string, cancelUrl: string) => {
+export const createPaymentSession = async (planId: string, successUrl: string, cancelUrl: string) => {
   try {
     const { data, error } = await supabase.functions.invoke('create-payment-session', {
-      body: { priceId, successUrl, cancelUrl }
+      body: { planId, successUrl, cancelUrl }
     });
 
     if (error) {

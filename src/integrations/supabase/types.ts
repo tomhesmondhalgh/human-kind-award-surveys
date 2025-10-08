@@ -1343,7 +1343,54 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_plans: {
+        Row: {
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          duration_months: number | null
+          features: Json | null
+          id: string | null
+          is_active: boolean | null
+          is_popular: boolean | null
+          name: string | null
+          price: number | null
+          purchase_type: string | null
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          duration_months?: number | null
+          features?: Json | null
+          id?: string | null
+          is_active?: boolean | null
+          is_popular?: boolean | null
+          name?: string | null
+          price?: number | null
+          purchase_type?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          duration_months?: number | null
+          features?: Json | null
+          id?: string | null
+          is_active?: boolean | null
+          is_popular?: boolean | null
+          name?: string | null
+          price?: number | null
+          purchase_type?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       admin_get_all_payments: {

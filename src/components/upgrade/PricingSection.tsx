@@ -142,7 +142,7 @@ const PricingSection: React.FC = () => {
     fetchUserProfile();
   }, [user]);
 
-  const handleUpgrade = async (stripePriceId: string, planType: 'foundation' | 'progress' | 'premium', purchaseType: 'subscription' | 'one-time') => {
+  const handleUpgrade = async (planId: string, planType: 'foundation' | 'progress' | 'premium', purchaseType: 'subscription' | 'one-time') => {
     try {
       if (isProcessing) {
         console.log('Already processing a payment request, please wait...');
@@ -152,7 +152,7 @@ const PricingSection: React.FC = () => {
       setIsProcessing(true);
       
       console.log('Initiating upgrade process:', {
-        stripePriceId,
+        planId,
         planType,
         purchaseType,
         userProfile
@@ -165,9 +165,7 @@ const PricingSection: React.FC = () => {
 
       const { data, error } = await supabase.functions.invoke('create-payment-session', {
         body: {
-          priceId: stripePriceId,
-          planType,
-          purchaseType,
+          planId: planId,
           successUrl: `${window.location.origin}/dashboard?payment=success`,
           cancelUrl: `${window.location.origin}/upgrade?payment=cancelled`,
           billingDetails: {
@@ -386,7 +384,7 @@ const PricingSection: React.FC = () => {
           } else if (isFree || isSubscriptionLoading || 
               (planType === 'progress' && isFoundation) || 
               (planType === 'premium' && (isFoundation || isProgress))) {
-            handleUpgrade(plan.stripe_price_id || '', upgradePlanType, plan.purchase_type || 'subscription');
+            handleUpgrade(plan.id, upgradePlanType, plan.purchase_type || 'subscription');
           }
         }),
         buttonText: getButtonText(planType),
@@ -396,7 +394,7 @@ const PricingSection: React.FC = () => {
                   (planType === 'premium' && isPremium),
         hasInvoiceOption: planType !== 'free',
         onCardPayment: () => isPaidPlan ? 
-          handleUpgrade(plan.stripe_price_id || '', upgradePlanType, plan.purchase_type || 'subscription') : 
+          handleUpgrade(plan.id, upgradePlanType, plan.purchase_type || 'subscription') : 
           navigate('/dashboard'),
         onInvoiceRequest: () => isPaidPlan ? 
           openInvoiceDialog(upgradePlanType, plan.purchase_type || 'subscription') : 

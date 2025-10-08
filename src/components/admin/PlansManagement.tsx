@@ -10,21 +10,21 @@ import { Separator } from '../../components/ui/separator';
 import { Textarea } from '../../components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { Plan, getPlans } from '../../lib/supabase/subscription';
+import { AdminPlan, getPlans } from '../../lib/supabase/subscription';
 import { supabase } from '../../lib/supabase';
 import { Pencil, Trash, Plus, Save, X } from 'lucide-react';
 import { fixPlanTypes } from '../../utils/typeConversions';
 
 const PlansManagement: React.FC = () => {
-  const [plans, setPlans] = useState<Plan[]>([]);
+  const [plans, setPlans] = useState<AdminPlan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
+  const [editingPlan, setEditingPlan] = useState<AdminPlan | null>(null);
   const [showDialog, setShowDialog] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
   // For new plan form
-  const [newPlan, setNewPlan] = useState<Partial<Plan>>({
+  const [newPlan, setNewPlan] = useState<Partial<AdminPlan>>({
     name: '',
     description: '',
     price: 0,
@@ -48,23 +48,28 @@ const PlansManagement: React.FC = () => {
   const fetchPlans = async () => {
     try {
       setIsLoading(true);
-      const fetchedPlans = await getPlans();
       
-      // Also get inactive plans
-      const { data: inactivePlans, error } = await supabase
+      // Admin needs access to stripe_price_id, so fetch from the plans table directly
+      const { data: allPlans, error } = await supabase
         .from('plans')
         .select('*')
-        .eq('is_active', false)
         .order('sort_order');
       
       if (error) {
-        console.error('Error fetching inactive plans:', error);
-      } else if (inactivePlans) {
-        // Use our utility function to fix plan types
-        const typedInactivePlans = fixPlanTypes(inactivePlans);
-        setPlans([...fetchedPlans, ...typedInactivePlans]);
-      } else {
-        setPlans(fetchedPlans);
+        console.error('Error fetching plans:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load plans.',
+          variant: 'destructive'
+        });
+      } else if (allPlans) {
+        // Parse features for each plan
+        const typedPlans = allPlans.map(plan => ({
+          ...plan,
+          features: Array.isArray(plan.features) ? plan.features : 
+            (typeof plan.features === 'string' ? JSON.parse(plan.features) : [])
+        })) as AdminPlan[];
+        setPlans(typedPlans);
       }
     } catch (error) {
       console.error('Error fetching plans:', error);
@@ -78,7 +83,7 @@ const PlansManagement: React.FC = () => {
     }
   };
 
-  const handleEditPlan = (plan: Plan) => {
+  const handleEditPlan = (plan: AdminPlan) => {
     setEditingPlan(plan);
     setFeaturesText(plan.features.join('\n'));
     setShowDialog(true);
@@ -178,7 +183,7 @@ const PlansManagement: React.FC = () => {
     }
   };
 
-  const handleTogglePlanStatus = async (plan: Plan) => {
+  const handleTogglePlanStatus = async (plan: AdminPlan) => {
     try {
       const { error } = await supabase
         .from('plans')

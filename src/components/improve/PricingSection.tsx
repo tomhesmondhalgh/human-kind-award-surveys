@@ -25,7 +25,7 @@ const PricingSection: React.FC = () => {
   
   const { toast } = useToast();
 
-  const handleUpgrade = async (stripePriceId: string, planType: 'foundation' | 'progress' | 'premium', purchaseType: 'subscription' | 'one-time') => {
+  const handleUpgrade = async (planId: string, planType: 'foundation' | 'progress' | 'premium', purchaseType: 'subscription' | 'one-time') => {
     try {
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-payment-session`, {
         method: 'POST',
@@ -34,9 +34,7 @@ const PricingSection: React.FC = () => {
           Authorization: `Bearer ${localStorage.getItem('supabase.auth.token')}`
         },
         body: JSON.stringify({
-          priceId: stripePriceId,
-          planType,
-          purchaseType,
+          planId: planId,
           successUrl: `${window.location.origin}/dashboard?payment=success`,
           cancelUrl: `${window.location.origin}/improve?payment=cancelled`
         })
@@ -135,7 +133,7 @@ const PricingSection: React.FC = () => {
             (planType === 'premium' && (isFoundation || isProgress))) {
           // Only handle standard plan types, excluding legacy
           if (planType === 'foundation' || planType === 'progress' || planType === 'premium') {
-            handleUpgrade(plan.stripe_price_id || '', planType, plan.purchase_type || 'subscription');
+            handleUpgrade(plan.id, planType, plan.purchase_type || 'subscription');
           }
         }
       },

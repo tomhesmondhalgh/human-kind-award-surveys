@@ -18,7 +18,6 @@ export interface Plan {
   currency: string;
   purchase_type: 'subscription' | 'one-time' | null;
   duration_months: number | null;
-  stripe_price_id: string | null;
   features: string[];
   is_popular: boolean;
   is_active: boolean;
@@ -27,15 +26,19 @@ export interface Plan {
   updated_at?: string;
 }
 
+// Admin-only interface that includes sensitive Stripe data
+export interface AdminPlan extends Plan {
+  stripe_price_id: string | null;
+}
+
 /**
  * Fetch all active subscription plans from the database
  */
 export async function getPlans(): Promise<Plan[]> {
   try {
     const { data, error } = await supabase
-      .from('plans')
+      .from('public_plans')
       .select('*')
-      .eq('is_active', true)
       .order('sort_order');
     
     if (error) {

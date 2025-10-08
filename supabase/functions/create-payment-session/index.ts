@@ -53,50 +53,50 @@ serve(async (req: Request) => {
     const requestData = await req.json();
     console.log('Request data:', requestData);
 
-    const { priceId, successUrl, cancelUrl, planType = "foundation", purchaseType = "subscription", billingDetails } = requestData;
+    const { planId, successUrl, cancelUrl, billingDetails } = requestData;
 
-    if (!priceId || !successUrl || !cancelUrl) {
-      console.error('Missing required fields:', { priceId, successUrl, cancelUrl });
+    if (!planId || !successUrl || !cancelUrl) {
+      console.error('Missing required fields:', { planId, successUrl, cancelUrl });
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get plan details from the database using stripe_price_id
+    // Get plan details from the database using plan ID (server-side lookup)
     const { data: planData, error: planError } = await supabase
       .from('plans')
       .select('*')
-      .eq('stripe_price_id', priceId)
+      .eq('id', planId)
       .eq('is_active', true)
-      .maybeSingle();
+      .single();
 
     if (planError || !planData) {
       console.error('Error retrieving plan from database:', planError);
-      
-      // Fallback to directly retrieving from Stripe
-      try {
-        const price = await stripe.prices.retrieve(priceId);
-        console.log('Successfully retrieved price from Stripe:', {
-          id: price.id,
-          active: price.active,
-          currency: price.currency,
-          type: price.type,
-        });
-      } catch (priceError) {
-        console.error('Error retrieving price from Stripe:', priceError);
-        return new Response(
-          JSON.stringify({ error: `Invalid price ID: ${priceId}` }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    } else {
-      console.log('Successfully retrieved plan from database:', {
-        id: planData.id,
-        name: planData.name,
-        price: planData.price,
-        stripe_price_id: planData.stripe_price_id
-      });
+      return new Response(
+        JSON.stringify({ error: `Invalid or inactive plan ID: ${planId}` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Successfully retrieved plan from database:', {
+      id: planData.id,
+      name: planData.name,
+      price: planData.price,
+      stripe_price_id: planData.stripe_price_id
+    });
+
+    // Extract the stripe_price_id from the plan (server-side only)
+    const stripePriceId = planData.stripe_price_id;
+    const planType = planData.name.toLowerCase();
+    const purchaseType = planData.purchase_type || 'subscription';
+
+    if (!stripePriceId) {
+      console.error('Plan has no Stripe price ID:', planData.id);
+      return new Response(
+        JSON.stringify({ error: 'Plan configuration error: missing Stripe price ID' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const metadata = {
@@ -122,7 +122,7 @@ serve(async (req: Request) => {
       mode: purchaseType === 'subscription' ? 'subscription' : 'payment',
       line_items: [
         {
-          price: priceId,
+          price: stripePriceId,
           quantity: 1,
         },
       ],
