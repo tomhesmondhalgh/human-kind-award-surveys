@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { SurveyFormData } from '../types/surveyForm';
-import { toast } from 'sonner';
 import { supabase } from '../integrations/supabase/client';
+import { toast } from 'sonner';
 
-export const initialFormData: SurveyFormData = {
+const initialFormData: SurveyFormData = {
   role: '',
   leadership_prioritize: '',
   manageable_workload: '',
@@ -20,16 +20,18 @@ export const initialFormData: SurveyFormData = {
   custom_responses: {}
 };
 
-export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
+export const useSurveyForm = (surveyId: string | null, isPreview: boolean) => {
   const [formData, setFormData] = useState<SurveyFormData>(initialFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleInputChange = (key: string, value: string) => {
-    setFormData(prev => ({ ...prev, [key]: value }));
+    setFormData(prev => ({
+      ...prev,
+      [key]: value
+    }));
   };
 
   const handleCustomQuestionResponse = (questionId: string, value: string) => {
-    console.log('Handling custom question response:', questionId, value);
     setFormData(prev => ({
       ...prev,
       custom_responses: {
@@ -48,77 +50,78 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
       toast.error('Survey ID is missing');
       return false;
     }
-    
+
+    if (isPreview) {
+      console.log('Preview mode - form submission skipped');
+      toast.info('Preview mode - responses not saved');
+      return false;
+    }
+
+    setIsSubmitting(true);
+
     try {
-      setIsSubmitting(true);
-      
-      console.log('Submitting survey response for survey ID:', surveyId);
-      console.log('Form data:', formData);
-      
-      // First, insert the main survey response
+      // Prepare the submission data
+      const submissionData = {
+        survey_id: surveyId,
+        role: formData.role,
+        leadership_prioritize: formData.leadership_prioritize,
+        manageable_workload: formData.manageable_workload,
+        work_life_balance: formData.work_life_balance,
+        health_state: formData.health_state,
+        valued_member: formData.valued_member,
+        support_access: formData.support_access,
+        confidence_in_role: formData.confidence_in_role,
+        org_pride: formData.org_pride,
+        recommendation_score: formData.recommendation_score || null,
+        leaving_contemplation: formData.leaving_contemplation,
+        doing_well: formData.doing_well || null,
+        improvements: formData.improvements || null,
+        submitted_at: new Date().toISOString()
+      };
+
+      console.log('Submitting survey response:', submissionData);
+
       const { data: responseData, error: responseError } = await supabase
         .from('survey_responses')
-        .insert({
-          survey_template_id: surveyId,
-          role: formData.role,
-          leadership_prioritize: formData.leadership_prioritize,
-          manageable_workload: formData.manageable_workload,
-          work_life_balance: formData.work_life_balance,
-          health_state: formData.health_state,
-          valued_member: formData.valued_member,
-          support_access: formData.support_access,
-          confidence_in_role: formData.confidence_in_role,
-          org_pride: formData.org_pride,
-          recommendation_score: formData.recommendation_score,
-          leaving_contemplation: formData.leaving_contemplation,
-          doing_well: formData.doing_well,
-          improvements: formData.improvements
-        })
-        .select('id')
+        .insert([submissionData])
+        .select()
         .single();
-      
+
       if (responseError) {
-        console.error('Error submitting survey response:', responseError);
-        toast.error('Failed to submit survey');
-        return false;
+        console.error('Error submitting survey:', responseError);
+        throw responseError;
       }
-      
-      console.log('Survey response created with ID:', responseData.id);
-      
-      // Handle custom questions responses if any
-      const customResponses = Object.entries(formData.custom_responses);
-      if (customResponses.length > 0 && responseData?.id) {
-        const customResponsesPayload = customResponses.map(([questionId, answer]) => ({
+
+      console.log('Survey response submitted successfully:', responseData);
+
+      // Submit custom question responses if any
+      if (formData.custom_responses && Object.keys(formData.custom_responses).length > 0) {
+        const customResponsesArray = Object.entries(formData.custom_responses).map(([questionId, response]) => ({
           response_id: responseData.id,
           question_id: questionId,
-          answer
+          answer: response
         }));
-        
-        console.log('Saving custom responses:', customResponsesPayload);
-        
+
+        console.log('Submitting custom responses:', customResponsesArray);
+
         const { error: customError } = await supabase
           .from('custom_question_responses')
-          .insert(customResponsesPayload);
-        
+          .insert(customResponsesArray);
+
         if (customError) {
-          console.error('Error saving custom responses:', customError);
-          // Continue with navigation even if custom responses fail
-          // but notify the user that some data might not have been saved
-          toast.error('Some responses may not have been fully saved');
+          console.error('Error submitting custom responses:', customError);
+          throw customError;
         }
+
+        console.log('Custom responses submitted successfully');
       }
-      
-      if (!isPreview) {
-        navigate('/survey-complete');
-        return true;
-      } else {
-        toast.success('Preview form submitted successfully');
-        resetForm();
-        return true;
-      }
+
+      resetForm();
+      navigate('/survey-complete');
+      return true;
     } catch (error: any) {
-      console.error('Error submitting survey:', error);
-      toast.error('Failed to submit survey. Please try again.');
+      console.error('Error during form submission:', error);
+      toast.error(error.message || 'Failed to submit survey');
       return false;
     } finally {
       setIsSubmitting(false);
@@ -130,7 +133,7 @@ export function useSurveyForm(surveyId: string | null, isPreview: boolean) {
     isSubmitting,
     handleInputChange,
     handleCustomQuestionResponse,
-    submitForm,
-    resetForm
+    resetForm,
+    submitForm
   };
-}
+};
