@@ -214,10 +214,20 @@ const SurveyEditor = () => {
         
         if (error) {
           console.error('Error updating survey:', error);
+          let errorMessage = 'Failed to update survey. Please try again.';
+          
           if (error.message.includes('connection')) {
-            throw new Error('Failed to connect to the server. Please check your connection and try again.');
+            errorMessage = 'Failed to connect to the server. Please check your connection and try again.';
+          } else if (error.message.includes('foreign key') || error.message.includes('constraint')) {
+            errorMessage = 'Database constraint error. Please ensure you have selected a valid organisation.';
+          } else if (error.message.includes('permission')) {
+            errorMessage = 'You do not have permission to edit this survey.';
           }
-          throw error;
+          
+          toast.error("Failed to update survey", {
+            description: errorMessage
+          });
+          throw new Error(errorMessage);
         }
         
         // Delete existing question links before adding new ones
@@ -248,10 +258,20 @@ const SurveyEditor = () => {
         
         if (error) {
           console.error('Supabase error saving survey:', error);
+          let errorMessage = 'Failed to save survey. Please try again.';
+          
           if (error.message.includes('connection')) {
-            throw new Error('Failed to connect to the server. Please check your connection and try again.');
+            errorMessage = 'Failed to connect to the server. Please check your connection and try again.';
+          } else if (error.message.includes('foreign key') || error.message.includes('constraint')) {
+            errorMessage = 'Database constraint error. Please ensure you have selected a valid organisation.';
+          } else if (error.message.includes('permission')) {
+            errorMessage = 'You do not have permission to create surveys in this organisation.';
           }
-          throw error;
+          
+          toast.error("Failed to save survey", {
+            description: errorMessage
+          });
+          throw new Error(errorMessage);
         }
         
         console.log('Saved new survey:', savedSurvey);
