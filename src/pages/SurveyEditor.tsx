@@ -415,7 +415,7 @@ const SurveyEditor = () => {
       }
       
       const baseUrl = window.location.origin;
-      const surveyUrl = `${baseUrl}/survey?id=${surveyId}`;
+      const surveyUrl = `${baseUrl}/survey/${surveyId}`;
       
       console.log('Sending survey emails to:', validEmails);
       console.log('Survey URL:', surveyUrl);

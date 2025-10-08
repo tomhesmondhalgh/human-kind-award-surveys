@@ -1,6 +1,6 @@
 
 import React, { useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useSurveyData } from '../hooks/useSurveyData';
 import { useSurveyForm } from '../hooks/useSurveyForm';
 import SurveyLoading from '../components/survey-form/SurveyLoading';
@@ -11,9 +11,10 @@ import { toast } from 'sonner';
 import { supabase } from '../integrations/supabase/client';
 
 const PublicSurveyForm: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const surveyId = searchParams.get('id');
+  const surveyId = id || null;
   const isPreview = searchParams.get('preview') === 'true';
   
   const { 
