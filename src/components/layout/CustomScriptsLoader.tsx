@@ -27,16 +27,12 @@ const CustomScriptsLoader = () => {
           return;
         }
 
-        console.log('Fetching fresh custom scripts');
-        const { data, error } = await supabase
-          .from('custom_scripts')
-          .select('script_content')
-          .eq('is_active', true)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
+        console.log('Fetching fresh custom scripts via edge function');
         
-        if (error && error.code !== 'PGRST116') {
+        // Call the edge function to get active script (bypasses RLS)
+        const { data, error } = await supabase.functions.invoke('get-active-script');
+        
+        if (error) {
           console.error('Error fetching custom scripts:', error);
         } else if (data && data.script_content) {
           setScriptContent(data.script_content);
