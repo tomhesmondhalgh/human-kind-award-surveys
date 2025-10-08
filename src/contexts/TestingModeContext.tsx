@@ -1,10 +1,7 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { PlanType } from '../lib/supabase/subscription';
-
-// Local storage keys
-const TESTING_MODE_ENABLED_KEY = 'testing_mode_enabled';
-const TESTING_MODE_PLAN_KEY = 'testing_mode_plan';
+import { useAdminRole } from '../hooks/useAdminRole';
 
 interface TestingModeContextType {
   isTestingMode: boolean;
@@ -19,53 +16,9 @@ const TestingModeContext = createContext<TestingModeContextType | undefined>(und
 export function TestingModeProvider({ children }: { children: React.ReactNode }) {
   console.log('Initializing TestingModeProvider');
   
-  // Initialize state from localStorage if available
-  const [isTestingMode, setIsTestingMode] = useState<boolean>(() => {
-    try {
-      const savedMode = localStorage.getItem(TESTING_MODE_ENABLED_KEY);
-      const parsedMode = savedMode ? JSON.parse(savedMode) : false;
-      console.log('Testing mode from localStorage:', parsedMode);
-      return parsedMode;
-    } catch (error) {
-      console.error('Error reading testing mode from localStorage:', error);
-      return false;
-    }
-  });
-  
-  const [testingPlan, setTestingPlan] = useState<PlanType | null>(() => {
-    try {
-      const savedPlan = localStorage.getItem(TESTING_MODE_PLAN_KEY);
-      console.log('Testing plan from localStorage:', savedPlan);
-      return savedPlan ? (savedPlan as PlanType) : null;
-    } catch (error) {
-      console.error('Error reading testing plan from localStorage:', error);
-      return null;
-    }
-  });
-
-  // Update localStorage when state changes
-  useEffect(() => {
-    try {
-      console.log('Updating testing mode in localStorage:', isTestingMode);
-      localStorage.setItem(TESTING_MODE_ENABLED_KEY, JSON.stringify(isTestingMode));
-    } catch (error) {
-      console.error('Error saving testing mode to localStorage:', error);
-    }
-  }, [isTestingMode]);
-
-  useEffect(() => {
-    try {
-      if (testingPlan) {
-        console.log('Updating testing plan in localStorage:', testingPlan);
-        localStorage.setItem(TESTING_MODE_PLAN_KEY, testingPlan);
-      } else {
-        console.log('Removing testing plan from localStorage');
-        localStorage.removeItem(TESTING_MODE_PLAN_KEY);
-      }
-    } catch (error) {
-      console.error('Error saving testing plan to localStorage:', error);
-    }
-  }, [testingPlan]);
+  // Session-only state (resets on page refresh for security)
+  const [isTestingMode, setIsTestingMode] = useState<boolean>(false);
+  const [testingPlan, setTestingPlan] = useState<PlanType | null>(null);
 
   const enableTestingMode = (plan: PlanType) => {
     console.log('Enabling testing mode with plan:', plan);

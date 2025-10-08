@@ -28,7 +28,7 @@ export const useAdminPurchaseData = (initialParams?: Partial<PurchasesQueryParam
   const [retryCount, setRetryCount] = useState(0);
   const MAX_RETRIES = 3;
   
-  // Check admin status
+  // Check admin status using the secure is_admin RPC
   useEffect(() => {
     const checkAdminStatus = async () => {
       try {
@@ -42,18 +42,17 @@ export const useAdminPurchaseData = (initialParams?: Partial<PurchasesQueryParam
         
         console.log('Checking admin status for user:', user.id);
         
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', user.id)
-          .single();
+        // Use the secure is_admin RPC function
+        const { data, error } = await supabase.rpc('is_admin', {
+          _user_id: user.id
+        });
         
-        if (profileError) {
-          console.error('Error checking admin status:', profileError);
+        if (error) {
+          console.error('Error checking admin status:', error);
           setIsAdmin(false);
         } else {
-          console.log('Admin check result:', profile?.is_admin);
-          setIsAdmin(!!profile?.is_admin);
+          console.log('Admin check result:', data);
+          setIsAdmin(data === true);
         }
       } catch (error) {
         console.error('Error in admin check:', error);

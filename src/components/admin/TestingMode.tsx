@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { useTestingMode } from '@/contexts/TestingModeContext';
+import { useAdminRole } from '@/hooks/useAdminRole';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlanType } from '@/lib/supabase/subscription';
@@ -13,8 +14,19 @@ const TestingMode = () => {
     enableTestingMode,
     disableTestingMode
   } = useTestingMode();
+  const { isAdmin, isLoading: isAdminLoading } = useAdminRole();
 
   const handleSelectPlan = (plan: PlanType) => {
+    // Security check: Only admins can enable testing mode
+    if (!isAdmin) {
+      toast({
+        title: 'Access Denied',
+        description: 'Only administrators can enable testing mode',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     // If we're selecting the current plan, do nothing
     if (isTestingMode && testingPlan === plan) {
       return;
@@ -23,9 +35,19 @@ const TestingMode = () => {
     enableTestingMode(plan);
     toast({
       title: 'Testing Mode Enabled',
-      description: `Testing with ${plan} plan`,
+      description: `Testing with ${plan} plan (session-only)`,
     });
   };
+
+  // Show loading state while checking admin status
+  if (isAdminLoading) {
+    return <div>Loading...</div>;
+  }
+
+  // Only show testing mode to admins
+  if (!isAdmin) {
+    return null;
+  }
 
   return (
     <div className="space-y-6">
@@ -38,7 +60,12 @@ const TestingMode = () => {
 
       <Card className="p-6">
         <div className="space-y-4">
-          <h3 className="text-lg font-medium">Select a Subscription Plan</h3>
+          <div>
+            <h3 className="text-lg font-medium">Select a Subscription Plan</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              ⚠️ Testing mode is session-only and will reset on page refresh
+            </p>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {(['free', 'foundation', 'progress', 'premium'] as PlanType[]).map((plan) => (
               <button
@@ -70,14 +97,17 @@ const TestingMode = () => {
             <div>
               <h3 className="font-medium text-yellow-800">Testing Mode Active</h3>
               <p className="text-yellow-700 mt-1">
-                You are currently viewing the application with a simulated subscription plan.
+                You are currently viewing the application with a simulated subscription plan. This is session-only and will reset when you refresh the page.
               </p>
               <div className="mt-2 space-y-1 text-sm">
                 {testingPlan && (
                   <p className="text-yellow-800">
-                    <span className="font-medium">Plan:</span> {testingPlan}
+                    <span className="font-medium">Current Testing Plan:</span> {testingPlan}
                   </p>
                 )}
+                <p className="text-yellow-700">
+                  <span className="font-medium">Security:</span> Admin-only, session-based
+                </p>
               </div>
               <Button 
                 variant="outline" 
