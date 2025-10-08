@@ -89,14 +89,29 @@ const UsersManagement = () => {
     try {
       setProcessingUsers(prev => ({ ...prev, [userId]: true }));
       
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({ is_admin: !currentAdminState })
-        .eq('id', userId)
-        .select();
-      
-      if (error) {
-        throw new Error(`Failed to update user role: ${error.message}`);
+      if (!currentAdminState) {
+        // Grant admin role
+        const { error } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: userId,
+            role: 'admin'
+          });
+        
+        if (error) {
+          throw new Error(`Failed to grant admin role: ${error.message}`);
+        }
+      } else {
+        // Revoke admin role
+        const { error } = await supabase
+          .from('user_roles')
+          .delete()
+          .eq('user_id', userId)
+          .eq('role', 'admin');
+        
+        if (error) {
+          throw new Error(`Failed to revoke admin role: ${error.message}`);
+        }
       }
       
       // Update the local state

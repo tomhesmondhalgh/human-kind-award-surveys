@@ -1317,6 +1317,30 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -1414,6 +1438,17 @@ export type Database = {
           plan: Database["public"]["Enums"]["plan_type"]
         }[]
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       is_owner: {
         Args: { record_user_id: string }
         Returns: boolean
@@ -1485,6 +1520,7 @@ export type Database = {
         | "under_review"
         | "approved"
         | "rejected"
+      app_role: "admin" | "user"
       descriptor_status:
         | "Not Started"
         | "In Progress"
@@ -1637,6 +1673,7 @@ export const Constants = {
         "approved",
         "rejected",
       ],
+      app_role: ["admin", "user"],
       descriptor_status: [
         "Not Started",
         "In Progress",

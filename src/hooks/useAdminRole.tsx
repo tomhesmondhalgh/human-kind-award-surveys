@@ -40,18 +40,16 @@ export function useAdminRole() {
       console.log('Fetching fresh admin status for user:', user.id);
       setIsLoading(true);
       
-      // Query the profiles table to check if the user has admin status
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', user.id)
-        .single();
+      // Use the new secure is_admin function
+      const { data, error } = await supabase.rpc('is_admin', {
+        _user_id: user.id
+      });
       
       if (error) {
         console.error('Error checking admin status:', error);
         setIsAdmin(false);
       } else {
-        const isUserAdmin = data?.is_admin === true;
+        const isUserAdmin = data === true;
         console.log('Admin status from database:', isUserAdmin);
         setIsAdmin(isUserAdmin);
         

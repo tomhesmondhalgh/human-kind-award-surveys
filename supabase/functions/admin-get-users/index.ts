@@ -49,14 +49,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if the user is an admin
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', user.id)
-      .single();
+    // Check if the user is an admin using the secure is_admin function
+    const { data: isAdmin, error: adminCheckError } = await supabaseAdmin.rpc('is_admin', {
+      _user_id: user.id
+    });
 
-    if (profileError || !profile || !profile.is_admin) {
+    if (adminCheckError || !isAdmin) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized access: Admin privileges required' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -177,6 +175,15 @@ Deno.serve(async (req) => {
         }
       }));
       
+      // Get admin statuses for all users
+      const adminStatuses: Record<string, boolean> = {};
+      await Promise.all(userIds.map(async (userId) => {
+        const { data: isUserAdmin } = await supabaseAdmin.rpc('is_admin', {
+          _user_id: userId
+        });
+        adminStatuses[userId] = isUserAdmin === true;
+      }));
+      
       // Combine all data and apply search filtering
       const allCombinedUsers = userData.users.map(user => {
         const profile = profileDict[user.id] || {};
@@ -188,7 +195,7 @@ Deno.serve(async (req) => {
           firstName: profile.first_name || '',
           lastName: profile.last_name || '',
           schoolName: profile.school_name || '',
-          isAdmin: profile.is_admin || false,
+          isAdmin: adminStatuses[user.id] || false,
           plan: subscription.plan_type || 'free',
           surveyCount: surveyCounts[user.id] || 0,
           responseCount: responseCounts[user.id] || 0,
@@ -316,6 +323,15 @@ Deno.serve(async (req) => {
         }
       }));
       
+      // Get admin statuses for all users
+      const adminStatuses: Record<string, boolean> = {};
+      await Promise.all(userIds.map(async (userId) => {
+        const { data: isUserAdmin } = await supabaseAdmin.rpc('is_admin', {
+          _user_id: userId
+        });
+        adminStatuses[userId] = isUserAdmin === true;
+      }));
+      
       // Combine all data
       users = userData.users.map(user => {
         const profile = profileDict[user.id] || {};
@@ -327,7 +343,7 @@ Deno.serve(async (req) => {
           firstName: profile.first_name || '',
           lastName: profile.last_name || '',
           schoolName: profile.school_name || '',
-          isAdmin: profile.is_admin || false,
+          isAdmin: adminStatuses[user.id] || false,
           plan: subscription.plan_type || 'free',
           surveyCount: surveyCounts[user.id] || 0,
           responseCount: responseCounts[user.id] || 0,
