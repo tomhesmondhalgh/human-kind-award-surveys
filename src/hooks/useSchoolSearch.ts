@@ -81,6 +81,8 @@ export const useSchoolSearch = (
       ...formData,
       schoolName: school.EstablishmentName,
       schoolAddress: address,
+      schoolURN: school.URN,
+      organizationName: school.EstablishmentName,
     });
     
     setSearchResults([]);
@@ -91,7 +93,9 @@ export const useSchoolSearch = (
     setFormData(prev => ({
       ...prev,
       schoolName: '',
-      schoolAddress: ''
+      schoolAddress: '',
+      schoolURN: '',
+      organizationName: ''
     }));
   };
 

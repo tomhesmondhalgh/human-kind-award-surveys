@@ -92,6 +92,9 @@ const ProfessionalDetailsForm: React.FC<ProfessionalDetailsFormProps> = ({
             toggleCustomSchool={toggleCustomSchool}
             selectedSchool={selectedSchool}
             onChangeSchool={resetSelectedSchool}
+            formData={formData}
+            onChange={onChange}
+            isLoading={isLoading}
           />
         ) : (
           <CustomSchoolForm 

@@ -1509,6 +1509,15 @@ export type Database = {
         }
         Returns: Json
       }
+      setup_user_organization: {
+        Args: {
+          org_address: string
+          org_name: string
+          org_urn: string
+          user_uuid: string
+        }
+        Returns: string
+      }
       user_can_access_custom_question_response: {
         Args: { question_uuid: string; user_uuid: string }
         Returns: boolean

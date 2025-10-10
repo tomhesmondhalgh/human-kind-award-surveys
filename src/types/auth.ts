@@ -6,6 +6,8 @@ export interface SignUpFormData {
   password: string;
   jobTitle: string;
   schoolName: string;
+  schoolURN: string;
+  organizationName: string;
   customStreetAddress: string;
   customStreetAddress2: string;
   customCity: string;

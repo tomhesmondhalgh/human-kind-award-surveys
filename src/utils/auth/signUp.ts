@@ -99,6 +99,35 @@ export async function signUpWithEmail(email: string, password: string, userData?
       console.warn('Profile creation failed but continuing with signup');
     }
 
+    // Set up user organization
+    try {
+      console.log('Setting up user organization');
+      
+      const organizationName = userData?.organizationName || 
+                              userData?.schoolName || 
+                              `${userData?.firstName}'s Organisation`;
+      
+      const { data: orgId, error: orgError } = await supabase.rpc(
+        'setup_user_organization',
+        {
+          user_uuid: data.user.id,
+          org_name: organizationName,
+          org_address: userData?.schoolAddress || '',
+          org_urn: userData?.schoolURN || null
+        }
+      );
+      
+      if (orgError) {
+        console.error('Error creating organization:', orgError);
+        console.warn('Organization creation failed but continuing with signup');
+      } else {
+        console.log('Created user organization successfully:', orgId);
+      }
+    } catch (orgError) {
+      console.error('Exception during organization creation:', orgError);
+      console.warn('Organization creation failed but continuing with signup');
+    }
+
     return { error: null, success: true, user: data.user };
   } catch (error: any) {
     console.error('Error signing up:', error);

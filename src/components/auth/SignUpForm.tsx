@@ -24,6 +24,8 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSubmit, isLoading = false, in
     jobTitle: '',
     schoolName: '',
     schoolAddress: '',
+    schoolURN: '',
+    organizationName: '',
     customStreetAddress: '',
     customStreetAddress2: '',
     customCity: '',

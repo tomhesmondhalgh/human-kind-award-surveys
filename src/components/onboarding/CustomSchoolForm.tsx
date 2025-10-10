@@ -36,6 +36,23 @@ const CustomSchoolForm: React.FC<CustomSchoolFormProps> = ({
       </div>
       
       <div>
+        <label htmlFor="organizationName" className="block text-sm font-medium text-gray-700 mb-1">
+          Organisation Name
+        </label>
+        <Input
+          id="organizationName"
+          name="organizationName"
+          type="text"
+          required
+          className="form-input w-full"
+          value={formData.organizationName || formData.schoolName || ''}
+          onChange={onChange}
+          disabled={isLoading}
+          placeholder="e.g., Wellbeing Team, HR Department"
+        />
+      </div>
+      
+      <div>
         <label htmlFor="customStreetAddress" className="block text-sm font-medium text-gray-700 mb-1">
           Street address
         </label>
