@@ -13,13 +13,32 @@ export const getSurveyById = async (id: string): Promise<SurveyTemplate | null> 
       throw new Error('Database connection error');
     }
     
-    // Fetch the survey - RLS policies handle access control
-    // Public users can view active surveys, org members can view all their surveys
-    const { data, error } = await supabase
-      .from('survey_templates')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
+    // Try to get the user's session to determine which table to query
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    // If user is authenticated, use the full table (includes emails)
+    // Otherwise, use the public-safe view (excludes emails to prevent exposure)
+    let data, error;
+    
+    if (session?.user) {
+      // Authenticated user - query full table
+      const result = await supabase
+        .from('survey_templates')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+      data = result.data;
+      error = result.error;
+    } else {
+      // Public/anonymous user - query public-safe view
+      const result = await supabase
+        .from('public_survey_templates')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+      data = result.data;
+      error = result.error;
+    }
     
     if (error) {
       console.error('Error fetching survey template:', error);
