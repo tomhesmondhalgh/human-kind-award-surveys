@@ -82,33 +82,23 @@ const MyPurchases = () => {
         return;
       }
       const subscriptionIds = subscriptions.map(sub => sub.id);
+      // Use the secure view that redacts sensitive billing PII
       const {
         data: payments,
         error: paymentError
-      } = await supabase.from('payment_history').select(`
-          *,
-          subscription:subscriptions (
-            id,
-            plan_type,
-            purchase_type,
-            user_id
-          )
-        `).in('subscription_id', subscriptionIds).order('created_at', {
+      } = await supabase.from('user_payment_summary').select('*').in('subscription_id', subscriptionIds).order('created_at', {
         ascending: false
       });
       if (paymentError) {
         throw paymentError;
       }
       
-      // Filter to only show purchases for the current user
-      const userPurchases = payments?.filter(payment => 
-        payment.subscription?.user_id === user.id
-      ) || [];
-      
-      const formattedPurchases = userPurchases.map(item => ({
+      // The view already filters and includes plan_type/purchase_type
+      // No need to filter again as RLS ensures only user's data is returned
+      const formattedPurchases = (payments || []).map(item => ({
         ...item,
-        plan_type: item.subscription?.plan_type || 'unknown',
-        purchase_type: item.subscription?.purchase_type || 'unknown'
+        // Map redacted field to the expected field name for display
+        billing_school_name: item.billing_school_name_redacted || '***'
       }));
       setPurchases(formattedPurchases);
     } catch (error) {

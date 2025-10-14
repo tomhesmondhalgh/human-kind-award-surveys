@@ -60,61 +60,49 @@ export const useSurveyForm = (surveyId: string | null, isPreview: boolean) => {
     setIsSubmitting(true);
 
     try {
-      // Prepare the submission data
-      const submissionData = {
-        survey_id: surveyId,
-        role: formData.role,
-        leadership_prioritize: formData.leadership_prioritize,
-        manageable_workload: formData.manageable_workload,
-        work_life_balance: formData.work_life_balance,
-        health_state: formData.health_state,
-        valued_member: formData.valued_member,
-        support_access: formData.support_access,
-        confidence_in_role: formData.confidence_in_role,
-        org_pride: formData.org_pride,
-        recommendation_score: formData.recommendation_score || null,
-        leaving_contemplation: formData.leaving_contemplation,
-        doing_well: formData.doing_well || null,
-        improvements: formData.improvements || null,
-        submitted_at: new Date().toISOString()
-      };
-
-      console.log('Submitting survey response:', submissionData);
-
-      const { data: responseData, error: responseError } = await supabase
-        .from('survey_responses')
-        .insert([submissionData])
-        .select()
-        .single();
-
-      if (responseError) {
-        console.error('Error submitting survey:', responseError);
-        throw responseError;
-      }
-
-      console.log('Survey response submitted successfully:', responseData);
-
-      // Submit custom question responses if any
-      if (formData.custom_responses && Object.keys(formData.custom_responses).length > 0) {
-        const customResponsesArray = Object.entries(formData.custom_responses).map(([questionId, response]) => ({
-          response_id: responseData.id,
-          question_id: questionId,
-          answer: response
-        }));
-
-        console.log('Submitting custom responses:', customResponsesArray);
-
-        const { error: customError } = await supabase
-          .from('custom_question_responses')
-          .insert(customResponsesArray);
-
-        if (customError) {
-          console.error('Error submitting custom responses:', customError);
-          throw customError;
+      console.log('Submitting survey response via validation edge function...');
+      
+      // Prepare custom responses
+      const customResponsesPayload = formData.custom_responses && Object.keys(formData.custom_responses).length > 0
+        ? Object.entries(formData.custom_responses).map(([questionId, response]) => ({
+            question_id: questionId,
+            answer: response
+          }))
+        : undefined;
+      
+      // Call the validation edge function instead of direct database insert
+      // This provides server-side validation and sanitization
+      const { data, error } = await supabase.functions.invoke('submit-survey-response', {
+        body: {
+          survey_template_id: surveyId,
+          role: formData.role || null,
+          leadership_prioritize: formData.leadership_prioritize || null,
+          manageable_workload: formData.manageable_workload || null,
+          work_life_balance: formData.work_life_balance || null,
+          health_state: formData.health_state || null,
+          valued_member: formData.valued_member || null,
+          support_access: formData.support_access || null,
+          confidence_in_role: formData.confidence_in_role || null,
+          org_pride: formData.org_pride || null,
+          recommendation_score: formData.recommendation_score || null,
+          leaving_contemplation: formData.leaving_contemplation || null,
+          doing_well: formData.doing_well || null,
+          improvements: formData.improvements || null,
+          custom_responses: customResponsesPayload
         }
-
-        console.log('Custom responses submitted successfully');
+      });
+      
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to submit survey response');
       }
+      
+      if (!data?.success) {
+        console.error('Survey submission failed:', data);
+        throw new Error(data?.error || 'Failed to submit survey response');
+      }
+      
+      console.log('Survey response submitted successfully:', data.response_id);
 
       resetForm();
       navigate('/survey-complete');

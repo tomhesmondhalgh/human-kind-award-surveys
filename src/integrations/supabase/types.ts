@@ -1440,6 +1440,36 @@ export type Database = {
           },
         ]
       }
+      user_payment_summary: {
+        Row: {
+          amount: number | null
+          billing_address: string | null
+          billing_contact_email: string | null
+          billing_contact_name: string | null
+          billing_postcode: string | null
+          billing_school_name_redacted: string | null
+          created_at: string | null
+          currency: string | null
+          id: string | null
+          invoice_number: string | null
+          payment_date: string | null
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          payment_status: Database["public"]["Enums"]["payment_status"] | null
+          plan_type: Database["public"]["Enums"]["plan_type"] | null
+          purchase_type: string | null
+          subscription_id: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_history_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       admin_get_all_payments: {
