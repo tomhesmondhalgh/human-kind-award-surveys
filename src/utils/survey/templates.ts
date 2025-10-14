@@ -13,15 +13,8 @@ export const getSurveyById = async (id: string): Promise<SurveyTemplate | null> 
       throw new Error('Database connection error');
     }
     
-    // Verify session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
-    if (sessionError || !session?.user) {
-      console.error('No valid session for survey fetch:', sessionError);
-      throw new Error('Authentication required');
-    }
-    
-    // Fetch the survey
+    // Fetch the survey - RLS policies handle access control
+    // Public users can view active surveys, org members can view all their surveys
     const { data, error } = await supabase
       .from('survey_templates')
       .select('*')
@@ -36,20 +29,6 @@ export const getSurveyById = async (id: string): Promise<SurveyTemplate | null> 
     if (!data) {
       console.error('No survey template found with ID:', id);
       return null;
-    }
-    
-    // Check if user has access to this survey through organization membership
-    if (data.organization_id) {
-      const { data: hasAccess, error: accessError } = await supabase
-        .rpc('user_is_organization_member', { 
-          user_uuid: session.user.id, 
-          org_id: data.organization_id 
-        });
-      
-      if (accessError || !hasAccess) {
-        console.error('User does not have access to this survey:', id);
-        return null;
-      }
     }
     
     console.log('Survey template found:', data);
