@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2, Lock } from 'lucide-react';
 import { toast } from '../services/toastService';
 import MainLayout from '../components/layout/MainLayout';
@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 const ResetPassword = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -17,26 +18,53 @@ const ResetPassword = () => {
   const [isValidToken, setIsValidToken] = useState(true);
 
   useEffect(() => {
-    // Wait briefly for Supabase to auto-detect and exchange any auth codes in the URL
-    const checkSession = async () => {
-      // Small delay to allow auto session detection to complete
-      await new Promise(resolve => setTimeout(resolve, 500));
+    const verifyRecoveryToken = async () => {
+      const token = searchParams.get('token');
+      const type = searchParams.get('type');
       
-      const { data } = await supabase.auth.getSession();
-      
-      if (!data.session) {
+      if (!token || type !== 'recovery') {
+        console.log('❌ No valid token found in URL');
         setIsValidToken(false);
         toast.error({
-          title: 'Invalid or expired password reset link',
+          title: 'Invalid password reset link',
           description: 'Please request a new password reset link'
         });
+        setIsCheckingSession(false);
+        return;
       }
       
-      setIsCheckingSession(false);
+      try {
+        console.log('🔑 Verifying recovery token...');
+        const { data, error } = await supabase.auth.verifyOtp({
+          token_hash: token,
+          type: 'recovery'
+        });
+        
+        if (error) {
+          console.error('❌ Token verification failed:', error);
+          setIsValidToken(false);
+          toast.error({
+            title: 'Invalid or expired password reset link',
+            description: 'Please request a new password reset link'
+          });
+        } else if (data.session) {
+          console.log('✅ Token verified successfully, session created');
+          setIsValidToken(true);
+        }
+      } catch (error) {
+        console.error('❌ Token verification exception:', error);
+        setIsValidToken(false);
+        toast.error({
+          title: 'Failed to verify reset link',
+          description: 'Please try again or request a new link'
+        });
+      } finally {
+        setIsCheckingSession(false);
+      }
     };
     
-    checkSession();
-  }, []);
+    verifyRecoveryToken();
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -34,10 +34,8 @@ const handler = async (req: Request): Promise<Response> => {
     const { user, email_data } = payload;
     const { token_hash } = email_data;
 
-    // Construct the password reset URL with explicit redirect to reset password page
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const resetPasswordUrl = 'https://surveys.humankindaward.com/reset-password';
-    const resetUrl = `${supabaseUrl}/auth/v1/verify?token=${token_hash}&type=recovery&redirect_to=${encodeURIComponent(resetPasswordUrl)}`;
+    // Construct the password reset URL with token in query parameters for direct verification
+    const resetUrl = `https://surveys.humankindaward.com/reset-password?token=${token_hash}&type=recovery`;
 
     console.log("Generated reset URL for user:", user.email);
 
