@@ -165,7 +165,10 @@ serve(async (req: Request) => {
   } catch (error) {
     console.error('Error creating Stripe checkout session:', error);
     return new Response(
-      JSON.stringify({ error: error.message, stack: error.stack }),
+      JSON.stringify({ 
+        error: 'Unable to process payment request',
+        code: 'PAYMENT_SESSION_ERROR'
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

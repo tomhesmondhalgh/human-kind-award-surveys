@@ -135,8 +135,8 @@ Deno.serve(async (req) => {
       console.error('Transaction error:', transactionError);
       return new Response(
         JSON.stringify({ 
-          error: 'Failed to redeem code', 
-          details: transactionError.message 
+          error: 'Failed to process redemption code',
+          code: 'REDEMPTION_FAILED'
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -157,8 +157,8 @@ Deno.serve(async (req) => {
     
     return new Response(
       JSON.stringify({
-        error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        error: 'Unable to verify redemption code',
+        code: 'REDEMPTION_ERROR'
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

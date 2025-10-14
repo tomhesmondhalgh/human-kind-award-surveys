@@ -365,7 +365,10 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('Error in admin-get-users function:', error);
     return new Response(
-      JSON.stringify({ error: error.message || 'An error occurred fetching users' }),
+      JSON.stringify({ 
+        error: 'Unable to retrieve user data',
+        code: 'USER_FETCH_ERROR'
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
