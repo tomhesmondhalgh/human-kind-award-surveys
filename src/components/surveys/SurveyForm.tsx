@@ -68,7 +68,7 @@ const SurveyForm: React.FC<SurveyFormProps> = ({
   React.useEffect(() => {
     if (showSurveyLink && surveyId) {
       const baseUrl = window.location.origin;
-      setSurveyLink(`${baseUrl}/survey?id=${surveyId}`);
+      setSurveyLink(`${baseUrl}/survey/${surveyId}`);
     }
   }, [showSurveyLink, surveyId]);
   

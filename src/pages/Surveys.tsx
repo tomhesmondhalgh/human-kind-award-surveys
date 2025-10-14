@@ -121,7 +121,7 @@ const Surveys = () => {
               month: 'long', 
               day: 'numeric' 
             }) : undefined,
-            url: `${window.location.origin}/survey?id=${template.id}`,
+            url: `${window.location.origin}/survey/${template.id}`,
             formattedDate: new Date(template.date).toLocaleDateString('en-GB', {
               month: 'long',
               day: 'numeric',

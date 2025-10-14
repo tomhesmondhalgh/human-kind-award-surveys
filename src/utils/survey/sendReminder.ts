@@ -96,7 +96,7 @@ export const sendSurveyReminder = async (surveyId: string): Promise<boolean> => 
     }
     
     const baseUrl = window.location.origin;
-    const surveyUrl = `${baseUrl}/survey?id=${surveyId}`;
+    const surveyUrl = `${baseUrl}/survey/${surveyId}`;
     
     // Call the email function
     const { data, error } = await supabase.functions.invoke('send-survey-email', {

@@ -333,7 +333,7 @@ const SurveyEditor = () => {
       
       // Based on the action, determine what to do next
       if (action === 'preview') {
-        window.open(`/survey?id=${newSurveyId}&preview=true`, '_blank');
+        window.open(`/survey/${newSurveyId}?preview=true`, '_blank');
       } else if (action === 'send') {
         await handleSendEmails(newSurveyId!, data.distributionMethod, emailsValue);
         navigate('/surveys');
