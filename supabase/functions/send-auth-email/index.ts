@@ -131,7 +131,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send email via Resend
     console.log("📤 Sending email via Resend...");
     const emailResponse = await resend.emails.send({
-      from: "Humankind Award <onboarding@resend.dev>",
+      from: "Human Kind <contact@humankindaward.com>",
       to: [user.email],
       subject: subject,
       html: emailContent,
