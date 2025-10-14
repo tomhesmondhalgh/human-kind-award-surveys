@@ -1200,6 +1200,13 @@ export type Database = {
             foreignKeyName: "survey_questions_survey_id_fkey"
             columns: ["survey_id"]
             isOneToOne: false
+            referencedRelation: "public_survey_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_questions_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
             referencedRelation: "survey_templates"
             referencedColumns: ["id"]
           },
@@ -1261,6 +1268,13 @@ export type Database = {
           work_life_balance?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "survey_responses_survey_template_id_fkey"
+            columns: ["survey_template_id"]
+            isOneToOne: false
+            referencedRelation: "public_survey_templates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "survey_responses_survey_template_id_fkey"
             columns: ["survey_template_id"]
@@ -1387,6 +1401,44 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      public_survey_templates: {
+        Row: {
+          close_date: string | null
+          created_at: string | null
+          date: string | null
+          id: string | null
+          name: string | null
+          organization_id: string | null
+          status: Database["public"]["Enums"]["survey_status"] | null
+        }
+        Insert: {
+          close_date?: string | null
+          created_at?: string | null
+          date?: string | null
+          id?: string | null
+          name?: string | null
+          organization_id?: string | null
+          status?: Database["public"]["Enums"]["survey_status"] | null
+        }
+        Update: {
+          close_date?: string | null
+          created_at?: string | null
+          date?: string | null
+          id?: string | null
+          name?: string | null
+          organization_id?: string | null
+          status?: Database["public"]["Enums"]["survey_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_templates_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
