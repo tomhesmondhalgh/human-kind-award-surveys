@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2, Lock } from 'lucide-react';
 import { toast } from '../services/toastService';
 import MainLayout from '../components/layout/MainLayout';
@@ -10,26 +10,62 @@ import { supabase } from '@/integrations/supabase/client';
 
 const ResetPassword = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isExchangingCode, setIsExchangingCode] = useState(false);
   const [isValidToken, setIsValidToken] = useState(true);
 
   useEffect(() => {
-    const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
+    const handlePasswordReset = async () => {
+      const code = searchParams.get('code');
       
-      if (!data.session) {
-        setIsValidToken(false);
-        toast.error({
-          title: 'Invalid or expired password reset link',
-          description: 'Please request a new password reset link'
-        });
+      if (code) {
+        // We have a code from the email link, exchange it for a session
+        setIsExchangingCode(true);
+        
+        try {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          
+          if (error) {
+            console.error('Code exchange error:', error);
+            setIsValidToken(false);
+            toast.error({
+              title: 'Invalid or expired password reset link',
+              description: 'Please request a new password reset link'
+            });
+          } else if (data.session) {
+            // Successfully exchanged code for session
+            console.log('Code exchanged successfully');
+            setIsValidToken(true);
+          }
+        } catch (error) {
+          console.error('Code exchange exception:', error);
+          setIsValidToken(false);
+          toast.error({
+            title: 'Invalid or expired password reset link',
+            description: 'Please request a new password reset link'
+          });
+        } finally {
+          setIsExchangingCode(false);
+        }
+      } else {
+        // No code in URL, check if there's an existing session
+        const { data } = await supabase.auth.getSession();
+        
+        if (!data.session) {
+          setIsValidToken(false);
+          toast.error({
+            title: 'Invalid or expired password reset link',
+            description: 'Please request a new password reset link'
+          });
+        }
       }
     };
     
-    checkSession();
-  }, []);
+    handlePasswordReset();
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,6 +110,21 @@ const ResetPassword = () => {
       setIsLoading(false);
     }
   };
+
+  if (isExchangingCode) {
+    return (
+      <MainLayout>
+        <div className="page-container">
+          <div className="max-w-md mx-auto glass-card rounded-2xl p-8">
+            <div className="flex flex-col items-center justify-center space-y-4">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-center">Verifying your reset link...</p>
+            </div>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   if (!isValidToken) {
     return (
