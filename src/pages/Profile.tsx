@@ -434,7 +434,6 @@ const Profile = () => {
         <PageTitle 
           title="Your Profile" 
           subtitle="Manage your personal and school information"
-          alignment="center"
         />
         
         <div className="max-w-2xl mx-auto space-y-8">
