@@ -416,25 +416,30 @@ const Profile = () => {
   };
   
   if (isLoading) {
-    return (
-      <MainLayout>
-        <div className="flex justify-center items-center h-64">
-          <Loader2 size={40} className="animate-spin text-brandPurple-500" />
+  return (
+    <MainLayout>
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 md:p-8">
+          <div className="flex justify-center items-center h-64">
+            <Loader2 size={40} className="animate-spin text-brandPurple-500" />
+          </div>
         </div>
-      </MainLayout>
-    );
+      </div>
+    </MainLayout>
+  );
   }
   
   return (
     <MainLayout>
-      <div className="page-container">
-        <PageTitle 
-          title="Your Profile" 
-          subtitle="Manage your personal and school information"
-          alignment="center"
-        />
-        
-        <div className="max-w-2xl mx-auto glass-card rounded-2xl p-8 animate-slide-up space-y-8">
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 md:p-8">
+          <PageTitle 
+            title="Your Profile" 
+            subtitle="Manage your personal and school information"
+            alignment="center"
+          />
+          
+          <div className="max-w-2xl mx-auto space-y-8">
           {/* Personal Information Form */}
           <div>
             <h2 className="text-xl font-semibold mb-4">Personal Information</h2>
@@ -782,6 +787,7 @@ const Profile = () => {
               </div>
             </form>
           </div>
+        </div>
         </div>
       </div>
     </MainLayout>

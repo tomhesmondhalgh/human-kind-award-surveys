@@ -68,48 +68,31 @@ const PurchasesManagement = () => {
   // Show loading state while checking admin status
   if (!adminCheckComplete) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Purchases Management</CardTitle>
-          <CardDescription>Checking permissions...</CardDescription>
-        </CardHeader>
-        <CardContent className="flex justify-center items-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </CardContent>
-      </Card>
+      <div className="flex justify-center items-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
     );
   }
 
   // Show access denied if user is not an admin
   if (!isAdmin) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Purchases Management</CardTitle>
-          <CardDescription>Admin access required</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Access Denied</AlertTitle>
-            <AlertDescription>
-              You do not have admin privileges to view purchase data.
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Access Denied</AlertTitle>
+        <AlertDescription>
+          You do not have admin privileges to view purchase data.
+        </AlertDescription>
+      </Alert>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Purchases Management</CardTitle>
-        <CardDescription>
-          View and manage all purchases including credit card payments and invoices
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <>
+      <h2 className="text-2xl font-bold mb-6">Purchases Management</h2>
+      <p className="text-gray-600 mb-6">
+        View and manage all purchases including credit card payments and invoices
+      </p>
         {error && (
           <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4" />
@@ -196,7 +179,6 @@ const PurchasesManagement = () => {
             )}
           </>
         )}
-      </CardContent>
 
       {selectedPurchase && (
         <UpdatePurchaseDialog
@@ -206,7 +188,7 @@ const PurchasesManagement = () => {
           onUpdated={handlePurchaseUpdated}
         />
       )}
-    </Card>
+    </>
   );
 };
 

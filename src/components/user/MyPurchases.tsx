@@ -186,11 +186,11 @@ const MyPurchases = () => {
   };
 
   return (
-    <div className="container py-8">
+    <>
       <PageTitle title="My Purchases" subtitle="View your purchases including credit card payments and invoices" />
       
       {activeSubscription && (
-        <Card className="mb-8 mx-0 my-[30px]">
+        <Card className="mb-8 mt-6">
           <CardHeader>
             <CardTitle>Active Subscription</CardTitle>
             <CardDescription>Your current subscription details</CardDescription>
@@ -273,12 +273,12 @@ const MyPurchases = () => {
                     ))}
                   </TableBody>
                 </Table>
-              )}
-            </div>
-          )}
-        </CardContent>
+            )}
+          </div>
+        )}
+      </CardContent>
       </Card>
-    </div>
+    </>
   );
 };
 
