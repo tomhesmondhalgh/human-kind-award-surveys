@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import MainLayout from '../components/layout/MainLayout';
+import PageContainer from '../components/layout/PageContainer';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -150,9 +151,8 @@ const Team = () => {
 
   return (
     <MainLayout>
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 md:p-8">
-          <div className="space-y-6">
+      <PageContainer>
+        <div className="space-y-6">
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
@@ -448,8 +448,7 @@ const Team = () => {
           isLoading={removeMember.isPending}
           memberName={members?.find(m => m.id === memberToDelete)?.profile?.first_name || 'this member'}
         />
-        </div>
-      </div>
+      </PageContainer>
     </MainLayout>
   );
 };

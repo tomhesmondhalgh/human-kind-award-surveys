@@ -1,6 +1,7 @@
 
 import React from 'react';
 import MainLayout from '../components/layout/MainLayout';
+import PageContainer from '../components/layout/PageContainer';
 import { useAuth } from '../contexts/AuthContext';
 import StatsGrid from '../components/dashboard/StatsGrid';
 import RecentSurveysList from '../components/dashboard/RecentSurveysList';
@@ -14,9 +15,8 @@ const Dashboard = () => {
 
   return (
     <MainLayout>
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 md:p-8">
-          <div className="mb-8">
+      <PageContainer>
+        <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
               Welcome back{user?.user_metadata?.first_name ? `, ${user.user_metadata.first_name}` : ''}!
             </h1>
@@ -61,8 +61,7 @@ const Dashboard = () => {
             />
           </div>
         )}
-        </div>
-      </div>
+      </PageContainer>
     </MainLayout>
   );
 };

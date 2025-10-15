@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import MainLayout from '../components/layout/MainLayout';
+import PageContainer from '../components/layout/PageContainer';
 import PageTitle from '../components/ui/PageTitle';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -177,22 +178,19 @@ const Accredit = () => {
   const isSubscriptionChecking = isSubscriptionLoading || hasProgressAccess === null;
   if (isSubscriptionChecking || isLoading) {
     return <MainLayout>
-        <div className="container mx-auto px-4 py-8">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 md:p-8">
-            <div className="flex justify-center items-center h-64">
-              <div className="text-center">
-                <div className="mb-4">Loading accreditation data...</div>
-              </div>
+        <PageContainer>
+          <div className="flex justify-center items-center h-64">
+            <div className="text-center">
+              <div className="mb-4">Loading accreditation data...</div>
             </div>
           </div>
-        </div>
+        </PageContainer>
       </MainLayout>;
   }
   if (!hasProgressAccess) {
     return <MainLayout>
-        <div className="container mx-auto px-4 py-8">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 md:p-8">
-            <PageTitle title="Action Plan Accreditation" subtitle="Get your wellbeing action plan formally accredited" alignment="left" />
+        <PageContainer>
+          <PageTitle title="Action Plan Accreditation" subtitle="Get your wellbeing action plan formally accredited" alignment="left" />
             
             <div className="mt-8 rounded-lg border border-gray-200 bg-gray-50 p-8 text-center">
             
@@ -206,15 +204,13 @@ const Accredit = () => {
                 View Upgrade Options <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
-          </div>
-        </div>
+        </PageContainer>
       </MainLayout>;
   }
   if (!currentOrganization) {
     return <MainLayout>
-        <div className="container mx-auto px-4 py-8">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 md:p-8">
-            <PageTitle title="Action Plan Accreditation" subtitle="Get your wellbeing action plan formally accredited" alignment="left" />
+        <PageContainer>
+          <PageTitle title="Action Plan Accreditation" subtitle="Get your wellbeing action plan formally accredited" alignment="left" />
             
             <div className="mt-8 rounded-lg border border-gray-200 bg-gray-50 p-8 text-center">
             <Award className="h-12 w-12 mx-auto mb-4 text-gray-400" />
@@ -223,16 +219,14 @@ const Accredit = () => {
                 Please select an organization to view accreditation options.
               </p>
             </div>
-          </div>
-        </div>
+        </PageContainer>
       </MainLayout>;
   }
   const isReady = checkSubmissionReadiness();
   const hasSubmission = submission && submission.status !== 'not_submitted';
   return <MainLayout>
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 md:p-8">
-          <PageTitle title="Action Plan Accreditation" subtitle={`Get ${currentOrganization.name}'s wellbeing action plan formally accredited`} alignment="left" />
+      <PageContainer>
+        <PageTitle title="Action Plan Accreditation" subtitle={`Get ${currentOrganization.name}'s wellbeing action plan formally accredited`} alignment="left" />
 
           <div className="space-y-6 mt-8">
           {/* Current Status Card */}
@@ -334,8 +328,7 @@ const Accredit = () => {
              </CardContent>
            </Card>
           </div>
-        </div>
-      </div>
+      </PageContainer>
     </MainLayout>;
 };
 export default Accredit;

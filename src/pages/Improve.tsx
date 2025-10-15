@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import MainLayout from '../components/layout/MainLayout';
+import PageContainer from '../components/layout/PageContainer';
 import PageTitle from '../components/ui/PageTitle';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -195,9 +196,8 @@ const Improve = () => {
       {shouldShowOverlay && (
         <ScreenOrientationOverlay onDismiss={() => setOverlayDismissed(true)} />
       )}
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 md:p-8">
-          <div className="flex justify-between items-center mb-6">
+      <PageContainer>
+        <div className="flex justify-between items-center mb-6">
             <PageTitle
               title="Wellbeing Action Plan"
               subtitle="Track and improve staff wellbeing using this action planning tool"
@@ -340,8 +340,7 @@ const Improve = () => {
             />
           </Tabs>
         )}
-        </div>
-      </div>
+      </PageContainer>
     </MainLayout>
   );
 };

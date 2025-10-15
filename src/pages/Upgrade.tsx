@@ -2,6 +2,7 @@
 import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
+import PageContainer from '../components/layout/PageContainer';
 import PageTitle from '../components/ui/PageTitle';
 import BenefitsSection from '../components/upgrade/BenefitsSection';
 import IntroSection from '../components/upgrade/IntroSection';
@@ -41,7 +42,7 @@ const Upgrade = () => {
 
   return (
     <MainLayout>
-      <div className="container mx-auto px-4 py-8">
+      <PageContainer>
         <PageTitle 
           title="Improving Staff Wellbeing Made Easy" 
           subtitle="Effective evidence-based strategies in an easy-to-use plan" 
@@ -51,7 +52,7 @@ const Upgrade = () => {
         <BenefitsSection />
         <IntroSection />
         <PricingSection />
-      </div>
+      </PageContainer>
     </MainLayout>
   );
 };

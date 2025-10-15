@@ -1,6 +1,7 @@
 
 import React from 'react';
 import MainLayout from '../components/layout/MainLayout';
+import PageContainer from '../components/layout/PageContainer';
 import QuestionsPage from '../components/custom-questions/QuestionsPage';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '../components/ui/breadcrumb';
 import { useNavigate } from 'react-router-dom';
@@ -10,7 +11,7 @@ export default function CustomQuestions() {
 
   return (
     <MainLayout>
-      <div className="page-container bg-white">
+      <PageContainer>
         <Breadcrumb className="mb-4">
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -24,7 +25,7 @@ export default function CustomQuestions() {
         </Breadcrumb>
 
         <QuestionsPage />
-      </div>
+      </PageContainer>
     </MainLayout>
   );
 }
