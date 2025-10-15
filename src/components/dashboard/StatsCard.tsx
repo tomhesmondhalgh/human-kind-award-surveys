@@ -20,7 +20,9 @@ const StatsCard = ({ label, value, icon: Icon, color, link, delay }: StatsCardPr
       </div>
       <div>
         <p className="text-sm font-medium text-gray-500">{label}</p>
-        <h3 className="text-2xl font-bold text-gray-900">{value}</h3>
+        <h3 className="text-2xl font-bold text-gray-900">
+          {value === '0' ? '—' : value}
+        </h3>
       </div>
     </div>
   );

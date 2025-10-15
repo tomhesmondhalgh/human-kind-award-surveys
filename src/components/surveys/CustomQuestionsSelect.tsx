@@ -1,12 +1,15 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Eye } from 'lucide-react';
 import { useSubscription } from '../../hooks/useSubscription';
 import CustomQuestionsModal from './CustomQuestionsModal';
 import QuestionList from './QuestionList';
+import QuestionPreviewDialog from '../custom-questions/QuestionPreviewDialog';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useCustomQuestions } from '@/contexts/CustomQuestionsContext';
+import { CustomQuestion } from '@/types/customQuestions';
 
 interface CustomQuestionsSelectProps {
   selectedQuestionIds: string[];
@@ -18,10 +21,19 @@ const CustomQuestionsSelect: React.FC<CustomQuestionsSelectProps> = ({
   onChange
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const { isPremium, isProgress, isFoundation } = useSubscription();
   const isMobile = useIsMobile();
+  const { questions } = useCustomQuestions();
+  const [selectedQuestions, setSelectedQuestions] = useState<CustomQuestion[]>([]);
   
   const hasAccess = isPremium || isProgress || isFoundation;
+
+  // Update selected questions when IDs change
+  useEffect(() => {
+    const selected = questions.filter(q => selectedQuestionIds.includes(q.id)) as CustomQuestion[];
+    setSelectedQuestions(selected);
+  }, [selectedQuestionIds, questions]);
   
   const openModal = (e: React.MouseEvent) => {
     // Prevent the event from propagating to parent elements (like the form)
@@ -63,14 +75,27 @@ const CustomQuestionsSelect: React.FC<CustomQuestionsSelectProps> = ({
           )}
         </div>
         
-        <Button 
-          onClick={openModal}
-          className="flex items-center gap-2 w-full sm:w-auto"
-          type="button" // Explicitly set button type to prevent form submission
-        >
-          <PlusCircle size={16} />
-          {selectedQuestionIds.length > 0 ? 'Edit Selection' : 'Add Questions'}
-        </Button>
+        <div className="flex gap-2">
+          {selectedQuestionIds.length > 0 && (
+            <Button 
+              onClick={() => setShowPreview(true)}
+              variant="outline"
+              className="flex items-center gap-2"
+              type="button"
+            >
+              <Eye size={16} />
+              Preview
+            </Button>
+          )}
+          <Button 
+            onClick={openModal}
+            className="flex items-center gap-2 w-full sm:w-auto"
+            type="button"
+          >
+            <PlusCircle size={16} />
+            {selectedQuestionIds.length > 0 ? 'Edit Selection' : 'Add Questions'}
+          </Button>
+        </div>
       </div>
       
       <p className="text-gray-600 mb-4">
@@ -104,6 +129,12 @@ const CustomQuestionsSelect: React.FC<CustomQuestionsSelectProps> = ({
         onClose={closeModal} 
         selectedIds={selectedQuestionIds}
         onChange={onChange}
+      />
+
+      <QuestionPreviewDialog
+        questions={selectedQuestions}
+        isOpen={showPreview}
+        onClose={() => setShowPreview(false)}
       />
     </div>
   );

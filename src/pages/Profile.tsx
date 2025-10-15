@@ -4,8 +4,9 @@ import MainLayout from '../components/layout/MainLayout';
 import PageTitle from '../components/ui/PageTitle';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
-import { Loader2, Search } from 'lucide-react';
+import { Loader2, Search, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { Textarea } from '../components/ui/textarea';
 import { Input } from '../components/ui/input';
 import { supabase } from '../lib/supabase';
@@ -330,7 +331,10 @@ const Profile = () => {
       const { error, success } = await completeUserProfile(userData);
       
       if (success && emailUpdateSuccess) {
-        toast.success('Profile updated successfully!');
+        toast.success('Profile updated successfully', {
+          description: 'Your changes have been saved',
+          duration: 3000,
+        });
       } else if (error) {
         console.error('Error saving profile:', error);
         toast.error('Failed to update profile', {
@@ -501,7 +505,10 @@ const Profile = () => {
                 
                 <Button 
                   type="submit" 
-                  className="w-full"
+                  className={cn(
+                    "w-full transition-all duration-200",
+                    isSaving && "scale-95"
+                  )}
                   disabled={isSaving || emailChangeInProgress}
                 >
                   {isSaving ? (
@@ -510,7 +517,10 @@ const Profile = () => {
                       Saving...
                     </>
                   ) : (
-                    'Save Personal Information'
+                    <>
+                      <Check className="mr-2 h-4 w-4" />
+                      Save Personal Information
+                    </>
                   )}
                 </Button>
               </form>

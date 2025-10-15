@@ -3,14 +3,18 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { initializeActionPlan, getSectionProgressSummary } from '../utils/actionPlan';
+import { resetSectionToTemplate } from '../utils/actionPlan/resetTemplate';
 import { ACTION_PLAN_SECTIONS } from '../types/actionPlan';
 import MainLayout from '../components/layout/MainLayout';
 import PageTitle from '../components/ui/PageTitle';
 import DescriptorTable from '../components/action-plan/DescriptorTable';
 import BottomNavigation from '../components/action-plan/BottomNavigation';
+import ResetTemplateDialog from '../components/action-plan/ResetTemplateDialog';
 import { Skeleton } from '../components/ui/skeleton';
+import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
+import { RotateCcw } from 'lucide-react';
 
 interface SectionProgress {
   section: string;
@@ -30,6 +34,7 @@ const ActionPlan = () => {
   const [isInitializing, setIsInitializing] = useState(false);
   const [summaryData, setSummaryData] = useState<SectionProgress[]>([]);
   const [isLoadingSummary, setIsLoadingSummary] = useState(true);
+  const [showResetDialog, setShowResetDialog] = useState(false);
 
   const currentSectionData = ACTION_PLAN_SECTIONS.find(s => s.key === currentSection);
 
@@ -91,6 +96,27 @@ const ActionPlan = () => {
   useEffect(() => {
     refreshSummary();
   }, [currentOrganization]);
+
+  const handleResetSection = async () => {
+    if (!currentOrganization) return;
+    
+    try {
+      const result = await resetSectionToTemplate(
+        currentOrganization.id,
+        currentSectionData?.title || ''
+      );
+      
+      if (result.success) {
+        toast.success('Section reset to template successfully');
+        await refreshSummary();
+      } else {
+        toast.error('Failed to reset section');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Error resetting section');
+    }
+  };
 
   if (!currentOrganization) {
     return (
@@ -195,9 +221,20 @@ const ActionPlan = () => {
         )}
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
-          <h2 className="text-xl font-semibold mb-6 text-gray-900">
-            {currentSectionData?.title}
-          </h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold text-gray-900">
+              {currentSectionData?.title}
+            </h2>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowResetDialog(true)}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Reset to Template
+            </Button>
+          </div>
           
           {user && (
             <DescriptorTable
@@ -211,6 +248,13 @@ const ActionPlan = () => {
         <BottomNavigation
           activeTab={currentSection}
           onTabChange={setCurrentSection}
+        />
+
+        <ResetTemplateDialog
+          isOpen={showResetDialog}
+          onClose={() => setShowResetDialog(false)}
+          onConfirm={handleResetSection}
+          sectionName={currentSectionData?.title || ''}
         />
       </div>
     </MainLayout>

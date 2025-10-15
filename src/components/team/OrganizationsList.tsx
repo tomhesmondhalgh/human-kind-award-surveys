@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Button } from '../ui/button';
 import { Building, Plus, Search, MoreVertical } from 'lucide-react';
+import RoleInfoTooltip from './RoleInfoTooltip';
 import { Input } from '../ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -305,15 +306,18 @@ const OrganizationsList = () => {
                       {organization.urn || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                        organization.role === 'admin' 
-                          ? 'bg-green-100 text-green-800' 
-                          : organization.role === 'editor'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {organization.role}
-                      </span>
+                      <div className="flex items-center gap-1">
+                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                          organization.role === 'admin' 
+                            ? 'bg-green-100 text-green-800' 
+                            : organization.role === 'editor'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {organization.role}
+                        </span>
+                        <RoleInfoTooltip role={organization.role} />
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(organization.created_at).toLocaleDateString()}

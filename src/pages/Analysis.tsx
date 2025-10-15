@@ -19,6 +19,7 @@ import { useSubscription } from '../hooks/useSubscription';
 import NoDataDisplay from '../components/analysis/NoDataDisplay';
 import SurveyControls from '../components/analysis/SurveyControls';
 import DataWrapper from '../components/analysis/DataWrapper';
+import EmptyAnalysisState from '../components/analysis/EmptyAnalysisState';
 
 const Analysis = () => {
   const { user } = useAuth();
@@ -233,17 +234,21 @@ const Analysis = () => {
           onExportPDF={handleExportPDF}
         />
 
-        <DataWrapper 
-          isLoading={loading || subscriptionLoading}
-          summary={summary}
-          recommendationScore={recommendationScore}
-          leavingContemplation={leavingContemplation}
-          detailedResponses={detailedResponses}
-          textResponses={textResponses}
-          customQuestionResponses={customQuestionResponses}
-          hasNationalAccess={hasNationalAccess}
-          analysisRef={analysisRef}
-        />
+        {!selectedSurvey ? (
+          <EmptyAnalysisState />
+        ) : (
+          <DataWrapper 
+            isLoading={loading || subscriptionLoading}
+            summary={summary}
+            recommendationScore={recommendationScore}
+            leavingContemplation={leavingContemplation}
+            detailedResponses={detailedResponses}
+            textResponses={textResponses}
+            customQuestionResponses={customQuestionResponses}
+            hasNationalAccess={hasNationalAccess}
+            analysisRef={analysisRef}
+          />
+        )}
       </div>
     </MainLayout>
   );

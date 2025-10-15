@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import StatsGrid from '../components/dashboard/StatsGrid';
 import RecentSurveysList from '../components/dashboard/RecentSurveysList';
 import GettingStartedGuide from '../components/dashboard/GettingStartedGuide';
+import DashboardEmptyState from '../components/dashboard/DashboardEmptyState';
 import { useDashboardData } from '../hooks/useDashboardData';
 
 const Dashboard = () => {
@@ -39,22 +40,26 @@ const Dashboard = () => {
           </div>
         )}
 
-        <div className="space-y-8">
-          <GettingStartedGuide />
-          
-          <StatsGrid 
-            totalSurveys={stats.totalSurveys}
-            totalRespondents={stats.totalRespondents}
-            responseRate={stats.responseRate}
-            benchmarkScore={stats.benchmarkScore}
-            isLoading={isLoading}
-          />
-          
-          <RecentSurveysList 
-            surveys={surveys}
-            isLoading={isLoading}
-          />
-        </div>
+        {!isLoading && stats.totalSurveys === 0 ? (
+          <DashboardEmptyState />
+        ) : (
+          <div className="space-y-8">
+            <GettingStartedGuide />
+            
+            <StatsGrid 
+              totalSurveys={stats.totalSurveys}
+              totalRespondents={stats.totalRespondents}
+              responseRate={stats.responseRate}
+              benchmarkScore={stats.benchmarkScore}
+              isLoading={isLoading}
+            />
+            
+            <RecentSurveysList 
+              surveys={surveys}
+              isLoading={isLoading}
+            />
+          </div>
+        )}
       </div>
     </MainLayout>
   );
