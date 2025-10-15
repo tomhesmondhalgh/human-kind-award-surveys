@@ -99,7 +99,35 @@ const SignUp = () => {
       toast.success('Account created successfully!');
     } catch (err: any) {
       console.error('Signup error details:', err);
-      toast.error('Failed to create account');
+      
+      // Provide specific error messages based on error type
+      if (err.message === 'DUPLICATE_EMAIL') {
+        toast.error({
+          title: 'Account already exists',
+          description: 'An account with this email address already exists. Please log in or reset your password if you\'ve forgotten it.',
+          duration: 6000 // Longer duration for actionable message
+        });
+      } else if (err.message?.toLowerCase().includes('password')) {
+        toast.error({
+          title: 'Invalid password',
+          description: 'Password must be at least 6 characters long.',
+          duration: 5000
+        });
+      } else if (err.message?.toLowerCase().includes('email') && 
+                 err.message?.toLowerCase().includes('invalid')) {
+        toast.error({
+          title: 'Invalid email address',
+          description: 'Please enter a valid email address.',
+          duration: 5000
+        });
+      } else {
+        // Generic fallback for unexpected errors
+        toast.error({
+          title: 'Failed to create account',
+          description: 'An unexpected error occurred. Please try again or contact support if the problem persists.',
+          duration: 5000
+        });
+      }
     } finally {
       setIsLoading(false);
     }

@@ -31,7 +31,22 @@ export async function signUpWithEmail(email: string, password: string, userData?
 
     if (error) {
       console.error('Supabase auth.signUp error:', error);
+      
+      // Check for duplicate email scenarios
+      if (error.message?.toLowerCase().includes('user already registered') ||
+          error.message?.toLowerCase().includes('already exists') ||
+          error.message?.toLowerCase().includes('duplicate') ||
+          error.status === 422) {
+        throw new Error('DUPLICATE_EMAIL');
+      }
+      
       throw error;
+    }
+    
+    // Check for duplicate email via identities array (alternative method)
+    if (data.user && data.user.identities && data.user.identities.length === 0) {
+      console.warn('Duplicate email detected via identities check');
+      throw new Error('DUPLICATE_EMAIL');
     }
     
     if (!data.user) {
