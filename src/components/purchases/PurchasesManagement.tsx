@@ -12,6 +12,7 @@ import { PurchaseTable } from './PurchaseTable';
 import { PurchasePagination } from './PurchasePagination';
 import { UpdatePurchaseDialog } from './UpdatePurchaseDialog';
 import { Purchase } from '../../types/purchases';
+import PageTitle from '../ui/PageTitle';
 
 const PurchasesManagement = () => {
   // Use the admin purchase data hook
@@ -89,11 +90,11 @@ const PurchasesManagement = () => {
 
   return (
     <>
-      <h2 className="text-2xl font-bold mb-6">Purchases Management</h2>
-      <p className="text-gray-600 mb-6">
-        View and manage all purchases including credit card payments and invoices
-      </p>
-        {error && (
+      <PageTitle 
+        title="Purchases Management"
+        subtitle="View and manage all purchases including credit card payments and invoices"
+      />
+      {error && (
           <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>

@@ -221,7 +221,6 @@ const Analysis = () => {
         <PageTitle 
           title="Survey Analysis"
           subtitle="Compare your school's results with national benchmarks"
-          alignment="center"
         />
 
         <SurveyControls

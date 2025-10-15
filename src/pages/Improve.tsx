@@ -201,7 +201,6 @@ const Improve = () => {
             <PageTitle
               title="Wellbeing Action Plan"
               subtitle="Track and improve staff wellbeing using this action planning tool"
-              alignment="left"
             />
             
             {hasFoundationPlan && currentOrganization && (

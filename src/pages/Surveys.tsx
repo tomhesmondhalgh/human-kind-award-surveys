@@ -329,7 +329,7 @@ const Surveys = () => {
           <PageTitle 
             title="Surveys" 
             subtitle={`Manage wellbeing surveys for ${currentOrganization.name}`}
-            className={`mb-0 ${isMobile ? 'text-center' : 'text-left'}`}
+            className="mb-0"
           />
           {user && (
             <Link 
