@@ -10,10 +10,67 @@ import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { useIsMobile } from '../hooks/use-mobile';
 import { sendSurveyReminder } from '../utils/survey/sendReminder';
-import { AlertCircle, Archive } from 'lucide-react';
+import { AlertCircle, Archive, Eye, EyeOff } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { Skeleton } from '../components/ui/skeleton';
 
 const SURVEYS_PER_PAGE = 10;
+
+const SurveyListSkeleton = () => {
+  return (
+    <div className="space-y-4">
+      {/* Desktop skeleton */}
+      <div className="hidden md:block border rounded-lg overflow-hidden">
+        <div className="bg-muted/50 p-4 border-b">
+          <div className="grid grid-cols-12 gap-4">
+            {['Survey', 'Date', 'Status', 'Responses', 'Actions'].map((header) => (
+              <Skeleton key={header} className="h-4 w-24 col-span-2" />
+            ))}
+          </div>
+        </div>
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="p-4 border-b last:border-b-0">
+            <div className="grid grid-cols-12 gap-4 items-center">
+              <div className="col-span-3">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-3 w-24 mt-1" />
+              </div>
+              <Skeleton className="h-4 w-24 col-span-2" />
+              <Skeleton className="h-6 w-16 rounded-full col-span-2" />
+              <Skeleton className="h-4 w-8 col-span-1" />
+              <div className="col-span-4 flex gap-2 justify-end">
+                <Skeleton className="h-9 w-20 rounded" />
+                <Skeleton className="h-9 w-20 rounded" />
+                <Skeleton className="h-9 w-16 rounded" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      {/* Mobile skeleton */}
+      <div className="md:hidden space-y-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="border rounded-lg p-4 space-y-3">
+            <div className="flex justify-between items-start">
+              <Skeleton className="h-6 w-3/4" />
+              <Skeleton className="h-6 w-16 rounded-full" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full col-span-2" />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Skeleton className="h-9 flex-1" />
+              <Skeleton className="h-9 flex-1" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const Surveys = () => {
   const { user } = useAuth();
@@ -286,20 +343,32 @@ const Surveys = () => {
 
         <div className="mb-6 flex items-center justify-between">
           <Button
-            variant={showArchived ? "default" : "outline"}
+            variant="outline"
             size="sm"
             onClick={() => {
               setShowArchived(!showArchived);
               setCurrentPage(1);
             }}
-            className="gap-2"
+            className="w-full sm:w-auto gap-2"
           >
-            <Archive className="h-4 w-4" />
-            {showArchived ? 'Hide Archived Surveys' : 'Include Archived Surveys'}
+            {showArchived ? (
+              <>
+                <EyeOff className="h-4 w-4" />
+                Active Only
+              </>
+            ) : (
+              <>
+                <Eye className="h-4 w-4" />
+                Show All
+              </>
+            )}
           </Button>
-          <p className="text-sm text-muted-foreground">
-            {showArchived ? 'Viewing all surveys (including archived)' : 'Viewing active surveys'}
-          </p>
+          {showArchived && (
+            <p className="text-sm text-muted-foreground flex items-center gap-2">
+              <Archive className="h-4 w-4" />
+              Showing all surveys
+            </p>
+          )}
         </div>
 
         {fetchError && (
@@ -324,10 +393,7 @@ const Surveys = () => {
         )}
 
         {loading ? (
-          <div className="text-center py-12" aria-live="polite" aria-busy="true">
-            <div className="animate-spin h-8 w-8 border-4 border-brandPurple-500 border-t-transparent rounded-full mx-auto" role="progressbar"></div>
-            <p className="mt-4 text-gray-600">Loading surveys...</p>
-          </div>
+          <SurveyListSkeleton />
         ) : (
           <>
             {surveys.length === 0 && !fetchError ? (

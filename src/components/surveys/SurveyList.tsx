@@ -6,7 +6,9 @@ import { toast } from "sonner";
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { useMediaQuery } from '@/hooks/use-media-query';
+import { format } from 'date-fns';
 
 interface Survey {
   id: string;
@@ -26,6 +28,58 @@ interface SurveyListProps {
   onSendReminder: (id: string) => void;
   refreshList?: () => void; // Added this prop to the interface
 }
+
+const getStatusBadgeVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
+  switch (status) {
+    case 'Sent':
+      return 'default'; // Blue
+    case 'Completed':
+      return 'secondary'; // Grey
+    case 'Archived':
+      return 'outline'; // Outlined grey
+    case 'Scheduled':
+      return 'default'; // Blue
+    case 'Saved':
+      return 'outline'; // Outlined
+    default:
+      return 'secondary';
+  }
+};
+
+const getCloseDateDisplay = (closeDate?: string | null) => {
+  if (!closeDate) return { text: 'No close date', className: 'text-muted-foreground' };
+  
+  const date = new Date(closeDate);
+  const now = new Date();
+  const daysUntilClose = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (daysUntilClose < 0) {
+    return { 
+      text: `Closed ${format(date, 'dd/MM/yyyy')}`, 
+      className: 'text-muted-foreground' 
+    };
+  } else if (daysUntilClose === 0) {
+    return { 
+      text: 'Closes today', 
+      className: 'text-red-600 font-medium' 
+    };
+  } else if (daysUntilClose <= 3) {
+    return { 
+      text: `Closes ${format(date, 'dd/MM/yyyy')} (${daysUntilClose} days)`, 
+      className: 'text-orange-600 font-medium' 
+    };
+  } else if (daysUntilClose <= 7) {
+    return { 
+      text: `Closes ${format(date, 'dd/MM/yyyy')}`, 
+      className: 'text-yellow-700 font-medium' 
+    };
+  } else {
+    return { 
+      text: `Closes ${format(date, 'dd/MM/yyyy')}`, 
+      className: 'text-foreground' 
+    };
+  }
+};
 
 const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder, refreshList }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -179,32 +233,28 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder, refres
                         onClick={() => handleEditClick(survey.id)}
                         className="hover:text-brandPurple-600 transition-colors text-left"
                       >
-                        {survey.name}
-                      </button>
-                    ) : (
-                      <span>{survey.name}</span>
-                    )}
-                  </h3>
-                  {survey.closeDisplayDate && (
-                    <p className="text-xs text-gray-500 mt-1">{survey.closeDisplayDate}</p>
-                  )}
-                </div>
-              </div>
-              
-              <div className="col-span-2 text-gray-700">
-                {survey.formattedDate}
-              </div>
-              
-              <div className="col-span-2">
-                <span className={`
-                  inline-flex px-2.5 py-1 rounded-full text-xs font-medium
-                  ${survey.status === 'Scheduled' ? 'bg-yellow-100 text-yellow-800' : 
-                    survey.status === 'Sent' ? 'bg-blue-100 text-blue-800' : 
-                    'bg-purple-100 text-purple-800'}
-                `}>
-                  {survey.status}
-                </span>
-              </div>
+                  {survey.name}
+                </button>
+              ) : (
+                <span>{survey.name}</span>
+              )}
+            </h3>
+            {(() => {
+              const { text, className } = getCloseDateDisplay(survey.closeDate);
+              return <p className={`text-xs mt-1 ${className}`}>{text}</p>;
+            })()}
+          </div>
+        </div>
+        
+        <div className="col-span-2 text-gray-700">
+          {survey.formattedDate}
+        </div>
+        
+        <div className="col-span-2">
+          <Badge variant={getStatusBadgeVariant(survey.status)}>
+            {survey.status}
+          </Badge>
+        </div>
               
               <div className="col-span-1 text-gray-700">
                 {survey.responseCount}
@@ -268,37 +318,37 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder, refres
                   {survey.name}
                 </button>
               ) : (
-                <span>{survey.name}</span>
-              )}
-            </h3>
-            <span className={`
-              inline-flex px-2.5 py-1 rounded-full text-xs font-medium
-              ${survey.status === 'Scheduled' ? 'bg-yellow-100 text-yellow-800' : 
-                survey.status === 'Sent' ? 'bg-blue-100 text-blue-800' : 
-                'bg-purple-100 text-purple-800'}
-            `}>
-              {survey.status}
-            </span>
+              <span>{survey.name}</span>
+            )}
+          </h3>
+          <Badge variant={getStatusBadgeVariant(survey.status)}>
+            {survey.status}
+          </Badge>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+          <div>
+            <span className="text-gray-500">Date:</span>
+            <div className="text-gray-700">{survey.formattedDate}</div>
           </div>
           
-          <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-            <div>
-              <span className="text-gray-500">Date:</span>
-              <div className="text-gray-700">{survey.formattedDate}</div>
-            </div>
-            
-            <div>
-              <span className="text-gray-500">Responses:</span>
-              <div className="text-gray-700">{survey.responseCount}</div>
-            </div>
-            
-            {survey.closeDisplayDate && (
-              <div className="col-span-2">
-                <span className="text-gray-500">Closes:</span>
-                <div className="text-gray-700">{survey.closeDisplayDate.replace('Closes: ', '')}</div>
-              </div>
-            )}
+          <div>
+            <span className="text-gray-500">Responses:</span>
+            <div className="text-gray-700">{survey.responseCount}</div>
           </div>
+          
+          <div className="col-span-2">
+            {(() => {
+              const { text, className } = getCloseDateDisplay(survey.closeDate);
+              return (
+                <>
+                  <span className="text-gray-500">Closes:</span>
+                  <div className={`${className}`}>{text}</div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
           
           <div className="border-t border-gray-100 pt-3 flex flex-wrap gap-3">
             {survey.status === 'Sent' && canEditSurveys && survey.emails && survey.emails.trim() !== '' && (

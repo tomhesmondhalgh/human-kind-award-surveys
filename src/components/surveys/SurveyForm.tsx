@@ -140,12 +140,12 @@ const SurveyForm: React.FC<SurveyFormProps> = ({
             onChange={setSelectedCustomQuestionIds}
           />
           
-          <div className="mt-8 flex flex-wrap gap-4 sm:flex-row flex-col">
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:gap-4">
             <TooltipWrapper content="Save survey and return to surveys list">
               <Button 
                 type="submit" 
                 variant="outline"
-                className="flex-1 sm:flex-none sm:order-1" 
+                className="w-full sm:w-auto sm:flex-1" 
                 disabled={isSubmitting}
               >
                 <Save className="mr-2 h-4 w-4" />
@@ -157,7 +157,7 @@ const SurveyForm: React.FC<SurveyFormProps> = ({
               <Button 
                 type="button" 
                 variant="secondary" 
-                className="flex-1 sm:flex-none sm:order-2" 
+                className="w-full sm:w-auto sm:flex-1" 
                 onClick={handlePreviewClick}
                 disabled={isSubmitting}
               >
@@ -172,7 +172,7 @@ const SurveyForm: React.FC<SurveyFormProps> = ({
               <Button 
                 type="button" 
                 variant="default" 
-                className="flex-1 sm:flex-none sm:order-3 bg-brandPurple-500 hover:bg-brandPurple-600" 
+                className="w-full sm:w-auto sm:flex-1 bg-brandPurple-500 hover:bg-brandPurple-600" 
                 onClick={handleSendSurvey}
                 disabled={isSubmitting}
               >
