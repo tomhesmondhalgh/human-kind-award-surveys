@@ -10,7 +10,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { useIsMobile } from '../hooks/use-mobile';
 import { sendSurveyReminder } from '../utils/survey/sendReminder';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Archive } from 'lucide-react';
+import { Button } from '../components/ui/button';
 
 const SURVEYS_PER_PAGE = 10;
 
@@ -25,6 +26,7 @@ const Surveys = () => {
   const [canCreateSurveys, setCanCreateSurveys] = useState(true);
   const [refreshFlag, setRefreshFlag] = useState(0);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -50,12 +52,19 @@ const Surveys = () => {
         setLoading(true);
         setFetchError(null);
         
-        console.log('Counting surveys excluding Archived ones');
-        const { count, error: countError } = await supabase
+        console.log(`Counting surveys (${showArchived ? 'archived only' : 'excluding archived'})`);
+        let countQuery = supabase
           .from('survey_templates')
           .select('*', { count: 'exact', head: true })
-          .eq('organization_id', currentOrganization.id)
-          .neq('status', 'Archived');
+          .eq('organization_id', currentOrganization.id);
+        
+        if (showArchived) {
+          countQuery = countQuery.eq('status', 'Archived');
+        } else {
+          countQuery = countQuery.neq('status', 'Archived');
+        }
+        
+        const { count, error: countError } = await countQuery;
           
         if (countError) {
           console.error('Error counting surveys:', countError);
@@ -69,7 +78,7 @@ const Surveys = () => {
         const to = from + SURVEYS_PER_PAGE - 1;
         
         console.log(`Fetching surveys page ${currentPage} (range ${from}-${to})`);
-        const { data: surveyTemplates, error } = await supabase
+        let surveysQuery = supabase
           .from('survey_templates')
           .select(`
             id,
@@ -81,8 +90,15 @@ const Surveys = () => {
             status,
             survey_responses(count)
           `)
-          .eq('organization_id', currentOrganization.id)
-          .neq('status', 'Archived')
+          .eq('organization_id', currentOrganization.id);
+        
+        if (showArchived) {
+          surveysQuery = surveysQuery.eq('status', 'Archived');
+        } else {
+          surveysQuery = surveysQuery.neq('status', 'Archived');
+        }
+        
+        const { data: surveyTemplates, error } = await surveysQuery
           .order('created_at', { ascending: false })
           .range(from, to);
           
@@ -167,7 +183,7 @@ const Surveys = () => {
     };
 
     fetchSurveys();
-  }, [user, currentOrganization, currentPage, refreshFlag, orgLoading]);
+  }, [user, currentOrganization, currentPage, refreshFlag, orgLoading, showArchived]);
 
   const handleSendReminder = async (id: string) => {
     console.log(`Sending reminder for survey ${id}`);
@@ -270,6 +286,24 @@ const Surveys = () => {
               + New Survey
             </Link>
           )}
+        </div>
+
+        <div className="mb-6 flex items-center justify-between">
+          <Button
+            variant={showArchived ? "default" : "outline"}
+            size="sm"
+            onClick={() => {
+              setShowArchived(!showArchived);
+              setCurrentPage(1);
+            }}
+            className="gap-2"
+          >
+            <Archive className="h-4 w-4" />
+            {showArchived ? 'Show Active Surveys' : 'Show Archived Surveys'}
+          </Button>
+          <p className="text-sm text-muted-foreground">
+            {showArchived ? 'Viewing archived surveys' : 'Viewing active surveys'}
+          </p>
         </div>
 
         {fetchError && (
