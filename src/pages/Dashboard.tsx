@@ -1,7 +1,7 @@
-
 import React from 'react';
 import MainLayout from '../components/layout/MainLayout';
 import PageContainer from '../components/layout/PageContainer';
+import PageTitle from '../components/ui/PageTitle';
 import { useAuth } from '../contexts/AuthContext';
 import StatsGrid from '../components/dashboard/StatsGrid';
 import RecentSurveysList from '../components/dashboard/RecentSurveysList';
@@ -16,12 +16,10 @@ const Dashboard = () => {
   return (
     <MainLayout>
       <PageContainer>
-        <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Welcome back{user?.user_metadata?.first_name ? `, ${user.user_metadata.first_name}` : ''}!
-            </h1>
-            <p className="text-gray-600">Here's what's happening with your surveys today.</p>
-          </div>
+        <PageTitle 
+          title={`Welcome back${user?.user_metadata?.first_name ? `, ${user.user_metadata.first_name}` : ''}!`}
+          subtitle="Here's what's happening with your surveys today."
+        />
 
         {/* Show error state if there's an error */}
         {error && (

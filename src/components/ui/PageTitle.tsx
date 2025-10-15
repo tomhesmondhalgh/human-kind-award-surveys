@@ -14,13 +14,15 @@ const PageTitle: React.FC<PageTitleProps> = ({
   className = '',
   alignment = 'left'
 }) => {
+  const alignmentClass = alignment === 'center' ? 'text-center' : alignment === 'right' ? 'text-right' : 'text-left';
+
   return (
-    <div className={`${className}`}>
-      <h1 className={`text-3xl font-bold text-gray-900 mb-2 text-${alignment}`}>
+    <div className={`mb-8 ${className}`}>
+      <h1 className={`text-3xl font-bold text-gray-900 mb-2 ${alignmentClass}`}>
         {title}
       </h1>
       {subtitle && (
-        <p className={`text-lg text-gray-600 text-${alignment}`}>
+        <p className={`text-lg text-gray-600 ${alignmentClass}`}>
           {subtitle}
         </p>
       )}

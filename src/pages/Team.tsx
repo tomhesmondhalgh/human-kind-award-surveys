@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import MainLayout from '../components/layout/MainLayout';
 import PageContainer from '../components/layout/PageContainer';
+import PageTitle from '../components/ui/PageTitle';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -153,16 +154,15 @@ const Team = () => {
     <MainLayout>
       <PageContainer>
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Team Management</h1>
-              <p className="text-gray-600">
-                {currentOrganization 
-                  ? `Manage members and permissions for ${currentOrganization.name}`
-                  : 'No organisation selected - please contact support to set up your organisation'}
-              </p>
-            </div>
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <PageTitle 
+              title="Team Management"
+              subtitle={currentOrganization 
+                ? `Manage members and permissions for ${currentOrganization.name}`
+                : 'No organisation selected - please contact support to set up your organisation'}
+              className="mb-0"
+            />
 
             {currentOrganization && canManageTeam && (
               <Button 

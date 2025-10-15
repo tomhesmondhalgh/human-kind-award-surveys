@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { toast } from "sonner";
 import MainLayout from '../components/layout/MainLayout';
 import PageContainer from '../components/layout/PageContainer';
+import PageTitle from '../components/ui/PageTitle';
 import { 
   getSurveyOptions, 
   getRecommendationScore, 
@@ -217,12 +218,13 @@ const Analysis = () => {
       {shouldShowOverlay && <ScreenOrientationOverlay onDismiss={() => setOverlayDismissed(true)} />}
       
       <PageContainer className="max-w-6xl">
-        <div className="mb-10 text-center">
-            <h1 className="text-3xl font-bold mb-2">Survey Analysis</h1>
-            <p className="text-gray-600">Compare your school's results with national benchmarks</p>
-          </div>
+        <PageTitle 
+          title="Survey Analysis"
+          subtitle="Compare your school's results with national benchmarks"
+          alignment="center"
+        />
 
-          <SurveyControls
+        <SurveyControls
           surveyOptions={surveyOptions}
           selectedSurvey={selectedSurvey}
           selectedTimeRange={selectedTimeRange}
