@@ -39,8 +39,25 @@ export function useSurveyData(surveyId: string | null, isPreview: boolean) {
           return;
         }
         
+        // Check if survey status allows responses (must be 'Sent')
+        if (surveyTemplate.status !== 'Sent' && !isPreview) {
+          console.log(`Survey ${surveyId} has status ${surveyTemplate.status} - not accepting responses`);
+          setIsLoading(false);
+          const errorMessage = 
+            surveyTemplate.status === 'Archived' 
+              ? 'This survey has been archived and is no longer accepting responses'
+              : surveyTemplate.status === 'Completed'
+              ? 'This survey has been completed and is no longer accepting responses'
+              : surveyTemplate.status === 'Scheduled'
+              ? 'This survey is not yet open for responses'
+              : 'This survey is not currently accepting responses';
+          setError(errorMessage);
+          return { isClosed: true };
+        }
+        
+        // Check if survey is closed by date
         if (isSurveyClosed(surveyTemplate) && !isPreview) {
-          console.log(`Survey ${surveyId} is closed and not in preview mode`);
+          console.log(`Survey ${surveyId} is closed by date and not in preview mode`);
           setIsLoading(false);
           setError('This survey has closed');
           return { isClosed: true };
