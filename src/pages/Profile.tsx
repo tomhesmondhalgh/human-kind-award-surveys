@@ -440,15 +440,64 @@ const Profile = () => {
           {/* Personal Information Form */}
           <div>
             <h2 className="text-xl font-semibold mb-4">Personal Information</h2>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onProfileFormSubmit)} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="max-w-2xl">
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onProfileFormSubmit)} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="firstName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>First name</FormLabel>
+                          <FormControl>
+                            <Input {...field} disabled={isSaving} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="lastName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Last name</FormLabel>
+                          <FormControl>
+                            <Input {...field} disabled={isSaving} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
                   <FormField
                     control={form.control}
-                    name="firstName"
+                    name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>First name</FormLabel>
+                        <FormLabel>Email address</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="email" disabled={isSaving || emailChangeInProgress} />
+                        </FormControl>
+                        <FormMessage />
+                        {field.value !== user?.email && (
+                          <p className="text-xs text-amber-600 mt-1">
+                            Changing your email will require verification of the new address.
+                          </p>
+                        )}
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="jobTitle"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Job title</FormLabel>
                         <FormControl>
                           <Input {...field} disabled={isSaving} />
                         </FormControl>
@@ -457,81 +506,35 @@ const Profile = () => {
                     )}
                   />
                   
-                  <FormField
-                    control={form.control}
-                    name="lastName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Last name</FormLabel>
-                        <FormControl>
-                          <Input {...field} disabled={isSaving} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                  <Button 
+                    type="submit" 
+                    className={cn(
+                      "w-full transition-all duration-200",
+                      isSaving && "scale-95"
                     )}
-                  />
-                </div>
-                
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email address</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="email" disabled={isSaving || emailChangeInProgress} />
-                      </FormControl>
-                      <FormMessage />
-                      {field.value !== user?.email && (
-                        <p className="text-xs text-amber-600 mt-1">
-                          Changing your email will require verification of the new address.
-                        </p>
-                      )}
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="jobTitle"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Job title</FormLabel>
-                      <FormControl>
-                        <Input {...field} disabled={isSaving} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <Button 
-                  type="submit" 
-                  className={cn(
-                    "w-full transition-all duration-200",
-                    isSaving && "scale-95"
-                  )}
-                  disabled={isSaving || emailChangeInProgress}
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 size={18} className="mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="mr-2 h-4 w-4" />
-                      Save Personal Information
-                    </>
-                  )}
-                </Button>
-              </form>
-            </Form>
+                    disabled={isSaving || emailChangeInProgress}
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 size={18} className="mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="mr-2 h-4 w-4" />
+                        Save Personal Information
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </Form>
+            </div>
           </div>
           
           <div className="border-t border-gray-200 pt-6">
             <h2 className="text-xl font-semibold mb-4">School Information</h2>
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="max-w-2xl">
+              <form onSubmit={handleSubmit} className="space-y-6">
               {!useCustomSchool ? (
                 <>
                   <div className="space-y-4">
@@ -783,6 +786,7 @@ const Profile = () => {
                 </Button>
               </div>
             </form>
+            </div>
           </div>
         </div>
       </PageContainer>
