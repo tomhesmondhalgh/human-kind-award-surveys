@@ -216,12 +216,13 @@ const Analysis = () => {
       {shouldShowOverlay && <ScreenOrientationOverlay onDismiss={() => setOverlayDismissed(true)} />}
       
       <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <div className="mb-10 text-center">
-          <h1 className="text-3xl font-bold mb-2">Survey Analysis</h1>
-          <p className="text-gray-600">Compare your school's results with national benchmarks</p>
-        </div>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 md:p-8">
+          <div className="mb-10 text-center">
+            <h1 className="text-3xl font-bold mb-2">Survey Analysis</h1>
+            <p className="text-gray-600">Compare your school's results with national benchmarks</p>
+          </div>
 
-        <SurveyControls 
+          <SurveyControls
           surveyOptions={surveyOptions}
           selectedSurvey={selectedSurvey}
           selectedTimeRange={selectedTimeRange}
@@ -249,6 +250,7 @@ const Analysis = () => {
             analysisRef={analysisRef}
           />
         )}
+        </div>
       </div>
     </MainLayout>
   );

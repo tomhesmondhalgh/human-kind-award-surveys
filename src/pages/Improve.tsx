@@ -196,14 +196,15 @@ const Improve = () => {
         <ScreenOrientationOverlay onDismiss={() => setOverlayDismissed(true)} />
       )}
       <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <PageTitle
-            title="Wellbeing Action Plan"
-            subtitle="Track and improve staff wellbeing using this action planning tool"
-            alignment="left"
-          />
-          
-          {hasFoundationPlan && currentOrganization && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 md:p-8">
+          <div className="flex justify-between items-center mb-6">
+            <PageTitle
+              title="Wellbeing Action Plan"
+              subtitle="Track and improve staff wellbeing using this action planning tool"
+              alignment="left"
+            />
+            
+            {hasFoundationPlan && currentOrganization && (
             <div className="flex space-x-2">
               <Button
                 variant="outline"
@@ -339,6 +340,7 @@ const Improve = () => {
             />
           </Tabs>
         )}
+        </div>
       </div>
     </MainLayout>
   );

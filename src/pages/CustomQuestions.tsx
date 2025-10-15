@@ -10,7 +10,7 @@ export default function CustomQuestions() {
 
   return (
     <MainLayout>
-      <div className="page-container">
+      <div className="page-container bg-white">
         <Breadcrumb className="mb-4">
           <BreadcrumbList>
             <BreadcrumbItem>

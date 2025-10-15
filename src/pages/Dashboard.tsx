@@ -15,12 +15,13 @@ const Dashboard = () => {
   return (
     <MainLayout>
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome back{user?.user_metadata?.first_name ? `, ${user.user_metadata.first_name}` : ''}!
-          </h1>
-          <p className="text-gray-600">Here's what's happening with your surveys today.</p>
-        </div>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 md:p-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Welcome back{user?.user_metadata?.first_name ? `, ${user.user_metadata.first_name}` : ''}!
+            </h1>
+            <p className="text-gray-600">Here's what's happening with your surveys today.</p>
+          </div>
 
         {/* Show error state if there's an error */}
         {error && (
@@ -60,6 +61,7 @@ const Dashboard = () => {
             />
           </div>
         )}
+        </div>
       </div>
     </MainLayout>
   );
