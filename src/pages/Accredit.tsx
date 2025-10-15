@@ -178,9 +178,11 @@ const Accredit = () => {
   if (isSubscriptionChecking || isLoading) {
     return <MainLayout>
         <div className="container mx-auto px-4 py-8">
-          <div className="flex justify-center items-center h-64">
-            <div className="text-center">
-              <div className="mb-4">Loading accreditation data...</div>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 md:p-8">
+            <div className="flex justify-center items-center h-64">
+              <div className="text-center">
+                <div className="mb-4">Loading accreditation data...</div>
+              </div>
             </div>
           </div>
         </div>
@@ -189,9 +191,10 @@ const Accredit = () => {
   if (!hasProgressAccess) {
     return <MainLayout>
         <div className="container mx-auto px-4 py-8">
-          <PageTitle title="Action Plan Accreditation" subtitle="Get your wellbeing action plan formally accredited" alignment="left" />
-          
-          <div className="mt-8 rounded-lg border border-gray-200 bg-gray-50 p-8 text-center">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 md:p-8">
+            <PageTitle title="Action Plan Accreditation" subtitle="Get your wellbeing action plan formally accredited" alignment="left" />
+            
+            <div className="mt-8 rounded-lg border border-gray-200 bg-gray-50 p-8 text-center">
             
             <h2 className="text-2xl font-bold mb-4">Upgrade to Access Accreditation</h2>
             <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
@@ -199,9 +202,10 @@ const Accredit = () => {
               Get your wellbeing framework formally recognised and certified.
             </p>
             
-            <Button onClick={() => navigate('/upgrade')} size="lg" className="px-8">
-              View Upgrade Options <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+              <Button onClick={() => navigate('/upgrade')} size="lg" className="px-8">
+                View Upgrade Options <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </MainLayout>;
@@ -209,14 +213,16 @@ const Accredit = () => {
   if (!currentOrganization) {
     return <MainLayout>
         <div className="container mx-auto px-4 py-8">
-          <PageTitle title="Action Plan Accreditation" subtitle="Get your wellbeing action plan formally accredited" alignment="left" />
-          
-          <div className="mt-8 rounded-lg border border-gray-200 bg-gray-50 p-8 text-center">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 md:p-8">
+            <PageTitle title="Action Plan Accreditation" subtitle="Get your wellbeing action plan formally accredited" alignment="left" />
+            
+            <div className="mt-8 rounded-lg border border-gray-200 bg-gray-50 p-8 text-center">
             <Award className="h-12 w-12 mx-auto mb-4 text-gray-400" />
             <h2 className="text-2xl font-bold mb-4">No Organization Selected</h2>
-            <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-              Please select an organization to view accreditation options.
-            </p>
+              <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
+                Please select an organization to view accreditation options.
+              </p>
+            </div>
           </div>
         </div>
       </MainLayout>;
@@ -225,9 +231,10 @@ const Accredit = () => {
   const hasSubmission = submission && submission.status !== 'not_submitted';
   return <MainLayout>
       <div className="container mx-auto px-4 py-8">
-        <PageTitle title="Action Plan Accreditation" subtitle={`Get ${currentOrganization.name}'s wellbeing action plan formally accredited`} alignment="left" />
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 md:p-8">
+          <PageTitle title="Action Plan Accreditation" subtitle={`Get ${currentOrganization.name}'s wellbeing action plan formally accredited`} alignment="left" />
 
-        <div className="space-y-6 mt-8">
+          <div className="space-y-6 mt-8">
           {/* Current Status Card */}
           <Card>
             <CardHeader>
@@ -303,29 +310,30 @@ const Accredit = () => {
                         </div>
                       </div>;
               })}
-                  
-                  <div className="pt-4 border-t">
-                    {isReady ? <div className="flex items-center gap-2 text-green-600 mb-4">
-                        <CheckCircle className="h-5 w-5" />
-                        <span className="font-medium">Ready for submission</span>
-                      </div> : <div className="flex items-center gap-2 text-amber-600 mb-4">
-                        <AlertCircle className="h-5 w-5" />
-                        <span className="font-medium">Complete outstanding items to submit</span>
-                      </div>}
-                    
-                    {!hasSubmission && <Button onClick={handleSubmission} disabled={!isReady || isSubmitting} className="w-full sm:w-auto">
-                        {isSubmitting ? 'Submitting...' : 'Submit for Accreditation'}
-                      </Button>}
-                    
-                    {!isReady && <Button variant="outline" onClick={() => navigate('/improve')} className="w-full sm:w-auto ml-0 sm:ml-2 mt-2 sm:mt-0">
-                        Complete Action Plan
-                      </Button>}
-                  </div>
-                </div> : <div className="text-center py-4">
-                  Loading readiness check...
-                </div>}
-            </CardContent>
-          </Card>
+                   
+                   <div className="pt-4 border-t">
+                     {isReady ? <div className="flex items-center gap-2 text-green-600 mb-4">
+                         <CheckCircle className="h-5 w-5" />
+                         <span className="font-medium">Ready for submission</span>
+                       </div> : <div className="flex items-center gap-2 text-amber-600 mb-4">
+                         <AlertCircle className="h-5 w-5" />
+                         <span className="font-medium">Complete outstanding items to submit</span>
+                       </div>}
+                     
+                     {!hasSubmission && <Button onClick={handleSubmission} disabled={!isReady || isSubmitting} className="w-full sm:w-auto">
+                         {isSubmitting ? 'Submitting...' : 'Submit for Accreditation'}
+                       </Button>}
+                     
+                     {!isReady && <Button variant="outline" onClick={() => navigate('/improve')} className="w-full sm:w-auto ml-0 sm:ml-2 mt-2 sm:mt-0">
+                         Complete Action Plan
+                       </Button>}
+                   </div>
+                 </div> : <div className="text-center py-4">
+                   Loading readiness check...
+                 </div>}
+             </CardContent>
+           </Card>
+          </div>
         </div>
       </div>
     </MainLayout>;

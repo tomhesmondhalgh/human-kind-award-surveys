@@ -265,10 +265,12 @@ const Surveys = () => {
   if (orgLoading) {
     return (
       <MainLayout>
-        <div className="page-container bg-white">
-          <div className="text-center py-12" aria-live="polite" aria-busy="true">
-            <div className="animate-spin h-8 w-8 border-4 border-brandPurple-500 border-t-transparent rounded-full mx-auto" role="progressbar"></div>
-            <p className="mt-4 text-gray-600">Loading organisation data...</p>
+        <div className="container mx-auto px-4 py-8">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 md:p-8">
+            <div className="text-center py-12" aria-live="polite" aria-busy="true">
+              <div className="animate-spin h-8 w-8 border-4 border-brandPurple-500 border-t-transparent rounded-full mx-auto" role="progressbar"></div>
+              <p className="mt-4 text-gray-600">Loading organisation data...</p>
+            </div>
           </div>
         </div>
       </MainLayout>
@@ -278,8 +280,9 @@ const Surveys = () => {
   if (orgError) {
     return (
       <MainLayout>
-        <div className="page-container bg-white">
-          <div className="bg-red-50 border border-red-200 text-red-600 p-6 rounded-md">
+        <div className="container mx-auto px-4 py-8">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 md:p-8">
+            <div className="bg-red-50 border border-red-200 text-red-600 p-6 rounded-md">
             <div className="flex items-start gap-3">
               <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
               <div>
@@ -296,6 +299,7 @@ const Surveys = () => {
                 </button>
               </div>
             </div>
+            </div>
           </div>
         </div>
       </MainLayout>
@@ -305,8 +309,9 @@ const Surveys = () => {
   if (!currentOrganization) {
     return (
       <MainLayout>
-        <div className="page-container bg-white">
-          <div className="text-center py-12">
+        <div className="container mx-auto px-4 py-8">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 md:p-8">
+            <div className="text-center py-12">
             <h2 className="text-xl font-semibold mb-4">No Organisation Selected</h2>
             <p className="text-gray-600 mb-6">Please select an organisation to view surveys.</p>
             <Link 
@@ -317,14 +322,16 @@ const Surveys = () => {
             </Link>
           </div>
         </div>
+        </div>
       </MainLayout>
     );
   }
 
   return (
     <MainLayout>
-      <div className="page-container bg-white">
-        <div className={`flex ${isMobile ? 'flex-col gap-4' : 'justify-between items-center'} mb-8`}>
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 md:p-8">
+          <div className={`flex ${isMobile ? 'flex-col gap-4' : 'justify-between items-center'} mb-8`}>
           <PageTitle 
             title="Surveys" 
             subtitle={`Manage wellbeing surveys for ${currentOrganization.name}`}
@@ -431,6 +438,7 @@ const Surveys = () => {
             )}
           </>
         )}
+        </div>
       </div>
     </MainLayout>
   );
