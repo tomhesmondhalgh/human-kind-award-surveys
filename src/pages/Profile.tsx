@@ -436,7 +436,7 @@ const Profile = () => {
           subtitle="Manage your personal and school information"
         />
         
-        <div className="max-w-2xl mx-auto space-y-8">
+        <div className="space-y-8">
           {/* Personal Information Form */}
           <div>
             <h2 className="text-xl font-semibold mb-4">Personal Information</h2>
