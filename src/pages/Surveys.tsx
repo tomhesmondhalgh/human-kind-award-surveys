@@ -52,15 +52,13 @@ const Surveys = () => {
         setLoading(true);
         setFetchError(null);
         
-        console.log(`Counting surveys (${showArchived ? 'archived only' : 'excluding archived'})`);
+        console.log(`Counting surveys (${showArchived ? 'including archived' : 'excluding archived'})`);
         let countQuery = supabase
           .from('survey_templates')
           .select('*', { count: 'exact', head: true })
           .eq('organization_id', currentOrganization.id);
         
-        if (showArchived) {
-          countQuery = countQuery.eq('status', 'Archived');
-        } else {
+        if (!showArchived) {
           countQuery = countQuery.neq('status', 'Archived');
         }
         
@@ -92,9 +90,7 @@ const Surveys = () => {
           `)
           .eq('organization_id', currentOrganization.id);
         
-        if (showArchived) {
-          surveysQuery = surveysQuery.eq('status', 'Archived');
-        } else {
+        if (!showArchived) {
           surveysQuery = surveysQuery.neq('status', 'Archived');
         }
         
@@ -299,10 +295,10 @@ const Surveys = () => {
             className="gap-2"
           >
             <Archive className="h-4 w-4" />
-            {showArchived ? 'Show Active Surveys' : 'Show Archived Surveys'}
+            {showArchived ? 'Hide Archived Surveys' : 'Include Archived Surveys'}
           </Button>
           <p className="text-sm text-muted-foreground">
-            {showArchived ? 'Viewing archived surveys' : 'Viewing active surveys'}
+            {showArchived ? 'Viewing all surveys (including archived)' : 'Viewing active surveys'}
           </p>
         </div>
 
