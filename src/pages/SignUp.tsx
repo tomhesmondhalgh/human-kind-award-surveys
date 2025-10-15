@@ -107,6 +107,18 @@ const SignUp = () => {
           description: 'An account with this email address already exists. Please log in or reset your password if you\'ve forgotten it.',
           duration: 6000 // Longer duration for actionable message
         });
+      } else if (err.message?.includes('organization with this name already exists')) {
+        toast.error({
+          title: 'Organization name already exists',
+          description: 'An organization with this name already exists. Please use a different name or contact support if you believe this is your organization.',
+          duration: 6000
+        });
+      } else if (err.message?.includes('Failed to set up organization')) {
+        toast.error({
+          title: 'Organization setup failed',
+          description: 'We couldn\'t set up your organization. Please try again or contact support if the problem persists.',
+          duration: 6000
+        });
       } else if (err.message?.toLowerCase().includes('password')) {
         toast.error({
           title: 'Invalid password',
