@@ -33,7 +33,8 @@ export function useQuestionStore() {
 
       // Filter by current organization or global questions (organization_id is null)
       if (currentOrganization?.id) {
-        query = query.or(`organization_id.is.null,organization_id.eq.${currentOrganization.id}`);
+        // Use in() with null to include both null and specific org
+        query = query.in('organization_id', [null, currentOrganization.id]);
       } else {
         // If no organization, only show global questions
         query = query.is('organization_id', null);
