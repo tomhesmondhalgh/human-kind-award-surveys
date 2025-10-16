@@ -84,7 +84,7 @@ const AppSidebar: React.FC<AdminSidebarProps> = ({ activeTab, onTabChange }) => 
   ];
 
   return (
-    <Sidebar style={{ top: '5rem' }} className="h-[calc(100vh-5rem)]">
+    <Sidebar collapsible="icon" className="h-[calc(100vh-5rem)] border-r">
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Business Management</SidebarGroupLabel>
