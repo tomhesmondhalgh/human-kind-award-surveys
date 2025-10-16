@@ -141,34 +141,26 @@ const SurveyForm: React.FC<SurveyFormProps> = ({
           />
           
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:gap-4">
-            <TooltipWrapper content="Save survey and return to surveys list">
-              <Button 
-                type="submit" 
-                variant="outline"
-                className="w-full sm:w-auto sm:flex-1" 
-                disabled={isSubmitting}
-              >
-                <Save className="mr-2 h-4 w-4" />
-                {isSubmitting ? 'Saving...' : submitButtonText}
-              </Button>
-            </TooltipWrapper>
-            
-            <TooltipWrapper content="Save and preview how the survey will look to recipients">
+            {/* Preview Button - Always shows, makes save explicit */}
+            <TooltipWrapper content="Save your survey and preview how it will look to recipients">
               <Button 
                 type="button" 
-                variant="secondary" 
+                variant="outline"
                 className="w-full sm:w-auto sm:flex-1" 
                 onClick={handlePreviewClick}
                 disabled={isSubmitting}
               >
                 <Play className="mr-2 h-4 w-4" />
-                {isSubmitting ? 'Please wait...' : 'Preview Survey'}
+                {isSubmitting ? 'Saving...' : 'Save & Preview'}
               </Button>
             </TooltipWrapper>
             
-            <TooltipWrapper content={form.watch("distributionMethod") === "email" ? 
-              "Save, send email invitations and mark as sent" : 
-              "Save, generate shareable link and mark as sent"}>
+            {/* Primary Action - Context-aware based on distribution method */}
+            <TooltipWrapper content={
+              form.watch("distributionMethod") === "email" 
+                ? "Save survey and send email invitations to all recipients" 
+                : "Save survey and mark as published. You'll get a shareable link."
+            }>
               <Button 
                 type="button" 
                 variant="default" 
@@ -177,7 +169,12 @@ const SurveyForm: React.FC<SurveyFormProps> = ({
                 disabled={isSubmitting}
               >
                 <Send className="mr-2 h-4 w-4" />
-                {isSubmitting ? 'Sending...' : 'Send Survey'}
+                {isSubmitting 
+                  ? 'Saving...' 
+                  : form.watch("distributionMethod") === "email" 
+                    ? 'Send Invitations' 
+                    : 'Publish Survey'
+                }
               </Button>
             </TooltipWrapper>
           </div>
@@ -185,8 +182,13 @@ const SurveyForm: React.FC<SurveyFormProps> = ({
       </Form>
       
       {showSurveyLink && surveyLink && (
-        <div className="border border-gray-200 rounded-md p-6 bg-gray-50 mt-8">
-          <h3 className="text-lg font-medium mb-4">Your Survey Link</h3>
+        <div className="border-2 border-brandPurple-300 rounded-lg p-6 bg-brandPurple-50 mt-8 shadow-sm">
+          <h3 className="text-lg font-semibold mb-2 text-brandPurple-900">
+            📋 Your Survey is Published!
+          </h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Share this link with your staff to collect responses
+          </p>
           <SurveyLink surveyUrl={surveyLink} />
         </div>
       )}

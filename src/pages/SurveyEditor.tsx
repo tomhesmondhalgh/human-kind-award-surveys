@@ -339,14 +339,16 @@ const SurveyEditor = () => {
         navigate('/surveys');
       } else if (action === 'save') {
         // Display success message
-        toast.success("Survey saved successfully", {
-          description: "Your changes have been saved."
+        toast.success("Survey published successfully", {
+          description: "Your survey is now live and ready to share."
         });
         navigate('/surveys');
       } else {
         // Default case, just show a success message
         const successMessage = isEditMode ? "Survey updated successfully" : "Survey created successfully!";
-        const successDescription = isEditMode ? "Your changes have been saved." : "Your survey has been saved. You can now preview or send it.";
+        const successDescription = isEditMode 
+          ? "Your survey has been updated and saved." 
+          : "Your survey has been saved. You can now preview or publish it.";
         
         toast.success(successMessage, {
           description: successDescription
@@ -367,9 +369,6 @@ const SurveyEditor = () => {
     }
   };
 
-  const handleSaveChanges = async (data: SurveyFormData, selectedCustomQuestionIds: string[]) => {
-    await handleSubmit(data, selectedCustomQuestionIds, 'save');
-  };
 
   const handlePreviewSurvey = async (data: SurveyFormData, selectedCustomQuestionIds: string[]) => {
     await handleSubmit(data, selectedCustomQuestionIds, 'preview');
@@ -383,8 +382,8 @@ const SurveyEditor = () => {
     try {
       // For link distribution, we've already marked the survey as sent
       if (distributionMethod === 'link' || !emails || emails.trim() === '') {
-        toast.success("Survey ready to share", {
-          description: "Use the survey link to share with participants."
+        toast.success("Survey published successfully", {
+          description: "Your survey is now live. Use the shareable link below to distribute to participants."
         });
         return;
       }
@@ -443,8 +442,8 @@ const SurveyEditor = () => {
       
       console.log('Send survey email response:', data);
       
-      toast.success("Survey sent successfully!", {
-        description: `Sent to ${data?.count || validEmails.length} recipients.`
+      toast.success("Invitations sent successfully!", {
+        description: `Email invitations sent to ${data?.count || validEmails.length} recipients.`
       });
     } catch (error) {
       console.error('Error sending survey emails:', error);
@@ -549,10 +548,10 @@ const SurveyEditor = () => {
         
         <SurveyForm 
           initialData={surveyData || undefined} 
-          onSubmit={handleSaveChanges}
+          onSubmit={handlePreviewSurvey}
           onPreviewSurvey={handlePreviewSurvey}
           onSendSurvey={handleSendSurvey}
-          submitButtonText={isEditMode ? "Save Changes" : "Save"}
+          submitButtonText="Save & Preview"
           isEdit={isEditMode}
           surveyId={savedSurveyId}
           isSubmitting={isSubmitting}
