@@ -11,7 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { useIsMobile } from '../hooks/use-mobile';
 import { sendSurveyReminder } from '../utils/survey/sendReminder';
-import { AlertCircle, Archive, Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, Archive, Eye, EyeOff, HelpCircle } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Skeleton } from '../components/ui/skeleton';
 
@@ -332,13 +332,23 @@ const Surveys = () => {
             className="mb-0"
           />
           {user && (
-            <Link 
-              to="/survey-editor"
-              className={`btn-primary ${isMobile ? 'w-full text-center py-3' : ''}`}
-              aria-label="Create new survey"
-            >
-              + New Survey
-            </Link>
+            <div className={`flex gap-3 ${isMobile ? 'w-full flex-col' : ''}`}>
+              <Link 
+                to="/custom-questions"
+                className={`btn-secondary flex items-center justify-center gap-2 ${isMobile ? 'w-full py-3' : ''}`}
+                aria-label="Manage custom questions"
+              >
+                <HelpCircle className="h-4 w-4" />
+                Custom Questions
+              </Link>
+              <Link 
+                to="/survey-editor"
+                className={`btn-primary ${isMobile ? 'w-full text-center py-3' : ''}`}
+                aria-label="Create new survey"
+              >
+                + New Survey
+              </Link>
+            </div>
           )}
         </div>
 

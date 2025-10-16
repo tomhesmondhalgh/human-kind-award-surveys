@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { User, ShieldCheck, LogOut, CreditCard, Users } from 'lucide-react';
+import { User, ShieldCheck, LogOut, CreditCard, Users, HelpCircle } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,6 +52,13 @@ const SettingsDropdown: React.FC<SettingsDropdownProps> = ({ handleSignOut }) =>
           <Link to="/team" className="flex items-center w-full py-2">
             <Users size={16} className="mr-2" />
             Team
+          </Link>
+        </DropdownMenuItem>
+        
+        <DropdownMenuItem asChild>
+          <Link to="/custom-questions" className="flex items-center w-full py-2">
+            <HelpCircle size={16} className="mr-2" />
+            Custom Questions
           </Link>
         </DropdownMenuItem>
         
