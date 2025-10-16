@@ -107,11 +107,13 @@ export function useQuestionStore() {
     try {
       console.log('Raw update data:', updates);
       
-      const updateData: Partial<CustomQuestion> = {
-        text: updates.text,
-        type: 'text',
-        archived: updates.archived
-      };
+      // Build update data dynamically based on what's provided
+      const updateData: any = {};
+      
+      if (updates.text !== undefined) updateData.text = updates.text;
+      if (updates.type !== undefined) updateData.type = updates.type;
+      if (updates.options !== undefined) updateData.options = updates.options;
+      if (updates.archived !== undefined) updateData.archived = updates.archived;
       
       console.log('Sanitized update data:', updateData);
 
@@ -125,7 +127,7 @@ export function useQuestionStore() {
       // Update state with converted types
       setQuestions(prev => prev.map(q => {
         if (q.id === id) {
-          return { ...q, ...updateData };
+          return { ...q, ...updates };
         }
         return q;
       }));

@@ -1,13 +1,15 @@
 
 import React, { useEffect, useState } from 'react';
 import { useQuestionStore } from '../../hooks/useQuestionStore';
+import { useQuestionUsage } from '../../hooks/useQuestionUsage';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../ui/card';
-import { Archive, Edit, Plus } from 'lucide-react';
+import { Archive, Edit, Plus, FileText } from 'lucide-react';
 import QuestionModal from './QuestionModal';
 import { CustomQuestion } from '../../types/customQuestions';
 import { Badge } from '../ui/badge';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function QuestionsPage() {
   const { questions, isLoading, fetchQuestions, createQuestion, updateQuestion } = useQuestionStore();
@@ -36,6 +38,22 @@ export default function QuestionsPage() {
   };
 
   const handleArchive = async (question: CustomQuestion) => {
+    // Check usage before archiving
+    if (!question.archived) {
+      const { data: usageData } = await supabase
+        .from('survey_questions')
+        .select('survey_id')
+        .eq('question_id', question.id);
+      
+      if (usageData && usageData.length > 0) {
+        const confirmArchive = window.confirm(
+          `This question is currently used in ${usageData.length} survey(s). Archiving it will not remove it from existing surveys, but it will not be available for new surveys. Continue?`
+        );
+        
+        if (!confirmArchive) return;
+      }
+    }
+    
     await updateQuestion(question.id, { archived: !question.archived });
   };
 
@@ -88,8 +106,9 @@ export default function QuestionsPage() {
                   </Badge>
                 )}
               </CardHeader>
-              <CardContent className="text-center py-6 flex items-center justify-center min-h-[80px]">
-                <h3 className="font-semibold text-base">{question.text}</h3>
+              <CardContent className="text-center py-6 flex flex-col items-center justify-center min-h-[80px]">
+                <h3 className="font-semibold text-base mb-2">{question.text}</h3>
+                <QuestionUsageBadge questionId={question.id} />
               </CardContent>
               <CardFooter className="flex justify-center space-x-2 pt-2">
                 <Button
@@ -126,3 +145,26 @@ export default function QuestionsPage() {
     </div>
   );
 }
+
+interface QuestionUsageBadgeProps {
+  questionId: string;
+}
+
+const QuestionUsageBadge: React.FC<QuestionUsageBadgeProps> = ({ questionId }) => {
+  const { usage, isLoading } = useQuestionUsage(questionId);
+  
+  if (isLoading) return null;
+  
+  if (!usage || usage.surveyCount === 0) {
+    return (
+      <p className="text-xs text-muted-foreground">Not used in any surveys</p>
+    );
+  }
+  
+  return (
+    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+      <FileText className="h-3 w-3" />
+      <span>Used in {usage.surveyCount} {usage.surveyCount === 1 ? 'survey' : 'surveys'}</span>
+    </div>
+  );
+};

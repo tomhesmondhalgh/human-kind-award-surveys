@@ -43,7 +43,7 @@ const QuestionList: React.FC<QuestionListProps> = ({
             <p className={`${isCompact ? 'text-sm' : 'text-base'} font-medium truncate`}>{question.text}</p>
             <div className="flex items-center flex-shrink-0">
               <Badge variant="outline" className="text-xs whitespace-nowrap">
-                Free Text
+                {question.type === 'multiple_choice' ? 'Multiple Choice' : 'Free Text'}
               </Badge>
             </div>
           </div>
