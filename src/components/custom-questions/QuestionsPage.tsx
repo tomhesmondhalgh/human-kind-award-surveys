@@ -9,6 +9,7 @@ import { CustomQuestion } from '../../types/customQuestions';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '../ui/skeleton';
+import Pagination from '../surveys/Pagination';
 
 const QuestionsListSkeleton = () => {
   return (
@@ -64,10 +65,16 @@ export default function QuestionsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<CustomQuestion | undefined>();
   const [showArchived, setShowArchived] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(questions.length / itemsPerPage);
+  const paginatedQuestions = questions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   useEffect(() => {
     const loadQuestions = async () => {
       await fetchQuestions(showArchived);
+      setCurrentPage(1); // Reset to page 1 when toggling archive view
     };
     loadQuestions();
   }, [showArchived]);
@@ -163,12 +170,24 @@ export default function QuestionsPage() {
       {isLoading ? (
         <QuestionsListSkeleton />
       ) : (
-        <QuestionsList
-          questions={questions}
-          onEdit={handleEditClick}
-          onArchive={handleArchive}
-          showArchived={showArchived}
-        />
+        <>
+          <QuestionsList
+            questions={paginatedQuestions}
+            onEdit={handleEditClick}
+            onArchive={handleArchive}
+            showArchived={showArchived}
+          />
+          
+          {!isLoading && questions.length > itemsPerPage && (
+            <div className="flex justify-center mt-6">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
+        </>
       )}
 
       <QuestionModal

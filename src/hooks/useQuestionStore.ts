@@ -71,7 +71,10 @@ export function useQuestionStore() {
       }
       
       const dbQuestion = {
-        ...createDbQuestionPayload(question, currentOrganization?.id),
+        text: question.text,
+        type: question.type,
+        options: question.options,
+        organization_id: question.organization_id || currentOrganization?.id || null,
         creator_id: user.id,
         archived: false
       };
