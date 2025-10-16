@@ -1,15 +1,63 @@
 
 import React, { useEffect, useState } from 'react';
 import { useQuestionStore } from '../../hooks/useQuestionStore';
-import { useQuestionUsage } from '../../hooks/useQuestionUsage';
 import { Button } from '../ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../ui/card';
-import { Archive, Edit, Plus, FileText } from 'lucide-react';
+import { Plus, Eye, EyeOff, Archive } from 'lucide-react';
 import QuestionModal from './QuestionModal';
+import QuestionsList from './QuestionsList';
 import { CustomQuestion } from '../../types/customQuestions';
-import { Badge } from '../ui/badge';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { Skeleton } from '../ui/skeleton';
+
+const QuestionsListSkeleton = () => {
+  return (
+    <div className="space-y-4">
+      <div className="hidden md:block border rounded-lg overflow-hidden">
+        <div className="bg-muted p-4 border-b">
+          <div className="grid grid-cols-12 gap-4">
+            <Skeleton className="h-4 w-24 col-span-5" />
+            <Skeleton className="h-4 w-24 col-span-2" />
+            <Skeleton className="h-4 w-16 col-span-2" />
+            <Skeleton className="h-4 w-20 col-span-3" />
+          </div>
+        </div>
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="p-4 border-b last:border-b-0">
+            <div className="grid grid-cols-12 gap-4 items-center">
+              <div className="col-span-5">
+                <Skeleton className="h-5 w-full max-w-md" />
+              </div>
+              <Skeleton className="h-6 w-24 rounded-full col-span-2" />
+              <Skeleton className="h-4 w-16 col-span-2" />
+              <div className="col-span-3 flex gap-2 justify-end">
+                <Skeleton className="h-9 w-16" />
+                <Skeleton className="h-9 w-20" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      <div className="md:hidden space-y-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="border rounded-lg p-4 space-y-3">
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="h-5 w-32" />
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Skeleton className="h-9 flex-1" />
+              <Skeleton className="h-9 flex-1" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 export default function QuestionsPage() {
   const { questions, isLoading, fetchQuestions, createQuestion, updateQuestion } = useQuestionStore();
@@ -57,83 +105,70 @@ export default function QuestionsPage() {
     await updateQuestion(question.id, { archived: !question.archived });
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[200px]">
-        <p>Loading questions...</p>
-      </div>
-    );
-  }
+  const handleEditClick = (question: CustomQuestion) => {
+    setSelectedQuestion(question);
+    setModalOpen(true);
+  };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Custom Questions</h1>
-        <div className="space-x-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowArchived(!showArchived)}
-          >
-            {showArchived ? 'Hide Archived' : 'Show Archived'}
-          </Button>
-          <Button
-            onClick={() => {
-              setSelectedQuestion(undefined);
-              setModalOpen(true);
-            }}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add Question
-          </Button>
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Custom Questions</h1>
+          <p className="text-muted-foreground mt-1">
+            Create and manage custom questions for your surveys
+          </p>
         </div>
+        <Button
+          onClick={() => {
+            setSelectedQuestion(undefined);
+            setModalOpen(true);
+          }}
+          className="whitespace-nowrap"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Add Question
+        </Button>
       </div>
 
-      {questions.length === 0 ? (
-        <div className="text-center py-8">
-          <p className="text-gray-500">No questions found. Click 'Add Question' to create one.</p>
-        </div>
+      <div className="flex items-center justify-between">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setShowArchived(!showArchived);
+          }}
+          className="gap-2"
+        >
+          {showArchived ? (
+            <>
+              <EyeOff className="h-4 w-4" />
+              Active Only
+            </>
+          ) : (
+            <>
+              <Eye className="h-4 w-4" />
+              Show Archived
+            </>
+          )}
+        </Button>
+        {showArchived && (
+          <p className="text-sm text-muted-foreground flex items-center gap-2">
+            <Archive className="h-4 w-4" />
+            Showing all questions
+          </p>
+        )}
+      </div>
+
+      {isLoading ? (
+        <QuestionsListSkeleton />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {questions.map((question) => (
-            <Card key={question.id} className={question.archived ? 'opacity-60' : ''}>
-              <CardHeader className="text-center pb-2">
-                <Badge variant="outline" className="w-fit mx-auto bg-brandPurple-400 text-white border-none">
-                  {question.type === 'text' ? 'Free Text' : 'Multiple Choice'}
-                </Badge>
-                {question.archived && (
-                  <Badge variant="outline" className="w-fit mx-auto mt-2">
-                    Archived
-                  </Badge>
-                )}
-              </CardHeader>
-              <CardContent className="text-center py-6 flex flex-col items-center justify-center min-h-[80px]">
-                <h3 className="font-semibold text-base mb-2">{question.text}</h3>
-                <QuestionUsageBadge questionId={question.id} />
-              </CardContent>
-              <CardFooter className="flex justify-center space-x-2 pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedQuestion(question);
-                    setModalOpen(true);
-                  }}
-                >
-                  <Edit className="h-4 w-4 mr-1" />
-                  Edit
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleArchive(question)}
-                >
-                  <Archive className="h-4 w-4 mr-1" />
-                  {question.archived ? 'Unarchive' : 'Archive'}
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
+        <QuestionsList
+          questions={questions}
+          onEdit={handleEditClick}
+          onArchive={handleArchive}
+          showArchived={showArchived}
+        />
       )}
 
       <QuestionModal
@@ -145,26 +180,3 @@ export default function QuestionsPage() {
     </div>
   );
 }
-
-interface QuestionUsageBadgeProps {
-  questionId: string;
-}
-
-const QuestionUsageBadge: React.FC<QuestionUsageBadgeProps> = ({ questionId }) => {
-  const { usage, isLoading } = useQuestionUsage(questionId);
-  
-  if (isLoading) return null;
-  
-  if (!usage || usage.surveyCount === 0) {
-    return (
-      <p className="text-xs text-muted-foreground">Not used in any surveys</p>
-    );
-  }
-  
-  return (
-    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-      <FileText className="h-3 w-3" />
-      <span>Used in {usage.surveyCount} {usage.surveyCount === 1 ? 'survey' : 'surveys'}</span>
-    </div>
-  );
-};
