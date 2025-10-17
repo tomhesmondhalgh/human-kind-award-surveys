@@ -389,19 +389,6 @@ For each test case, record:
 - Appears in library
 - Ready to add to surveys
 
-### Test 6.4: Create Rating Question
-**Steps:**
-1. Create new question
-2. Select "Rating" question type
-3. Enter question text: "How satisfied are you with communication from leadership?"
-4. Set rating scale (e.g., 1-5)
-5. Save question
-
-**Expected Outcome:**
-- Rating question created
-- Scale configured correctly
-- Question functional
-
 ### Test 6.5: Edit Custom Question
 **Steps:**
 1. Select an existing custom question
