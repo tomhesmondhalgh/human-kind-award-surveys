@@ -138,28 +138,31 @@ For each test case, record:
 **Steps:**
 1. From surveys list, click edit/pencil icon on the survey you just created
 2. Modify survey details (e.g., change title, dates, or staff number)
-3. Save changes
+3. Click "Save & Preview" button to save changes
 
 **Expected Outcome:**
 - Edit form pre-populated with current data
-- Changes saved successfully
+- Changes saved successfully via "Save & Preview" button
 - Updated information displays in surveys list
+- Button label context-aware: shows "Publish Survey" for link distribution or "Send Invitations" for email distribution
 
 ### Test 3.3: Preview Survey
 **Steps:**
-1. Click the preview/eye icon for your survey
+1. Click the preview/eye icon for your survey OR click "Save & Preview" button when editing
 2. Navigate through the survey preview
 3. Observe all question types:
    - Standard wellbeing questions (rating scales)
    - Recommendation question
    - Text response questions
    - Any custom questions selected
+4. Note that clicking "Save & Preview" automatically saves any changes before opening preview
 
 **Expected Outcome:**
-- Preview opens in new tab or modal
+- Preview opens in new tab
 - All questions display correctly
 - Rating scales, radio buttons, and text inputs function
 - Survey is clearly marked as preview (not submittable)
+- If accessed via "Save & Preview" button, changes are automatically saved first
 
 ### Test 3.4: Copy Survey Link
 **Steps:**
@@ -173,14 +176,18 @@ For each test case, record:
 
 ### Test 3.5: Send Survey Invitation
 **Steps:**
-1. Click "Send" or "Invite" button for your survey
-2. Enter a test email address (your own)
-3. Send the invitation
+1. Create or edit a survey with email distribution method selected
+2. Click "Send Invitations" button (for email distribution)
+3. Enter a test email address (your own)
+4. Send the invitation
+5. Alternatively, test "Publish Survey" button for link distribution method
 
 **Expected Outcome:**
-- Email sent successfully
+- Button label is context-aware: "Send Invitations" for email, "Publish Survey" for link distribution
+- Email sent successfully for email distribution
 - Toast notification confirms sending
 - Email received with survey link and instructions
+- Survey status updates to "Sent" after sending
 
 ### Test 3.6: Send Reminder
 **Steps:**
@@ -195,12 +202,13 @@ For each test case, record:
 **Steps:**
 1. Click archive button on a survey
 2. Confirm archiving
-3. Check that archived surveys can be viewed/filtered
+3. Toggle between "Active Only" and "Show All" filter to view archived surveys
 
 **Expected Outcome:**
 - Survey moved to archived state
-- Survey removed from active surveys list or marked as archived
-- Can view archived surveys in separate view/filter
+- Survey removed from active surveys list when "Active Only" filter is selected
+- Can view archived surveys by selecting "Show All" filter
+- Filter toggle is clearly visible and functional
 
 ---
 
@@ -346,6 +354,18 @@ For each test case, record:
 - Clear comparison between your data and benchmark
 - Helps identify areas of concern
 
+### Test 5.8: Custom Questions in Analysis
+**Steps:**
+1. View analysis for a survey that includes custom questions
+2. Navigate to the custom questions section or charts
+3. Review responses to custom multiple choice and text questions
+
+**Expected Outcome:**
+- Custom question responses display correctly in analysis
+- Multiple choice responses shown with charts/statistics
+- Text responses displayed in text responses section
+- Custom questions clearly identified and separated from standard questions
+
 ---
 
 ## Section 6: Custom Questions (20 mins)
@@ -389,7 +409,7 @@ For each test case, record:
 - Appears in library
 - Ready to add to surveys
 
-### Test 6.5: Edit Custom Question
+### Test 6.4: Edit Custom Question
 **Steps:**
 1. Select an existing custom question
 2. Click edit/pencil icon
@@ -401,7 +421,7 @@ For each test case, record:
 - Changes saved successfully
 - Updated question displays correctly
 
-### Test 6.6: Delete Custom Question
+### Test 6.5: Delete Custom Question
 **Steps:**
 1. Select a custom question
 2. Click delete/bin icon
@@ -412,7 +432,7 @@ For each test case, record:
 - Question deleted after confirmation
 - Removed from library
 
-### Test 6.7: Add Custom Questions to Survey
+### Test 6.6: Add Custom Questions to Survey
 **Steps:**
 1. Go to Surveys page
 2. Create new survey or edit existing
@@ -561,24 +581,26 @@ For each test case, record:
 
 ### Test 8.2: Submit for Accreditation
 **Steps:**
-1. Complete required fields/criteria
-2. Attach or reference completed action plan
-3. Submit accreditation application
+1. Ensure your action plan has been completed with appropriate statuses, priorities, and actions
+2. Navigate to the Accredit page
+3. Review the accreditation criteria and requirements
+4. Verify that your completed action plan meets the accreditation standards
+5. Click submit for accreditation (submission is based on your completed action plan)
 
 **Expected Outcome:**
-- Form validates required information
+- Accreditation submission is based on completed action plan data
 - Submission successful
-- Confirmation message/email sent
+- Confirmation message displayed
+- Status updates to show submission has been made
 
 ### Test 8.3: View Accreditation Status
 **Steps:**
-1. After submission, check accreditation status
+1. After submission, check accreditation status on the Accredit page
 2. Look for pending/approved/rejected indicators
 
 **Expected Outcome:**
-- Status clearly displayed
-- Can track progress
-- Notifications received on status changes
+- Status clearly displayed (Pending, Approved, or Rejected)
+- Can track progress of accreditation application
 
 ---
 
@@ -681,12 +703,16 @@ For each test case, record:
 **Steps:**
 1. Click "Edit" on personal details section
 2. Update first name, last name, or job title
-3. Save changes
+3. Optionally update email address
+4. Save changes
+5. If email was changed, check for verification email
 
 **Expected Outcome:**
 - Edit form pre-populated
 - Changes save successfully
 - Updated info displays immediately
+- If email changed, verification email sent to new address
+- Email change requires verification before becoming active
 
 ### Test 10.3: Edit Professional Details
 **Steps:**
@@ -700,26 +726,20 @@ For each test case, record:
 
 ### Test 10.4: Change Password
 **Steps:**
-1. Navigate to password/security section
-2. Enter current password
-3. Enter new password
-4. Confirm new password
-5. Save changes
+1. Log out of the application
+2. Navigate to login page
+3. Click "Forgot Password" link
+4. Enter your email address
+5. Check email for password reset link
+6. Click link and set new password
+7. Log in with new password
 
 **Expected Outcome:**
-- Password change form validates correctly
-- Password updated successfully
+- Password reset email received
+- Reset link works correctly
+- Password successfully changed
 - Can log in with new password
-
-### Test 10.5: Notification Preferences
-**Steps:**
-1. Find notification settings
-2. Toggle email notifications on/off
-3. Save preferences
-
-**Expected Outcome:**
-- Preferences save correctly
-- Email notifications respect settings
+- Note: Password change is handled via Supabase auth flow, not in Profile page
 
 ---
 
@@ -783,22 +803,26 @@ For each test case, record:
 
 ### Test 11.6: Cancel Subscription (if applicable)
 **Steps:**
-1. If on paid plan, look for "Cancel Subscription" option
-2. **DO NOT ACTUALLY CANCEL** - just verify option exists
+1. If on paid plan, navigate to Purchases or Profile page
+2. Look for "Cancel Subscription" option
+3. **DO NOT ACTUALLY CANCEL** - just verify option exists and location
 
 **Expected Outcome:**
-- Cancellation option available
-- Clear about what happens upon cancellation
+- Cancellation option available (verify location: Purchases page, Profile page, or Upgrade page)
+- Clear information about what happens upon cancellation
+- Option is clearly visible and accessible
 
-### Test 11.7: Download Invoice
+### Test 11.7: Download Invoice (if applicable)
 **Steps:**
-1. If purchases exist, click to download invoice
-2. Open downloaded file
+1. Navigate to Purchases page
+2. If purchases exist, look for download/view invoice option
+3. Click to download or view invoice
+4. Open downloaded file (if applicable)
 
 **Expected Outcome:**
-- Invoice downloads successfully
-- Contains all required billing information
-- Formatted professionally
+- Invoice download/view option clearly visible (verify if feature exists)
+- If feature exists: Invoice downloads successfully and contains all required billing information
+- If feature doesn't exist: Note as potential enhancement
 
 ---
 
