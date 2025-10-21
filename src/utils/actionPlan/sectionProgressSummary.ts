@@ -22,7 +22,7 @@ export async function getSectionProgressSummary(organizationId: string): Promise
     }
     
     const summaryData = ACTION_PLAN_SECTIONS.map(section => {
-      const sectionDescriptors = descriptors.filter(d => d.section === section.title);
+      const sectionDescriptors = descriptors.filter(d => d.section === section.key);
       const totalCount = sectionDescriptors.length;
       const completedCount = sectionDescriptors.filter(d => d.status === 'Completed').length;
       const inProgressCount = sectionDescriptors.filter(d => d.status === 'In Progress').length;
