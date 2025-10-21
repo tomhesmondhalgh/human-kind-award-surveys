@@ -8,12 +8,12 @@ import ProgressNotesList from './ProgressNotesList';
 import { useDescriptorTableData } from '@/hooks/useDescriptorTableData';
 
 interface DescriptorTableProps {
-  userId: string;
+  organizationId: string;
   section: string;
   onRefreshSummary: () => void;
 }
 
-const DescriptorTable: React.FC<DescriptorTableProps> = ({ userId, section, onRefreshSummary }) => {
+const DescriptorTable: React.FC<DescriptorTableProps> = ({ organizationId, section, onRefreshSummary }) => {
   const {
     descriptors,
     isLoading,
@@ -31,7 +31,7 @@ const DescriptorTable: React.FC<DescriptorTableProps> = ({ userId, section, onRe
     handleEditSave,
     setEditValue,
     refetchDescriptors
-  } = useDescriptorTableData(userId, section, onRefreshSummary);
+  } = useDescriptorTableData(organizationId, section, onRefreshSummary);
 
   if (isLoading && descriptors.length === 0) {
     return (

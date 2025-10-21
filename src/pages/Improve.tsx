@@ -325,8 +325,8 @@ const Improve = () => {
               <TabsContent key={section.key} value={section.key} className="mt-6 overflow-x-auto">
                 {currentOrganization && (
                   <DescriptorTable
-                    userId={currentOrganization.id}
-                    section={section.title}
+                    organizationId={currentOrganization.id}
+                    section={section.key}
                     onRefreshSummary={fetchSummaryData}
                   />
                 )}

@@ -236,10 +236,10 @@ const ActionPlan = () => {
             </Button>
           </div>
           
-          {user && (
+          {currentOrganization && (
             <DescriptorTable
-              userId={user.id}
-              section={currentSectionData?.title || ''}
+              organizationId={currentOrganization.id}
+              section={currentSection}
               onRefreshSummary={refreshSummary}
             />
           )}

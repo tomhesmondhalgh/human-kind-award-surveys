@@ -6,23 +6,30 @@ export async function initializeActionPlan(organizationId: string): Promise<{ su
   try {
     console.log('Initializing action plan for organization:', organizationId);
     
-    // Check if descriptors already exist for this organization
-    const { data: existingDescriptors } = await supabase
-      .from('action_plan_descriptors')
-      .select('id')
-      .eq('organization_id', organizationId)
-      .limit(1);
-    
-    if (existingDescriptors && existingDescriptors.length > 0) {
-      console.log('Action plan already initialized for organization:', organizationId);
-      return { success: true };
-    }
-    
     // Get the authenticated user ID for the user_id field
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return { success: false, error: 'No authenticated user found' };
     }
+    
+    // Delete any existing descriptors for this organization (Option A: clean slate)
+    console.log('Removing any existing descriptors for organization:', organizationId);
+    const { error: deleteError } = await supabase
+      .from('action_plan_descriptors')
+      .delete()
+      .eq('organization_id', organizationId);
+    
+    if (deleteError) {
+      console.error('Error deleting existing descriptors:', deleteError);
+      // Continue anyway - might just be no existing descriptors
+    }
+    
+    // Clear localStorage cache for this organization
+    const cacheKeys = Object.keys(localStorage).filter(key => 
+      key.includes('descriptors_') && key.includes(organizationId)
+    );
+    cacheKeys.forEach(key => localStorage.removeItem(key));
+    console.log('Cleared descriptor cache for organization');
     
     // Create initial descriptors for the organization
     const descriptorsToInsert = INITIAL_DESCRIPTORS.map(descriptor => ({
