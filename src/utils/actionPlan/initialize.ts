@@ -12,17 +12,26 @@ export async function initializeActionPlan(organizationId: string): Promise<{ su
       return { success: false, error: 'No authenticated user found' };
     }
     
-    // Delete any existing descriptors for this organization (Option A: clean slate)
-    console.log('Removing any existing descriptors for organization:', organizationId);
-    const { error: deleteError } = await supabase
+    // Check if descriptors already exist before initializing
+    console.log('Checking if action plan already has descriptors...');
+    const { data: existingDescriptors, error: checkError } = await supabase
       .from('action_plan_descriptors')
-      .delete()
-      .eq('organization_id', organizationId);
+      .select('id')
+      .eq('organization_id', organizationId)
+      .limit(1);
     
-    if (deleteError) {
-      console.error('Error deleting existing descriptors:', deleteError);
-      // Continue anyway - might just be no existing descriptors
+    if (checkError) {
+      console.error('Error checking existing descriptors:', checkError);
+      return { success: false, error: checkError };
     }
+    
+    // If descriptors exist, don't re-initialize
+    if (existingDescriptors && existingDescriptors.length > 0) {
+      console.log('Action plan already initialized for this organization. Skipping initialization.');
+      return { success: true };
+    }
+    
+    console.log('No descriptors found. Initializing with template...');
     
     // Clear ALL descriptor-related cache for this organization more aggressively
     console.log('Clearing all cached data for organization:', organizationId);

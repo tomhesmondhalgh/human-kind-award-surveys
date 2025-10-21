@@ -28,7 +28,13 @@ const Improve = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('summary');
   const [isLoading, setIsLoading] = useState(true);
-  const [hasInitialized, setHasInitialized] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(() => {
+    if (currentOrganization) {
+      const orgKey = `actionPlanInitialized_${currentOrganization.id}`;
+      return sessionStorage.getItem(orgKey) === 'true';
+    }
+    return false;
+  });
   const [summaryData, setSummaryData] = useState<any[]>([]);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [overlayDismissed, setOverlayDismissed] = useState(false);
@@ -37,11 +43,12 @@ const Improve = () => {
   const [hasFoundationPlan, setHasFoundationPlan] = useState<boolean | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
 
-  // Clear initialization state when organization changes
+  // Read initialization state when organization changes
   useEffect(() => {
     if (currentOrganization) {
-      setHasInitialized(false);
-      sessionStorage.removeItem('actionPlanInitialized');
+      const orgKey = `actionPlanInitialized_${currentOrganization.id}`;
+      const wasInitialized = sessionStorage.getItem(orgKey) === 'true';
+      setHasInitialized(wasInitialized);
     }
   }, [currentOrganization?.id]);
 
@@ -91,9 +98,10 @@ const Improve = () => {
       if (result.success) {
         console.log('Action plan initialized successfully');
         await fetchSummaryData();
-        // Mark as initialized in both state and sessionStorage
+        // Mark as initialized in both state and sessionStorage with organization-specific key
         setHasInitialized(true);
-        sessionStorage.setItem('actionPlanInitialized', 'true');
+        const orgKey = `actionPlanInitialized_${currentOrganization.id}`;
+        sessionStorage.setItem(orgKey, 'true');
       } else {
         console.error("Failed to initialize action plan:", result.error);
         setInitError(`Initialization failed: ${result.error}`);
