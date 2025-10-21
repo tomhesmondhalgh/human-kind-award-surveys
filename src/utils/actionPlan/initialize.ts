@@ -24,12 +24,30 @@ export async function initializeActionPlan(organizationId: string): Promise<{ su
       // Continue anyway - might just be no existing descriptors
     }
     
-    // Clear localStorage cache for this organization
-    const cacheKeys = Object.keys(localStorage).filter(key => 
+    // Clear ALL descriptor-related cache for this organization more aggressively
+    console.log('Clearing all cached data for organization:', organizationId);
+    
+    const allKeys = Object.keys(localStorage);
+    
+    // Clear descriptor caches
+    const descriptorKeys = allKeys.filter(key => 
       key.includes('descriptors_') && key.includes(organizationId)
     );
-    cacheKeys.forEach(key => localStorage.removeItem(key));
-    console.log('Cleared descriptor cache for organization');
+    descriptorKeys.forEach(key => {
+      localStorage.removeItem(key);
+      console.log('Cleared cache key:', key);
+    });
+    
+    // Also clear any summary or related caches
+    const summaryKeys = allKeys.filter(key => 
+      key.includes('summary_') && key.includes(organizationId)
+    );
+    summaryKeys.forEach(key => {
+      localStorage.removeItem(key);
+      console.log('Cleared summary cache key:', key);
+    });
+    
+    console.log(`Cleared ${descriptorKeys.length + summaryKeys.length} cache entries for organization`);
     
     // Create initial descriptors for the organization
     const descriptorsToInsert = INITIAL_DESCRIPTORS.map(descriptor => ({

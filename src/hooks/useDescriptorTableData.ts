@@ -5,6 +5,7 @@ import { ActionPlanDescriptor, DescriptorStatus } from '@/types/actionPlan';
 import { updateDescriptor, getActionPlanDescriptors } from '@/utils/actionPlanUtils';
 import { useEditableCell } from '@/hooks/useEditableCell';
 import { getLocalStorageCache, setLocalStorageCache } from '@/utils/cache/cacheUtils';
+import { supabase } from '@/integrations/supabase/client';
 
 export function useDescriptorTableData(
   organizationId: string,
@@ -42,13 +43,36 @@ export function useDescriptorTableData(
   }, [organizationId, section, cacheKey]);
 
   useEffect(() => {
-    const cachedData = getLocalStorageCache<ActionPlanDescriptor[]>(cacheKey);
-    if (cachedData) {
-      setDescriptors(cachedData);
-      setIsLoading(false);
-    }
-    fetchDescriptors();
-  }, [cacheKey, fetchDescriptors]);
+    const loadData = async () => {
+      const cachedData = getLocalStorageCache<ActionPlanDescriptor[]>(cacheKey);
+      
+      if (cachedData && cachedData.length > 0) {
+        // Validate that the first cached descriptor still exists in the database
+        const { data: validationCheck } = await supabase
+          .from('action_plan_descriptors')
+          .select('id')
+          .eq('id', cachedData[0].id)
+          .eq('organization_id', organizationId)
+          .maybeSingle();
+
+        if (validationCheck) {
+          // Cache is valid, use it
+          console.log('Cache validation passed, using cached data');
+          setDescriptors(cachedData);
+          setIsLoading(false);
+        } else {
+          // Cache is stale, clear it
+          console.log('Cache validation failed - stale descriptor IDs detected, clearing cache');
+          localStorage.removeItem(cacheKey);
+        }
+      }
+      
+      // Always fetch fresh data
+      await fetchDescriptors();
+    };
+    
+    loadData();
+  }, [cacheKey, organizationId, fetchDescriptors]);
 
   const handleStatusChange = async (id: string, status: DescriptorStatus) => {
     try {
@@ -64,6 +88,16 @@ export function useDescriptorTableData(
         console.error('Failed to update status:', result.error);
         const message = result.error?.message || 'Please check your permissions and try again.';
         toast.error(`Failed to update status: ${message}`);
+        
+        // If descriptor not found or no rows updated, clear cache and refetch
+        if (result.error?.code === 'DESCRIPTOR_NOT_ACCESSIBLE' || 
+            result.error?.code === 'NO_ROWS_UPDATED' ||
+            result.error?.code === 'INVALID_SESSION') {
+          console.log('Clearing stale cache and refetching due to error:', result.error?.code);
+          localStorage.removeItem(cacheKey);
+          await fetchDescriptors();
+          toast.info('Data refreshed. Please try again.');
+        }
       }
     } catch (error) {
       console.error('Error updating status:', error);
@@ -84,6 +118,16 @@ export function useDescriptorTableData(
         console.error('Failed to update deadline:', result.error);
         const message = result.error?.message || 'Please check your permissions and try again.';
         toast.error(`Failed to update deadline: ${message}`);
+        
+        // If descriptor not found or no rows updated, clear cache and refetch
+        if (result.error?.code === 'DESCRIPTOR_NOT_ACCESSIBLE' || 
+            result.error?.code === 'NO_ROWS_UPDATED' ||
+            result.error?.code === 'INVALID_SESSION') {
+          console.log('Clearing stale cache and refetching due to error:', result.error?.code);
+          localStorage.removeItem(cacheKey);
+          await fetchDescriptors();
+          toast.info('Data refreshed. Please try again.');
+        }
       }
     } catch (error) {
       console.error('Error updating date:', error);
@@ -108,6 +152,16 @@ export function useDescriptorTableData(
         console.error('Failed to save changes:', result.error);
         const message = result.error?.message || 'Please check your permissions and try again.';
         toast.error(`Failed to save changes: ${message}`);
+        
+        // If descriptor not found or no rows updated, clear cache and refetch
+        if (result.error?.code === 'DESCRIPTOR_NOT_ACCESSIBLE' || 
+            result.error?.code === 'NO_ROWS_UPDATED' ||
+            result.error?.code === 'INVALID_SESSION') {
+          console.log('Clearing stale cache and refetching due to error:', result.error?.code);
+          localStorage.removeItem(cacheKey);
+          await fetchDescriptors();
+          toast.info('Data refreshed. Please try again.');
+        }
       }
     } catch (error) {
       console.error('Error saving edit:', error);
