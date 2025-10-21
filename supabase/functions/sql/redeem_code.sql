@@ -14,6 +14,12 @@ DECLARE
   result JSONB;
   subscription_id UUID;
 BEGIN
+  -- SECURITY: Validate that user can only redeem codes for themselves
+  IF user_uuid != auth.uid() THEN
+    RAISE EXCEPTION 'Unauthorized: Cannot redeem code for another user'
+      USING ERRCODE = '42501';
+  END IF;
+  
   -- Start a transaction
   BEGIN
     -- Create a redemption record
