@@ -62,7 +62,8 @@ export function useDescriptorTableData(
         onRefreshSummary();
       } else {
         console.error('Failed to update status:', result.error);
-        toast.error('Failed to update status. Please check your permissions and try again.');
+        const message = result.error?.message || 'Please check your permissions and try again.';
+        toast.error(`Failed to update status: ${message}`);
       }
     } catch (error) {
       console.error('Error updating status:', error);
@@ -81,7 +82,8 @@ export function useDescriptorTableData(
         setLocalStorageCache(cacheKey, updatedDescriptors, 30 * 60);
       } else {
         console.error('Failed to update deadline:', result.error);
-        toast.error('Failed to update deadline. Please check your permissions and try again.');
+        const message = result.error?.message || 'Please check your permissions and try again.';
+        toast.error(`Failed to update deadline: ${message}`);
       }
     } catch (error) {
       console.error('Error updating date:', error);
@@ -104,7 +106,8 @@ export function useDescriptorTableData(
         setEditingCell(null);
       } else {
         console.error('Failed to save changes:', result.error);
-        toast.error('Failed to save changes. Please check your permissions and try again.');
+        const message = result.error?.message || 'Please check your permissions and try again.';
+        toast.error(`Failed to save changes: ${message}`);
       }
     } catch (error) {
       console.error('Error saving edit:', error);
