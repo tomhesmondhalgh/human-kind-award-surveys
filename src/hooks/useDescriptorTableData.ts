@@ -22,16 +22,27 @@ export function useDescriptorTableData(
   const cacheKey = `descriptors_${organizationId}_${section}`;
 
   const fetchDescriptors = useCallback(async () => {
+    console.log('=== FETCH DESCRIPTORS START ===');
+    console.log('Organization ID:', organizationId);
+    console.log('Section:', section);
     setIsLoading(true);
     try {
       const result = await getActionPlanDescriptors(organizationId, section);
+      console.log('Fetch result:', result);
+      
       if (result.success && result.data) {
+        console.log('Fetched descriptor count:', result.data.length);
+        console.log('First fetched descriptor:', result.data[0]);
         const sortedDescriptors = result.data.sort((a, b) => 
           a.index_number.localeCompare(b.index_number, undefined, { numeric: true })
         );
+        console.log('Setting state with fetched descriptors');
         setDescriptors(sortedDescriptors);
+        console.log('Updating cache with fetched descriptors');
         setLocalStorageCache(cacheKey, sortedDescriptors, 30 * 60);
+        console.log('Cache updated successfully');
       } else {
+        console.error('Failed to load data:', result);
         toast.error('Failed to load data');
       }
     } catch (error) {
@@ -39,14 +50,24 @@ export function useDescriptorTableData(
       toast.error('An error occurred while loading data');
     } finally {
       setIsLoading(false);
+      console.log('=== FETCH DESCRIPTORS END ===');
     }
   }, [organizationId, section, cacheKey]);
 
   useEffect(() => {
+    console.log('=== useDescriptorTableData MOUNT ===');
+    console.log('Organization ID:', organizationId);
+    console.log('Section:', section);
+    console.log('Cache key:', cacheKey);
+    
     const loadData = async () => {
       const cachedData = getLocalStorageCache<ActionPlanDescriptor[]>(cacheKey);
+      console.log('Cached data found:', !!cachedData);
       
       if (cachedData && cachedData.length > 0) {
+        console.log('Cached descriptor count:', cachedData.length);
+        console.log('First cached descriptor:', cachedData[0]);
+        
         // Validate that the first cached descriptor still exists in the database
         const { data: validationCheck } = await supabase
           .from('action_plan_descriptors')
@@ -65,24 +86,39 @@ export function useDescriptorTableData(
           console.log('Cache validation failed - stale descriptor IDs detected, clearing cache');
           localStorage.removeItem(cacheKey);
         }
+      } else {
+        console.log('No cached data found');
       }
       
       // Always fetch fresh data
+      console.log('Fetching fresh data from database...');
       await fetchDescriptors();
+      console.log('Fresh data fetch complete');
     };
     
     loadData();
-  }, [cacheKey, organizationId, fetchDescriptors]);
+  }, [cacheKey, organizationId, section, fetchDescriptors]);
 
   const handleStatusChange = async (id: string, status: DescriptorStatus) => {
+    console.log('=== handleStatusChange CALLED ===');
+    console.log('Descriptor ID:', id);
+    console.log('New status:', status);
+    console.log('Current descriptor in state:', descriptors.find(d => d.id === id));
+    
     try {
       const result = await updateDescriptor(id, { status });
+      console.log('=== updateDescriptor RESULT ===', result);
+      
       if (result.success) {
+        console.log('=== UPDATING LOCAL STATE AND CACHE ===');
         const updatedDescriptors = descriptors.map(d => 
           d.id === id ? { ...d, status } : d
         );
+        console.log('Updated descriptors array:', updatedDescriptors);
+        console.log('Cache key:', cacheKey);
         setDescriptors(updatedDescriptors);
         setLocalStorageCache(cacheKey, updatedDescriptors, 30 * 60);
+        console.log('Cache updated successfully');
         onRefreshSummary();
       } else {
         console.error('Failed to update status:', result.error);
@@ -106,14 +142,24 @@ export function useDescriptorTableData(
   };
 
   const handleDateChange = async (id: string, date: string) => {
+    console.log('=== handleDateChange CALLED ===');
+    console.log('Descriptor ID:', id);
+    console.log('New date:', date);
+    console.log('Current descriptor in state:', descriptors.find(d => d.id === id));
+    
     try {
       const result = await updateDescriptor(id, { deadline: date || null });
+      console.log('=== updateDescriptor RESULT ===', result);
+      
       if (result.success) {
+        console.log('=== UPDATING LOCAL STATE AND CACHE ===');
         const updatedDescriptors = descriptors.map(d => 
           d.id === id ? { ...d, deadline: date } : d
         );
+        console.log('Cache key:', cacheKey);
         setDescriptors(updatedDescriptors);
         setLocalStorageCache(cacheKey, updatedDescriptors, 30 * 60);
+        console.log('Cache updated successfully');
       } else {
         console.error('Failed to update deadline:', result.error);
         const message = result.error?.message || 'Please check your permissions and try again.';
@@ -139,14 +185,25 @@ export function useDescriptorTableData(
     if (!editingCell) return;
 
     const { id, field } = editingCell;
+    console.log('=== handleEditSave CALLED ===');
+    console.log('Descriptor ID:', id);
+    console.log('Field:', field);
+    console.log('New value:', editValue);
+    console.log('Current descriptor in state:', descriptors.find(d => d.id === id));
+    
     try {
       const result = await updateDescriptor(id, { [field]: editValue });
+      console.log('=== updateDescriptor RESULT ===', result);
+      
       if (result.success) {
+        console.log('=== UPDATING LOCAL STATE AND CACHE ===');
         const updatedDescriptors = descriptors.map(d => 
           d.id === id ? { ...d, [field]: editValue } : d
         );
+        console.log('Cache key:', cacheKey);
         setDescriptors(updatedDescriptors);
         setLocalStorageCache(cacheKey, updatedDescriptors, 30 * 60);
+        console.log('Cache updated successfully');
         setEditingCell(null);
       } else {
         console.error('Failed to save changes:', result.error);
