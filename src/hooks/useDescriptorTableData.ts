@@ -60,6 +60,9 @@ export function useDescriptorTableData(
         setDescriptors(updatedDescriptors);
         setLocalStorageCache(cacheKey, updatedDescriptors, 30 * 60);
         onRefreshSummary();
+      } else {
+        console.error('Failed to update status:', result.error);
+        toast.error('Failed to update status. Please check your permissions and try again.');
       }
     } catch (error) {
       console.error('Error updating status:', error);
@@ -76,6 +79,9 @@ export function useDescriptorTableData(
         );
         setDescriptors(updatedDescriptors);
         setLocalStorageCache(cacheKey, updatedDescriptors, 30 * 60);
+      } else {
+        console.error('Failed to update deadline:', result.error);
+        toast.error('Failed to update deadline. Please check your permissions and try again.');
       }
     } catch (error) {
       console.error('Error updating date:', error);
@@ -96,6 +102,9 @@ export function useDescriptorTableData(
         setDescriptors(updatedDescriptors);
         setLocalStorageCache(cacheKey, updatedDescriptors, 30 * 60);
         setEditingCell(null);
+      } else {
+        console.error('Failed to save changes:', result.error);
+        toast.error('Failed to save changes. Please check your permissions and try again.');
       }
     } catch (error) {
       console.error('Error saving edit:', error);

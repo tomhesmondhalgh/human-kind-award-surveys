@@ -12,7 +12,7 @@ export async function updateDescriptor(
   }
 ): Promise<{ success: boolean; error?: any }> {
   try {
-    console.log('Updating descriptor:', id, 'with updates:', updates);
+    console.log('Updating descriptor ID:', id, 'with updates:', updates);
     
     const { error } = await supabase
       .from('action_plan_descriptors')
@@ -23,14 +23,14 @@ export async function updateDescriptor(
       .eq('id', id);
     
     if (error) {
-      console.error('Error updating descriptor:', error);
+      console.error('Error updating descriptor ID:', id, 'Error:', error, 'Code:', error.code, 'Message:', error.message);
       return { success: false, error };
     }
     
-    console.log('Descriptor updated successfully');
+    console.log('Descriptor updated successfully. ID:', id, 'Updated fields:', Object.keys(updates).join(', '));
     return { success: true };
   } catch (error) {
-    console.error('Error in updateDescriptor:', error);
+    console.error('Exception in updateDescriptor for ID:', id, 'Error:', error);
     return { success: false, error };
   }
 }
