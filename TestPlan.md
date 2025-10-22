@@ -554,17 +554,6 @@ For each test case, record:
 - Includes all descriptor statuses, priorities, actions, and notes
 - Formatted clearly for printing/sharing
 
-### Test 7.10: Save as Template
-**Steps:**
-1. After configuring action plan, click "Save as Template"
-2. Name the template
-3. Verify template saved
-
-**Expected Outcome:**
-- Template saves successfully
-- Can be reused for future action plans
-- Template appears in template library
-
 ---
 
 ## Section 8: Accreditation (15 mins)

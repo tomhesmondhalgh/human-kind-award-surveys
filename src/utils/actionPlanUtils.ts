@@ -20,10 +20,6 @@ export {
 } from './actionPlan/progressNotes';
 
 export {
-  saveAsTemplate
-} from './actionPlan/saveAsTemplate';
-
-export {
   getSectionProgressSummary
 } from './actionPlan/sectionProgressSummary';
 
