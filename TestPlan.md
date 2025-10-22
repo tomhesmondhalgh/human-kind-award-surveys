@@ -465,7 +465,6 @@ For each test case, record:
 **Steps:**
 1. Review the framework sections (should include areas like leadership, culture, workload, etc.)
 2. Note the colour-coding by status (red, amber, green)
-3. Identify priorities (P1, P2, P3)
 
 **Expected Outcome:**
 - Framework organised by logical sections
@@ -485,18 +484,7 @@ For each test case, record:
 - Colours update immediately
 - Changes persist after page refresh
 
-### Test 7.4: Set Priority
-**Steps:**
-1. For a "Red" descriptor, set priority to "P1" (high priority)
-2. For an "Amber" descriptor, set priority to "P2"
-3. Leave some descriptors without priority
-
-**Expected Outcome:**
-- Can select P1, P2, P3, or None
-- Priority indicators visible
-- High-priority items stand out visually
-
-### Test 7.5: Add Actions
+### Test 7.4: Add Actions
 **Steps:**
 1. Click to add an action for a descriptor
 2. Enter action text: "Conduct staff workload audit by end of term"
@@ -509,7 +497,7 @@ For each test case, record:
 - Multiple actions can be added
 - Actions display under descriptor
 
-### Test 7.6: Add Progress Notes
+### Test 7.5: Add Progress Notes
 **Steps:**
 1. Select a descriptor with actions
 2. Click to add a progress note
@@ -523,17 +511,17 @@ For each test case, record:
 - Notes saved and timestamped
 - Notes visible under descriptor or in notes section
 
-### Test 7.7: Search/Filter Descriptors
+### Test 7.6: Search/Filter Descriptors
 **Steps:**
 1. Use search bar to find specific terms (e.g., "workload", "leadership")
-2. Apply filters (e.g., show only "Red" status, or "P1" priority)
+2. Apply filters (e.g., show only "Red" status)
 
 **Expected Outcome:**
 - Search returns relevant descriptors
 - Filters narrow down results correctly
 - Easy to clear filters
 
-### Test 7.8: View Section Summary
+### Test 7.7: View Section Summary
 **Steps:**
 1. Navigate to section summary or progress overview
 2. Review counts of red/amber/green by section
@@ -543,7 +531,7 @@ For each test case, record:
 - Shows which areas need most attention
 - Helps prioritise efforts
 
-### Test 7.9: Export Action Plan
+### Test 7.8: Export Action Plan
 **Steps:**
 1. Click "Export" or "Download" button
 2. Generate PDF of action plan
@@ -551,7 +539,7 @@ For each test case, record:
 
 **Expected Outcome:**
 - PDF generated successfully
-- Includes all descriptor statuses, priorities, actions, and notes
+- Includes all descriptor statuses, actions, and notes
 - Formatted clearly for printing/sharing
 
 ---
