@@ -165,17 +165,14 @@ export async function sendTeamInvitation(data: InvitationData): Promise<Invitati
       };
     }
 
-    console.log('✅ Valid session found, sending invitation with explicit auth header');
+    console.log('✅ Valid session found, sending invitation');
 
-    // Call the secure edge function with explicit authorization header
+    // Call the secure edge function (authorization handled automatically by Supabase client)
     const { data: result, error } = await supabase.functions.invoke('send-team-invitation-v2', {
       body: {
         email: data.email,
         role: data.role,
         organizationId: data.organizationId
-      },
-      headers: {
-        Authorization: `Bearer ${sessionData.session.access_token}`
       }
     });
 
