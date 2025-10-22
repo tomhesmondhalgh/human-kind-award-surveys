@@ -30,28 +30,18 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Extract JWT token from "Bearer <token>"
+    const jwt = authHeader.replace('Bearer ', '');
+
     // Create client with service role for database operations
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Create client with user token for validation
-    const supabaseUser = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: {
-            authorization: authHeader,
-          },
-        },
-      }
-    );
-
-    // Validate user session
-    const { data: userData, error: userError } = await supabaseUser.auth.getUser();
-    if (userError || !userData.user) {
+    // Validate JWT token using admin client
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(jwt);
+    if (userError || !user) {
       console.error('❌ Invalid user session:', userError);
       return new Response(
         JSON.stringify({ error: 'Invalid user session' }),
@@ -59,7 +49,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const userId = userData.user.id;
+    const userId = user.id;
     console.log('✅ User validated:', userId.slice(0, 8));
 
     // Parse request body
