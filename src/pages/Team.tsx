@@ -175,32 +175,6 @@ const Team = () => {
             )}
           </div>
 
-          {/* Role Explanations Card */}
-          <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-3">
-                <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                <div>
-                  <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">Understanding Team Roles</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <p className="font-medium text-blue-800 dark:text-blue-200 mb-1">Admin</p>
-                      <p className="text-blue-700 dark:text-blue-300">Full control including team management</p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-blue-800 dark:text-blue-200 mb-1">Editor</p>
-                      <p className="text-blue-700 dark:text-blue-300">Create surveys and manage content</p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-blue-800 dark:text-blue-200 mb-1">Viewer</p>
-                      <p className="text-blue-700 dark:text-blue-300">View-only access to all content</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Show current organization info */}
           {currentOrganization && (
             <Card className="mb-6">
