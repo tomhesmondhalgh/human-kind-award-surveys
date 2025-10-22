@@ -1473,7 +1473,7 @@ export type Database = {
     }
     Functions: {
       admin_get_all_payments: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           amount: number
           billing_address: string
@@ -1499,14 +1499,8 @@ export type Database = {
         Args: { question_uuid: string; response_uuid: string }
         Returns: boolean
       }
-      count_email_responses: {
-        Args: { survey_id: string }
-        Returns: number
-      }
-      count_survey_responses: {
-        Args: { survey_id: string }
-        Returns: number
-      }
+      count_email_responses: { Args: { survey_id: string }; Returns: number }
+      count_survey_responses: { Args: { survey_id: string }; Returns: number }
       create_invitation_with_role: {
         Args: {
           expiry_date: string
@@ -1534,6 +1528,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_current_user_email: { Args: never; Returns: string }
       get_user_memberships: {
         Args: { user_uuid: string }
         Returns: {
@@ -1544,6 +1539,12 @@ export type Database = {
           role: Database["public"]["Enums"]["organization_role"]
           user_id: string
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "organization_memberships"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_user_organizations: {
         Args: { user_uuid: string }
@@ -1571,18 +1572,9 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_admin: {
-        Args: { _user_id: string }
-        Returns: boolean
-      }
-      is_owner: {
-        Args: { record_user_id: string }
-        Returns: boolean
-      }
-      is_survey_open: {
-        Args: { survey_id: string }
-        Returns: boolean
-      }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_owner: { Args: { record_user_id: string }; Returns: boolean }
+      is_survey_open: { Args: { survey_id: string }; Returns: boolean }
       redeem_code: {
         Args: {
           code_uuid: string
