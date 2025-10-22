@@ -87,12 +87,15 @@ export function useTeamMembers(organizationId?: string) {
       
       return result.invitation;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       console.log('🎉 Invitation process completed successfully');
       toast.success('Invitation sent successfully');
       setIsInviteModalOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['organizationMembers', organizationId] });
-      queryClient.invalidateQueries({ queryKey: ['organizationInvitations', organizationId] });
+      
+      // Invalidate and force refetch to ensure UI updates immediately
+      await queryClient.invalidateQueries({ queryKey: ['organizationMembers', organizationId] });
+      await queryClient.invalidateQueries({ queryKey: ['organizationInvitations', organizationId] });
+      await queryClient.refetchQueries({ queryKey: ['organizationInvitations', organizationId] });
     },
     onError: (error: any) => {
       console.error('❌ Invitation mutation error:', error);
