@@ -6,6 +6,17 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
 import { CreditCard, FileText, AlertCircle, ListTodo, Gift } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { formatCurrency } from '../../lib/utils';
 import PageTitle from '../ui/PageTitle';
 import { useSubscription } from '../../hooks/useSubscription';
@@ -212,6 +223,38 @@ const MyPurchases = () => {
                     {activeSubscription.end_date ? formatDate(activeSubscription.end_date) : 'Ongoing'}
                   </p>
                 </div>
+              </div>
+              
+              <div className="mt-4 pt-4 border-t">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      variant="destructive" 
+                      disabled={cancellingSubscription}
+                      className="w-full sm:w-auto"
+                    >
+                      {cancellingSubscription ? 'Cancelling...' : 'Cancel Subscription'}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Cancel Subscription?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Your subscription will be cancelled at the end of the current billing period. 
+                        You'll retain access until {activeSubscription.end_date ? formatDate(activeSubscription.end_date) : 'the end of your billing cycle'}.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleCancelSubscription}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Yes, Cancel Subscription
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
           </CardContent>

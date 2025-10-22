@@ -558,7 +558,7 @@ For each test case, record:
 
 ### Test 8.2: Submit for Accreditation
 **Steps:**
-1. Ensure your action plan has been completed with appropriate statuses, priorities, and actions
+1. Ensure your action plan has been completed with appropriate statuses and actions
 2. Navigate to the Accredit page
 3. Review the accreditation criteria and requirements
 4. Verify that your completed action plan meets the accreditation standards
@@ -788,18 +788,6 @@ For each test case, record:
 - Cancellation option available (verify location: Purchases page, Profile page, or Upgrade page)
 - Clear information about what happens upon cancellation
 - Option is clearly visible and accessible
-
-### Test 11.7: Download Invoice (if applicable)
-**Steps:**
-1. Navigate to Purchases page
-2. If purchases exist, look for download/view invoice option
-3. Click to download or view invoice
-4. Open downloaded file (if applicable)
-
-**Expected Outcome:**
-- Invoice download/view option clearly visible (verify if feature exists)
-- If feature exists: Invoice downloads successfully and contains all required billing information
-- If feature doesn't exist: Note as potential enhancement
 
 ---
 

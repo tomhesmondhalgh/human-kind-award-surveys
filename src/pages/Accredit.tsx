@@ -114,20 +114,20 @@ const Accredit = () => {
         submission_data: readinessData
       }).select('id').single();
       if (error) {
-        console.error('Error submitting for accreditation:', error);
-        toast.error('Failed to submit for accreditation');
-        return;
-      }
-      console.log('Accreditation submission created with ID:', submissionData.id);
+      console.error('Error submitting for accreditation:', error);
+      toast.error('Failed to submit for accreditation');
+      return;
+    }
+    console.log('Accreditation submission created with ID:', submissionData.id);
 
-      // Get user profile for notification
-      const {
-        data: profile
-      } = await supabase.from('profiles').select('first_name, last_name').eq('id', user.id).single();
+    // Get user profile for notification
+    const {
+      data: profile
+    } = await supabase.from('profiles').select('first_name, last_name').eq('id', user.id).single();
 
-      // Send notification to admins (don't block submission if this fails)
-      try {
-        console.log('Sending admin notification...');
+    // Send notification to admins (don't block submission if this fails)
+    try {
+      console.log('Sending admin notification...');
         const notificationResponse = await supabase.functions.invoke('send-accreditation-notification', {
           body: {
             submissionId: submissionData.id,
@@ -154,6 +154,21 @@ const Accredit = () => {
       setIsSubmitting(false);
     }
   };
+
+  const handleDownloadCertificate = async () => {
+    if (!submission) return;
+    
+    try {
+      toast.success('Certificate download will be implemented soon');
+      // TODO: Implement certificate generation and download
+      // This could use jsPDF (already installed) to generate a certificate
+      // with the school name, approval date, and accreditation details
+    } catch (error) {
+      console.error('Error downloading certificate:', error);
+      toast.error('Failed to download certificate');
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'submitted':
@@ -269,7 +284,11 @@ const Accredit = () => {
                       <p className="mt-1 text-sm bg-gray-50 p-3 rounded">{submission.reviewer_notes}</p>
                     </div>}
                   
-                  {submission.status === 'approved' && <Button variant="outline" className="w-full sm:w-auto">
+                  {submission.status === 'approved' && <Button 
+                      variant="outline" 
+                      className="w-full sm:w-auto"
+                      onClick={handleDownloadCertificate}
+                    >
                       <Download className="h-4 w-4 mr-2" />
                       Download Certificate
                     </Button>}
