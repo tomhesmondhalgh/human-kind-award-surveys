@@ -12,24 +12,28 @@ export function useTeamInvitations(organizationId: string | undefined) {
   } = useQuery({
     queryKey: ['organizationInvitations', organizationId],
     queryFn: async () => {
-      if (!organizationId) return [];
-      
-      try {
-        const { data, error } = await supabase
-          .from('organization_invitations')
-          .select('*')
-          .eq('organization_id', organizationId)
-          .is('accepted_at', null)
-          .gt('expires_at', new Date().toISOString())
-          .order('created_at', { ascending: false });
-          
-        if (error) throw error;
-        
-        return data as OrganizationInvitation[];
-      } catch (error) {
-        console.error('Error fetching invitations:', error);
+      if (!organizationId) {
+        console.log('📋 No organizationId provided to useTeamInvitations');
         return [];
       }
+      
+      console.log('📋 Fetching invitations for organization:', organizationId);
+      
+      const { data, error } = await supabase
+        .from('organization_invitations')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .is('accepted_at', null)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false });
+        
+      if (error) {
+        console.error('❌ Error fetching invitations:', error);
+        throw error; // Let React Query handle the error
+      }
+      
+      console.log('✅ Fetched invitations:', data?.length || 0);
+      return data as OrganizationInvitation[];
     },
     enabled: !!organizationId
   });
