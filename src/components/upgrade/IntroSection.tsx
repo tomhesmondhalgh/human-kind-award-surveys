@@ -3,7 +3,7 @@ import React from 'react';
 
 const IntroSection: React.FC = () => {
   return (
-    <div className="max-w-4xl mx-auto my-8 text-center">
+    <div className="max-w-4xl my-8">
       <p className="text-lg leading-relaxed text-gray-700 mb-4">
         Now you know the challenges staff face in your organisation, and the areas they'd like to change, 
         how do you go about making that change happen? The Human Kind Award framework is a detailed set 

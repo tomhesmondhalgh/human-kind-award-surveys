@@ -46,7 +46,6 @@ const Upgrade = () => {
         <PageTitle 
           title="Improving Staff Wellbeing Made Easy" 
           subtitle="Effective evidence-based strategies in an easy-to-use plan" 
-          alignment="center" 
         />
         
         <BenefitsSection />
