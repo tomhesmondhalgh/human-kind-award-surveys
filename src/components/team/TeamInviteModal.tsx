@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import { Mail, UserPlus, AlertCircle } from 'lucide-react';
+import { Mail, UserPlus } from 'lucide-react';
 
 interface TeamInviteModalProps {
   isOpen: boolean;
@@ -40,7 +40,6 @@ const TeamInviteModal: React.FC<TeamInviteModalProps> = ({
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('viewer');
   const [emailError, setEmailError] = useState('');
-  const [existingMemberWarning, setExistingMemberWarning] = useState(false);
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -71,38 +70,14 @@ const TeamInviteModal: React.FC<TeamInviteModalProps> = ({
     }
   };
 
-  const handleEmailChange = async (value: string) => {
+  const handleEmailChange = (value: string) => {
     setEmail(value);
     if (emailError) {
       setEmailError('');
     }
-    setExistingMemberWarning(false);
-
-    // Check if email might already be a member (optimistic check)
-    if (validateEmail(value) && organizationId) {
-      try {
-        // Get user by email
-        const { data: authData } = await supabase.auth.admin.listUsers();
-        const existingUser = authData?.users?.find((u: any) => u.email === value);
-        
-        if (existingUser) {
-          // Check if they're already a member
-          const { data: membership } = await supabase
-            .from('organization_memberships')
-            .select('id')
-            .eq('user_id', existingUser.id)
-            .eq('organization_id', organizationId)
-            .single();
-            
-          if (membership) {
-            setExistingMemberWarning(true);
-          }
-        }
-      } catch (error) {
-        // Silent fail - server-side validation will catch this
-        console.log('Could not check for existing member (will be validated server-side)');
-      }
-    }
+    // Server-side validation in send-team-invitation-v2 will check for:
+    // 1. Existing pending invitations
+    // 2. Existing organization members
   };
 
   const handleClose = () => {
@@ -142,12 +117,6 @@ const TeamInviteModal: React.FC<TeamInviteModalProps> = ({
             </div>
             {emailError && (
               <p className="text-sm text-red-600">{emailError}</p>
-            )}
-            {existingMemberWarning && (
-              <p className="text-sm text-amber-600 flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                This user may already be a member
-              </p>
             )}
           </div>
 

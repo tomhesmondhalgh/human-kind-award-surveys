@@ -413,6 +413,7 @@ const Team = () => {
           onClose={() => setIsInviteModalOpen(false)}
           onSendInvitation={handleSendInvitation}
           isLoading={sendInvitation.isPending}
+          organizationId={currentOrganization?.id}
         />
 
         <ConfirmDeleteModal
