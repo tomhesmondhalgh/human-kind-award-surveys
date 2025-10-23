@@ -314,16 +314,28 @@ const AcceptInvitation = () => {
               {!isAuthenticated ? (
                 <div>
                   <p className="text-gray-600 mb-4">
-                    Please log in to accept this invitation.
+                    Please log in or create an account to accept this invitation.
                   </p>
-                  <Button 
-                    onClick={() => navigate('/login', { 
-                      state: { returnTo: window.location.pathname + window.location.search } 
-                    })}
-                    className="w-full"
-                  >
-                    Log In
-                  </Button>
+                  <div className="flex flex-col gap-2">
+                    <Button 
+                      onClick={() => navigate('/login', { 
+                        state: { returnTo: window.location.pathname + window.location.search } 
+                      })}
+                      className="w-full"
+                    >
+                      Log In
+                    </Button>
+                    <Button 
+                      onClick={() => navigate(`/signup?token=${token}`)}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      Sign Up
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-3">
+                    Don't have an account? Sign up to join {invitation.organizations?.name}
+                  </p>
                 </div>
               ) : user?.email !== invitation.email ? (
                 <div>

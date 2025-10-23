@@ -27,12 +27,17 @@ const SignUp = () => {
   }, [location]);
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const token = params.get('invitation');
+    console.log('SignUp: Component mounted, checking for invitation token...');
     
-    if (token) {
-      setInvitationToken(token);
-      fetchInvitationDetails(token);
+    const params = new URLSearchParams(location.search);
+    const tokenParam = params.get('token') || params.get('invitation');
+    
+    console.log('SignUp: Token parameter from URL:', tokenParam);
+    
+    if (tokenParam) {
+      console.log('SignUp: Setting invitation token:', tokenParam);
+      setInvitationToken(tokenParam);
+      fetchInvitationDetails(tokenParam);
     }
     
     console.log('SignUp component mounted, pathname:', location.pathname);
@@ -40,18 +45,32 @@ const SignUp = () => {
 
   const fetchInvitationDetails = async (token: string) => {
     try {
-      // This is commented out as the "invitations" table doesn't exist
-      // Keeping the function structure for future implementation
-      console.log('Invitation token received:', token);
-      // In a future implementation, we can add the invitations table
-      setInvitation({
-        role: 'viewer',
-        organizations: { 
-          school_name: 'School' 
-        }
-      });
+      console.log('SignUp: Fetching invitation details for token:', token);
+      const { data, error } = await supabase
+        .from('organization_invitations')
+        .select('*, organizations(id, name)')
+        .eq('token', token)
+        .is('accepted_at', null)
+        .single();
+      
+      if (error) {
+        console.error('SignUp: Error fetching invitation:', error);
+        toast.error('Invalid invitation link');
+        return;
+      }
+
+      // Check if expired
+      if (new Date(data.expires_at) < new Date()) {
+        console.log('SignUp: Invitation has expired');
+        toast.error('This invitation has expired');
+        return;
+      }
+      
+      console.log('SignUp: Invitation details fetched:', data);
+      setInvitation(data);
     } catch (err) {
-      console.error('Error fetching invitation:', err);
+      console.error('SignUp: Error fetching invitation:', err);
+      toast.error('Error loading invitation details');
     }
   };
 
@@ -77,24 +96,67 @@ const SignUp = () => {
       if (!signUpSuccess) {
         throw signUpError || new Error('Failed to create account');
       }
+
+      console.log('SignUp: Account created successfully, user:', user?.id);
       
-      if (invitationToken) {
-        toast.info('Please check your email to confirm your account before accessing your invitation');
-        navigate(`/email-confirmation`, { 
-          state: { 
-            email: data.email,
-            userData: userData 
-          } 
-        });
-      } else {
-        console.log('Signup successful, redirecting to email confirmation page');
-        navigate('/email-confirmation', { 
-          state: { 
-            email: data.email,
-            userData: userData
-          } 
-        });
+      // If there's an invitation, try to auto-accept it
+      if (invitationToken && invitation && user) {
+        try {
+          console.log('SignUp: Attempting to auto-accept invitation');
+          
+          // Check if email matches
+          if (data.email.toLowerCase() === invitation.email.toLowerCase()) {
+            console.log('SignUp: Email matches, creating organization membership');
+            
+            // Create organization membership
+            const { error: membershipError } = await supabase
+              .from('organization_memberships')
+              .insert({
+                user_id: user.id,
+                organization_id: invitation.organization_id,
+                role: invitation.role,
+                is_primary: false
+              });
+            
+            if (membershipError) {
+              console.error('SignUp: Error creating membership:', membershipError);
+              throw membershipError;
+            }
+            
+            // Mark invitation as accepted
+            const { error: invitationError } = await supabase
+              .from('organization_invitations')
+              .update({ accepted_at: new Date().toISOString() })
+              .eq('id', invitation.id);
+            
+            if (invitationError) {
+              console.error('SignUp: Error marking invitation as accepted:', invitationError);
+            }
+            
+            console.log('SignUp: Successfully auto-accepted invitation');
+            toast.success(`Account created! Welcome to ${invitation.organizations?.name}!`);
+            
+            // Redirect to team page
+            navigate('/team');
+            return;
+          } else {
+            console.log('SignUp: Email does not match invitation email');
+            toast.warning('Account created, but invitation was for a different email address. Please use the invitation link again to join the organisation.');
+          }
+        } catch (err) {
+          console.error('SignUp: Error auto-accepting invitation:', err);
+          toast.warning('Account created but couldn\'t automatically accept invitation. Please use the invitation link again.');
+        }
       }
+      
+      // Standard signup flow (no invitation or auto-accept failed)
+      console.log('Signup successful, redirecting to email confirmation page');
+      navigate('/email-confirmation', { 
+        state: { 
+          email: data.email,
+          userData: userData
+        } 
+      });
       
       toast.success('Account created successfully!');
     } catch (err: any) {
@@ -162,22 +224,27 @@ const SignUp = () => {
     <MainLayout>
       <div className="page-container">
         <PageTitle 
-          title={invitation ? `Join ${invitation.organizations.school_name}` : "Create your account"} 
-          subtitle={invitation 
-            ? `Complete your account to accept the invitation as ${invitation?.role?.replace('_', ' ')}`
-            : "Sign up to create wellbeing surveys for your staff"
-          }
+          title={invitation ? "Accept Invitation" : "Create Your Account"}
+          subtitle={invitation ? `Join ${invitation.organizations?.name}` : "Get started with staff wellbeing surveys"}
         />
+        
         {invitation && (
-          <div className="mb-4 text-sm text-brandPurple-100 rounded-lg p-3 bg-brandPurple-50 border border-brandPurple-100">
-            <p>You've been invited to join an organisation. Create your account to continue.</p>
+          <div className="max-w-2xl mx-auto mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800">
+              You've been invited to join <strong>{invitation.organizations?.name}</strong> as a <strong className="capitalize">{invitation.role}</strong>.
+            </p>
+            <p className="text-xs text-blue-600 mt-1">
+              Complete your registration with {invitation.email} to accept the invitation.
+            </p>
           </div>
         )}
+        
         <AuthForm 
           mode="signup" 
           onSubmit={handleSubmit} 
           isLoading={isLoading}
           invitationData={invitation}
+          initialEmail={invitation?.email}
         />
       </div>
     </MainLayout>

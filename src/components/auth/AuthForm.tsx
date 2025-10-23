@@ -8,14 +8,16 @@ interface AuthFormProps {
   mode: 'login' | 'signup';
   onSubmit: (data: any) => void;
   isLoading?: boolean;
-  invitationData?: any; // Add support for invitation data
+  invitationData?: any;
+  initialEmail?: string;
 }
 
 const AuthForm: React.FC<AuthFormProps> = ({ 
   mode, 
   onSubmit, 
   isLoading = false,
-  invitationData
+  invitationData,
+  initialEmail
 }) => {
   console.log('AuthForm rendering with mode:', mode); // Add debugging
   
@@ -34,6 +36,7 @@ const AuthForm: React.FC<AuthFormProps> = ({
       }} 
       isLoading={isLoading}
       invitationData={invitationData}
+      initialEmail={initialEmail}
     />
   );
 };
