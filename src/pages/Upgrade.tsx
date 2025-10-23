@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
@@ -8,7 +7,6 @@ import WhyThisMattersSection from '../components/upgrade/WhyThisMattersSection';
 import IntroSection from '../components/upgrade/IntroSection';
 import HowItWorksSection from '../components/upgrade/HowItWorksSection';
 import PricingSection from '../components/pricing/PricingSection';
-
 const Upgrade = () => {
   const location = useLocation();
 
@@ -25,7 +23,7 @@ const Upgrade = () => {
         bubbles: true
       });
       document.dispatchEvent(escEvent);
-      
+
       // Reset any body styles that might have been modified by dialogs
       document.body.style.overflow = '';
       document.body.style.pointerEvents = '';
@@ -40,9 +38,7 @@ const Upgrade = () => {
       cleanupOverlays();
     };
   }, [location.pathname]);
-
-  return (
-    <MainLayout>
+  return <MainLayout>
       <PageContainer className="space-y-16">
         {/* Hero Section */}
         <div className="-mx-6 -mt-6 md:-mx-8 md:-mt-8 px-6 md:px-8 py-16 bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5 rounded-t-lg">
@@ -57,13 +53,11 @@ const Upgrade = () => {
         </div>
         
         <BenefitsSection />
-        <WhyThisMattersSection />
+        
         <IntroSection />
-        <HowItWorksSection />
+        
         <PricingSection />
       </PageContainer>
-    </MainLayout>
-  );
+    </MainLayout>;
 };
-
 export default Upgrade;
