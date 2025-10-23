@@ -53,8 +53,8 @@ const handler = async (req: Request): Promise<Response> => {
     console.log('✅ User validated:', userId.slice(0, 8));
 
     // Parse request body
-    const { email, role, organizationId }: InvitationRequest = await req.json();
-    console.log('📋 Invitation details:', { email, role, orgId: organizationId.slice(0, 8) });
+    const { email, role, organizationId, isResend }: InvitationRequest & { isResend?: boolean } = await req.json();
+    console.log('📋 Invitation details:', { email, role, orgId: organizationId.slice(0, 8), isResend });
 
     // Check if user has admin permissions for this organization
     const { data: membership, error: membershipError } = await supabaseAdmin
@@ -73,6 +73,51 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log('✅ Permission check passed');
+
+    // Skip duplicate checks if this is a resend
+    if (!isResend) {
+      // Check for existing pending invitation
+      const { data: existingInvitation } = await supabaseAdmin
+        .from('organization_invitations')
+        .select('id')
+        .eq('email', email)
+        .eq('organization_id', organizationId)
+        .is('accepted_at', null)
+        .gt('expires_at', new Date().toISOString())
+        .single();
+
+      if (existingInvitation) {
+        console.warn('⚠️ Existing pending invitation found');
+        return new Response(
+          JSON.stringify({ error: 'An invitation has already been sent to this email' }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Check if user with this email is already a member
+      const { data: authUser, error: authUserError } = await supabaseAdmin.auth.admin.listUsers();
+      
+      if (!authUserError && authUser?.users) {
+        const existingUser = authUser.users.find(u => u.email === email);
+        
+        if (existingUser) {
+          const { data: existingMember } = await supabaseAdmin
+            .from('organization_memberships')
+            .select('id')
+            .eq('user_id', existingUser.id)
+            .eq('organization_id', organizationId)
+            .single();
+            
+          if (existingMember) {
+            console.warn('⚠️ User is already a member');
+            return new Response(
+              JSON.stringify({ error: 'This user is already a member of the organisation' }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        }
+      }
+    }
 
     // Create invitation
     const token = crypto.randomUUID();

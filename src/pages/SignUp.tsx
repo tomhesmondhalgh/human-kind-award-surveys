@@ -4,241 +4,271 @@ import MainLayout from '../components/layout/MainLayout';
 import AuthForm from '../components/auth/AuthForm';
 import PageTitle from '../components/ui/PageTitle';
 import { useAuth } from '../contexts/AuthContext';
-import { toast } from '@/services/toastService';
-import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { SignUpFormData } from '../types/auth';
-
-const SIGNUP_VERSION = 'main_signup_component_v1.2';
+import { supabase } from '@/integrations/supabase/client';
+import { Card } from '@/components/ui/card';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
 
 const SignUp = () => {
-  console.log(`Rendering SignUp component (${SIGNUP_VERSION})`);
   const navigate = useNavigate();
   const location = useLocation();
-  const { signUp, completeUserProfile } = useAuth();
+  const { signUp, user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [invitationToken, setInvitationToken] = useState<string | null>(null);
   const [invitation, setInvitation] = useState<any>(null);
+  const [loadingInvitation, setLoadingInvitation] = useState(false);
 
   useEffect(() => {
-    console.log('SignUp component mounted with:');
-    console.log('- Current URL:', window.location.href);
-    console.log('- Environment:', import.meta.env.MODE);
-    console.log('- Route location:', location);
-  }, [location]);
-
-  useEffect(() => {
-    console.log('SignUp: Component mounted, checking for invitation token...');
-    
     const params = new URLSearchParams(location.search);
-    const tokenParam = params.get('token') || params.get('invitation');
+    const token = params.get('token') || params.get('invitation');
     
-    console.log('SignUp: Token parameter from URL:', tokenParam);
-    
-    if (tokenParam) {
-      console.log('SignUp: Setting invitation token:', tokenParam);
-      setInvitationToken(tokenParam);
-      fetchInvitationDetails(tokenParam);
+    if (token) {
+      console.log('📧 Invitation token detected:', token.slice(0, 8));
+      setInvitationToken(token);
+      fetchInvitationDetails(token);
     }
-    
-    console.log('SignUp component mounted, pathname:', location.pathname);
-  }, [location.search, location.pathname]);
+  }, [location.search]);
 
   const fetchInvitationDetails = async (token: string) => {
+    setLoadingInvitation(true);
     try {
-      console.log('SignUp: Fetching invitation details for token:', token);
+      console.log('🔍 Fetching invitation details');
+      
       const { data, error } = await supabase
         .from('organization_invitations')
-        .select('*, organizations(id, name)')
+        .select(`
+          *,
+          organizations!organization_invitations_organization_id_fkey (
+            name,
+            address
+          )
+        `)
         .eq('token', token)
-        .is('accepted_at', null)
         .single();
-      
+
       if (error) {
-        console.error('SignUp: Error fetching invitation:', error);
+        console.error('❌ Error fetching invitation:', error);
         toast.error('Invalid invitation link');
+        return;
+      }
+
+      if (!data) {
+        console.warn('⚠️ Invitation not found');
+        toast.error('Invitation not found');
         return;
       }
 
       // Check if expired
       if (new Date(data.expires_at) < new Date()) {
-        console.log('SignUp: Invitation has expired');
+        console.warn('⚠️ Invitation expired');
         toast.error('This invitation has expired');
         return;
       }
-      
-      console.log('SignUp: Invitation details fetched:', data);
+
+      // Check if already accepted
+      if (data.accepted_at) {
+        console.warn('⚠️ Invitation already accepted');
+        toast.error('This invitation has already been accepted');
+        navigate('/login');
+        return;
+      }
+
+      console.log('✅ Valid invitation found');
       setInvitation(data);
-    } catch (err) {
-      console.error('SignUp: Error fetching invitation:', err);
-      toast.error('Error loading invitation details');
-    }
-  };
-
-  const handleSubmit = async (data: SignUpFormData) => {
-    setIsLoading(true);
-    console.log('Form submitted with data:', data);
-    
-    try {
-      // Ensure all necessary data is included
-      const userData = {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email,
-        jobTitle: data.jobTitle || '',
-        schoolName: data.schoolName || '',
-        schoolAddress: data.schoolAddress || compileCustomAddress(data),
-      };
-      
-      console.log('Signup data being sent:', userData);
-      
-      const { error: signUpError, success: signUpSuccess, user } = await signUp(data.email, data.password, userData);
-      
-      if (!signUpSuccess) {
-        throw signUpError || new Error('Failed to create account');
-      }
-
-      console.log('SignUp: Account created successfully, user:', user?.id);
-      
-      // If there's an invitation, try to auto-accept it
-      if (invitationToken && invitation && user) {
-        try {
-          console.log('SignUp: Attempting to auto-accept invitation');
-          
-          // Check if email matches
-          if (data.email.toLowerCase() === invitation.email.toLowerCase()) {
-            console.log('SignUp: Email matches, creating organization membership');
-            
-            // Create organization membership
-            const { error: membershipError } = await supabase
-              .from('organization_memberships')
-              .insert({
-                user_id: user.id,
-                organization_id: invitation.organization_id,
-                role: invitation.role,
-                is_primary: false
-              });
-            
-            if (membershipError) {
-              console.error('SignUp: Error creating membership:', membershipError);
-              throw membershipError;
-            }
-            
-            // Mark invitation as accepted
-            const { error: invitationError } = await supabase
-              .from('organization_invitations')
-              .update({ accepted_at: new Date().toISOString() })
-              .eq('id', invitation.id);
-            
-            if (invitationError) {
-              console.error('SignUp: Error marking invitation as accepted:', invitationError);
-            }
-            
-            console.log('SignUp: Successfully auto-accepted invitation');
-            toast.success(`Account created! Welcome to ${invitation.organizations?.name}!`);
-            
-            // Redirect to team page
-            navigate('/team');
-            return;
-          } else {
-            console.log('SignUp: Email does not match invitation email');
-            toast.warning('Account created, but invitation was for a different email address. Please use the invitation link again to join the organisation.');
-          }
-        } catch (err) {
-          console.error('SignUp: Error auto-accepting invitation:', err);
-          toast.warning('Account created but couldn\'t automatically accept invitation. Please use the invitation link again.');
-        }
-      }
-      
-      // Standard signup flow (no invitation or auto-accept failed)
-      console.log('Signup successful, redirecting to email confirmation page');
-      navigate('/email-confirmation', { 
-        state: { 
-          email: data.email,
-          userData: userData
-        } 
-      });
-      
-      toast.success('Account created successfully!');
-    } catch (err: any) {
-      console.error('Signup error details:', err);
-      
-      // Provide specific error messages based on error type
-      if (err.message === 'DUPLICATE_EMAIL') {
-        toast.error({
-          title: 'Account already exists',
-          description: 'An account with this email address already exists. Please log in or reset your password if you\'ve forgotten it.',
-          duration: 6000 // Longer duration for actionable message
-        });
-      } else if (err.message?.includes('organization with this name already exists')) {
-        toast.error({
-          title: 'Organization name already exists',
-          description: 'An organization with this name already exists. Please use a different name or contact support if you believe this is your organization.',
-          duration: 6000
-        });
-      } else if (err.message?.includes('Failed to set up organization')) {
-        toast.error({
-          title: 'Organization setup failed',
-          description: 'We couldn\'t set up your organization. Please try again or contact support if the problem persists.',
-          duration: 6000
-        });
-      } else if (err.message?.toLowerCase().includes('password')) {
-        toast.error({
-          title: 'Invalid password',
-          description: 'Password must be at least 6 characters long.',
-          duration: 5000
-        });
-      } else if (err.message?.toLowerCase().includes('email') && 
-                 err.message?.toLowerCase().includes('invalid')) {
-        toast.error({
-          title: 'Invalid email address',
-          description: 'Please enter a valid email address.',
-          duration: 5000
-        });
-      } else {
-        // Generic fallback for unexpected errors
-        toast.error({
-          title: 'Failed to create account',
-          description: 'An unexpected error occurred. Please try again or contact support if the problem persists.',
-          duration: 5000
-        });
-      }
+    } catch (error) {
+      console.error('💥 Error fetching invitation:', error);
+      toast.error('Failed to load invitation details');
     } finally {
-      setIsLoading(false);
+      setLoadingInvitation(false);
     }
   };
-  
-  const compileCustomAddress = (data: SignUpFormData) => {
+
+  const compileCustomAddress = (data: SignUpFormData): string => {
     const addressParts = [
       data.customStreetAddress,
       data.customStreetAddress2,
       data.customCity,
       data.customCounty,
       data.customPostalCode,
-      data.customCountry,
-    ].filter(Boolean);
+      data.customCountry
+    ].filter(part => part && part.trim() !== '');
     
     return addressParts.join(', ');
   };
+
+  const handleSubmit = async (data: SignUpFormData) => {
+    console.log('📝 Sign up form submitted');
+    setIsLoading(true);
+
+    try {
+      // Store invitation token for post-email-confirmation
+      if (invitationToken) {
+        console.log('💾 Storing invitation token for post-confirmation');
+        localStorage.setItem('pendingInvitationToken', invitationToken);
+      }
+
+      let schoolAddress = data.schoolAddress;
+      
+      if (!schoolAddress && data.customStreetAddress) {
+        schoolAddress = compileCustomAddress(data);
+      }
+
+      const userData = {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        jobTitle: data.jobTitle,
+        schoolName: data.schoolName,
+        schoolAddress: schoolAddress,
+        organizationName: data.organizationName || data.schoolName,
+        schoolURN: data.schoolURN,
+        email: data.email
+      };
+
+      console.log('🚀 Calling signUp function');
+      
+      // Pass skipOrgCreation if invitation exists
+      const { error, success, user: newUser } = await signUp(
+        data.email, 
+        data.password, 
+        userData, 
+        !!invitation // skipOrgCreation = true if invitation exists
+      );
+
+      if (!success || error) {
+        console.error('❌ Sign up error:', error);
+        
+        if (error?.message === 'DUPLICATE_EMAIL') {
+          toast.error('Email already registered', {
+            description: 'This email is already registered. Please log in instead.'
+          });
+          setTimeout(() => navigate('/login'), 2000);
+          return;
+        }
+
+        toast.error('Sign up failed', {
+          description: error?.message || 'Please try again'
+        });
+        return;
+      }
+
+      console.log('✅ Sign up successful');
+
+      // Check if email confirmation is required
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        console.log('📧 Email confirmation required');
+        
+        // Store invitation info for post-confirmation
+        if (invitation) {
+          localStorage.setItem('pendingInvitation', JSON.stringify({
+            token: invitationToken,
+            organizationName: invitation.organizations?.name
+          }));
+        }
+        
+        navigate('/email-confirmation', { 
+          state: { 
+            email: data.email,
+            userData,
+            hasInvitation: !!invitation
+          } 
+        });
+        return;
+      }
+
+      // If invitation exists and we have a session, accept it immediately
+      if (invitation && invitationToken) {
+        console.log('🎯 Auto-accepting invitation via edge function');
+        
+        try {
+          const { data: acceptResult, error: acceptError } = await supabase.functions.invoke(
+            'accept-invitation',
+            {
+              body: { token: invitationToken }
+            }
+          );
+
+          if (acceptError) {
+            console.error('❌ Failed to accept invitation:', acceptError);
+            toast.error('Failed to join organisation automatically. Please accept the invitation manually.');
+          } else if (acceptResult?.alreadyMember) {
+            console.log('ℹ️ User already a member');
+            toast.success('You are already a member of this organisation');
+          } else if (acceptResult?.success) {
+            console.log('✅ Invitation accepted successfully');
+            toast.success('Successfully joined ' + (invitation.organizations?.name || 'organisation'));
+            
+            // Clean up stored token
+            localStorage.removeItem('pendingInvitationToken');
+            localStorage.removeItem('pendingInvitation');
+          }
+        } catch (acceptError) {
+          console.error('💥 Exception accepting invitation:', acceptError);
+          toast.error('Could not join organisation automatically. Please check your team page.');
+        }
+
+        // Navigate to team page
+        navigate('/team');
+      } else {
+        // No invitation, normal signup flow
+        navigate('/email-confirmation', { 
+          state: { 
+            email: data.email,
+            userData
+          } 
+        });
+      }
+
+    } catch (error: any) {
+      console.error('💥 Sign up error:', error);
+      toast.error('Sign up failed', {
+        description: error?.message || 'An unexpected error occurred'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (loadingInvitation) {
+    return (
+      <MainLayout>
+        <div className="page-container flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading invitation details...</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
       <div className="page-container">
         <PageTitle 
-          title={invitation ? "Accept Invitation" : "Create Your Account"}
-          subtitle={invitation ? `Join ${invitation.organizations?.name}` : "Get started with staff wellbeing surveys"}
+          title="Create your account" 
+          subtitle="Join thousands of educators improving staff wellbeing"
+          alignment="center"
         />
         
         {invitation && (
-          <div className="max-w-2xl mx-auto mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-800">
-              You've been invited to join <strong>{invitation.organizations?.name}</strong> as a <strong className="capitalize">{invitation.role}</strong>.
-            </p>
-            <p className="text-xs text-blue-600 mt-1">
-              Complete your registration with {invitation.email} to accept the invitation.
-            </p>
-          </div>
+          <Card className="max-w-2xl mx-auto mb-6 p-4 bg-blue-50 border-blue-200">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <h3 className="font-medium text-blue-900 mb-1">
+                  You've been invited to join {invitation.organizations?.name}
+                </h3>
+                <p className="text-sm text-blue-700">
+                  Complete your registration below, and you'll automatically be added to the organisation as a {invitation.role}.
+                </p>
+              </div>
+            </div>
+          </Card>
         )}
-        
+
         <AuthForm 
           mode="signup" 
           onSubmit={handleSubmit} 

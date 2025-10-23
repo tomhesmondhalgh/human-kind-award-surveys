@@ -1,5 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -25,17 +27,20 @@ interface TeamInviteModalProps {
   onClose: () => void;
   onSendInvitation: (data: { email: string; role: string }) => Promise<void>;
   isLoading?: boolean;
+  organizationId?: string;
 }
 
 const TeamInviteModal: React.FC<TeamInviteModalProps> = ({
   isOpen,
   onClose,
   onSendInvitation,
-  isLoading = false
+  isLoading = false,
+  organizationId
 }) => {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('viewer');
   const [emailError, setEmailError] = useState('');
+  const [existingMemberWarning, setExistingMemberWarning] = useState(false);
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -66,10 +71,37 @@ const TeamInviteModal: React.FC<TeamInviteModalProps> = ({
     }
   };
 
-  const handleEmailChange = (value: string) => {
+  const handleEmailChange = async (value: string) => {
     setEmail(value);
     if (emailError) {
       setEmailError('');
+    }
+    setExistingMemberWarning(false);
+
+    // Check if email might already be a member (optimistic check)
+    if (validateEmail(value) && organizationId) {
+      try {
+        // Get user by email
+        const { data: authData } = await supabase.auth.admin.listUsers();
+        const existingUser = authData?.users?.find((u: any) => u.email === value);
+        
+        if (existingUser) {
+          // Check if they're already a member
+          const { data: membership } = await supabase
+            .from('organization_memberships')
+            .select('id')
+            .eq('user_id', existingUser.id)
+            .eq('organization_id', organizationId)
+            .single();
+            
+          if (membership) {
+            setExistingMemberWarning(true);
+          }
+        }
+      } catch (error) {
+        // Silent fail - server-side validation will catch this
+        console.log('Could not check for existing member (will be validated server-side)');
+      }
     }
   };
 
@@ -110,6 +142,12 @@ const TeamInviteModal: React.FC<TeamInviteModalProps> = ({
             </div>
             {emailError && (
               <p className="text-sm text-red-600">{emailError}</p>
+            )}
+            {existingMemberWarning && (
+              <p className="text-sm text-amber-600 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                This user may already be a member
+              </p>
             )}
           </div>
 

@@ -8,7 +8,7 @@ type SignUpResult =
   | { error: null; success: true; user: User }
   | { error: Error; success: false; user?: undefined };
 
-export async function signUpWithEmail(email: string, password: string, userData?: any): Promise<SignUpResult> {
+export async function signUpWithEmail(email: string, password: string, userData?: any, skipOrgCreation: boolean = false): Promise<SignUpResult> {
   try {
     console.log('Starting signUpWithEmail process for:', email);
     
@@ -114,40 +114,44 @@ export async function signUpWithEmail(email: string, password: string, userData?
       console.warn('Profile creation failed but continuing with signup');
     }
 
-    // Set up user organization - REQUIRED for a functional account
-    console.log('Setting up user organization (required step)');
-    
-    const organizationName = userData?.organizationName || 
-                            userData?.schoolName || 
-                            `${userData?.firstName}'s Organisation`;
-    
-    const { data: orgId, error: orgError } = await supabase.rpc(
-      'setup_user_organization',
-      {
-        user_uuid: data.user.id,
-        org_name: organizationName,
-        org_address: userData?.schoolAddress || '',
-        org_urn: userData?.schoolURN || null
-      }
-    );
-    
-    if (orgError) {
-      console.error('CRITICAL: Failed to create organization for new user:', orgError);
+    // Set up user organization - REQUIRED for a functional account (unless invited)
+    if (skipOrgCreation) {
+      console.log('⏭️ Skipping organization creation (user invited to existing org)');
+    } else {
+      console.log('Setting up user organization (required step)');
       
-      // Organization creation is essential - throw error to prevent incomplete signup
-      throw new Error(
-        orgError.message?.includes('duplicate') || orgError.code === '23505'
-          ? 'An organization with this name already exists'
-          : 'Failed to set up organization. Please try again or contact support.'
+      const organizationName = userData?.organizationName || 
+                              userData?.schoolName || 
+                              `${userData?.firstName}'s Organisation`;
+      
+      const { data: orgId, error: orgError } = await supabase.rpc(
+        'setup_user_organization',
+        {
+          user_uuid: data.user.id,
+          org_name: organizationName,
+          org_address: userData?.schoolAddress || '',
+          org_urn: userData?.schoolURN || null
+        }
       );
+      
+      if (orgError) {
+        console.error('CRITICAL: Failed to create organization for new user:', orgError);
+        
+        // Organization creation is essential - throw error to prevent incomplete signup
+        throw new Error(
+          orgError.message?.includes('duplicate') || orgError.code === '23505'
+            ? 'An organization with this name already exists'
+            : 'Failed to set up organization. Please try again or contact support.'
+        );
+      }
+      
+      if (!orgId) {
+        console.error('CRITICAL: Organization RPC returned no ID');
+        throw new Error('Failed to set up organization. Please try again or contact support.');
+      }
+      
+      console.log('Created user organization successfully:', orgId);
     }
-    
-    if (!orgId) {
-      console.error('CRITICAL: Organization RPC returned no ID');
-      throw new Error('Failed to set up organization. Please try again or contact support.');
-    }
-    
-    console.log('Created user organization successfully:', orgId);
 
     return { error: null, success: true, user: data.user };
   } catch (error: any) {

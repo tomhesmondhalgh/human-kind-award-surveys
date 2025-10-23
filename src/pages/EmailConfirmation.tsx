@@ -13,6 +13,21 @@ const EmailConfirmation = () => {
   const location = useLocation();
   const email = location.state?.email || 'your email';
   const userData = location.state?.userData;
+  const hasInvitation = location.state?.hasInvitation;
+
+  useEffect(() => {
+    // Check for pending invitation acceptance after email confirmation
+    const checkPendingInvitation = async () => {
+      const pendingToken = localStorage.getItem('pendingInvitationToken');
+      const pendingInvitationData = localStorage.getItem('pendingInvitation');
+      
+      if (pendingToken) {
+        console.log('📧 Pending invitation found, will auto-accept after email confirmation');
+      }
+    };
+    
+    checkPendingInvitation();
+  }, []);
 
   useEffect(() => {
     const sendAdminNotification = async () => {
@@ -73,6 +88,11 @@ const EmailConfirmation = () => {
               <p className="text-amber-700 text-sm">
                 You must confirm your email before you can log in. If you don't see the email, please check your spam folder.
               </p>
+              {hasInvitation && (
+                <p className="text-amber-700 text-sm mt-2">
+                  After confirming your email, you'll be automatically added to your organisation.
+                </p>
+              )}
             </div>
             
             <div className="flex flex-col gap-3">

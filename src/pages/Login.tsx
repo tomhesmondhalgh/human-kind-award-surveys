@@ -26,6 +26,12 @@ const Login = () => {
   }, [location, isAuthenticated, isLoading]);
 
   const getReturnPath = () => {
+    // Check for returnTo in state first (from navigation with state)
+    if (location.state?.returnTo) {
+      return location.state.returnTo;
+    }
+    
+    // Then check URL params
     const params = new URLSearchParams(location.search);
     const returnPath = params.get('returnTo');
     return returnPath || '/dashboard';

@@ -150,14 +150,13 @@ export function useTeamMembers(organizationId?: string) {
         ? `${inviterProfile.first_name || ''} ${inviterProfile.last_name || ''}`.trim() || 'A colleague'
         : 'A colleague';
 
-      // Send the invitation email
-      const { error: emailError } = await supabase.functions.invoke('send-team-invitation', {
+      // Send the invitation using v2 function with resend flag
+      const { error: emailError } = await supabase.functions.invoke('send-team-invitation-v2', {
         body: {
           email: invitation.email,
-          organizationName: invitation.organizations?.name || 'your organization',
           role: invitation.role,
-          inviterName,
-          invitationToken: invitation.token
+          organizationId: invitation.organization_id,
+          isResend: true
         }
       });
 
