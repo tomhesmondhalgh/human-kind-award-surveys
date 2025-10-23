@@ -2,12 +2,14 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSubscription } from '../../hooks/useSubscription';
 import SettingsDropdown from './SettingsDropdown';
 import { signOutUser } from '../../utils/auth';
 
 const NavLinks: React.FC = () => {
   const location = useLocation();
   const { user } = useAuth();
+  const { isPremium } = useSubscription();
 
   const navLinkClass = "text-base font-medium text-gray-600 hover:text-brandPurple-600 transition-colors";
   const activeNavLinkClass = "text-purple-700";
@@ -63,6 +65,15 @@ const NavLinks: React.FC = () => {
       >
         Accredit
       </Link>
+      
+      {!isPremium && (
+        <Link 
+          to="/upgrade" 
+          className={`${navLinkClass} ${isActive('/upgrade') ? activeNavLinkClass : ""}`}
+        >
+          Upgrade
+        </Link>
+      )}
       
       <SettingsDropdown handleSignOut={handleSignOut} />
     </>

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
-import { CreditCard, FileText, AlertCircle, ListTodo, Gift } from "lucide-react";
+import { CreditCard, FileText, AlertCircle, ListTodo, Gift, TrendingUp } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -199,6 +200,28 @@ const MyPurchases = () => {
   return (
     <>
       <PageTitle title="My Purchases" subtitle="View your purchases including credit card payments and invoices" />
+      
+      {/* View Available Plans Card */}
+      <Card className="mb-6 mt-6 border-purple-200 bg-purple-50">
+        <CardContent className="pt-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <TrendingUp className="h-6 w-6 text-purple-600 mt-1" />
+              <div>
+                <h3 className="font-semibold text-lg text-gray-900">Explore Available Plans</h3>
+                <p className="text-sm text-gray-600">
+                  View all pricing tiers and compare features
+                </p>
+              </div>
+            </div>
+            <Button asChild variant="default" className="shrink-0">
+              <Link to="/upgrade">
+                View Plans
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
       
       {activeSubscription && (
         <Card className="mb-8 mt-6">

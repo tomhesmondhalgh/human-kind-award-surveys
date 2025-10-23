@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAdminRole } from '../../hooks/useAdminRole';
+import { useSubscription } from '../../hooks/useSubscription';
 import { ChevronDown, ChevronRight, User, Users, CreditCard, ShieldCheck, LogOut } from 'lucide-react';
 
 interface MobileMenuProps {
@@ -25,6 +26,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
   const location = useLocation();
   const { user } = useAuth();
   const { isAdmin: userIsAdmin } = useAdminRole();
+  const { isPremium } = useSubscription();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const isActive = (path: string) => {
@@ -89,6 +91,16 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
             >
               Accredit
             </Link>
+
+            {!isPremium && (
+              <Link
+                to="/upgrade"
+                onClick={handleLinkClick}
+                className={`${mobileLinkClass} ${isActive('/upgrade') ? activeMobileLinkClass : ""}`}
+              >
+                Upgrade
+              </Link>
+            )}
 
             {/* Settings Dropdown */}
             <div>

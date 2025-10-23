@@ -735,14 +735,19 @@ For each test case, record:
 
 ### Test 11.2: View Pricing Plans
 **Steps:**
-1. Review available pricing tiers
-2. Compare features across plans
-3. Note differences between free and paid plans
+1. Navigate to pricing page using either method:
+   - Main navigation → Click "Upgrade" (visible if not on Premium plan)
+   - Settings → My Purchases → Click "View Plans" button in the purple card at the top
+2. Review available pricing tiers (Free, Foundation, Progress, Premium)
+3. Compare features across plans
+4. Note differences between free and paid plans
 
 **Expected Outcome:**
-- All plans displayed clearly
-- Features comparison easy to understand
+- "Upgrade" link appears in main navigation for non-Premium users
+- "View Plans" card appears at top of My Purchases page for all users
+- Pricing page displays all available plans with clear feature comparison
 - Pricing shown in GBP (UK)
+- Payment options (Card/Invoice/Redemption Code) available for paid plans
 
 ### Test 11.3: Upgrade Plan (DO NOT COMPLETE PAYMENT)
 **Steps:**
