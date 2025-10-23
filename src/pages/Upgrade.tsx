@@ -3,9 +3,10 @@ import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
 import PageContainer from '../components/layout/PageContainer';
-import PageTitle from '../components/ui/PageTitle';
 import BenefitsSection from '../components/upgrade/BenefitsSection';
+import WhyThisMattersSection from '../components/upgrade/WhyThisMattersSection';
 import IntroSection from '../components/upgrade/IntroSection';
+import HowItWorksSection from '../components/upgrade/HowItWorksSection';
 import PricingSection from '../components/pricing/PricingSection';
 
 const Upgrade = () => {
@@ -56,7 +57,9 @@ const Upgrade = () => {
         </div>
         
         <BenefitsSection />
+        <WhyThisMattersSection />
         <IntroSection />
+        <HowItWorksSection />
         <PricingSection />
       </PageContainer>
     </MainLayout>

@@ -3,8 +3,8 @@ import React from 'react';
 
 const IntroSection: React.FC = () => {
   return (
-    <div className="max-w-4xl bg-muted/30 rounded-lg border-2 border-border p-8">
-      <h2 className="text-2xl font-bold text-foreground mb-6">
+    <div className="bg-muted/30 rounded-lg border-2 border-border p-8 md:p-10">
+      <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-6">
         The Human Kind Award Framework
       </h2>
       
