@@ -678,17 +678,17 @@ For each test case, record:
 
 ### Test 10.2: Edit Personal Details
 **Steps:**
-1. Click "Edit" on personal details section
-2. Update first name, last name, or job title
-3. Optionally update email address
-4. Save changes
-5. If email was changed, check for verification email
+1. Navigate to Profile page (fields are directly editable)
+2. Update first name, last name, email, or job title as needed
+3. Click "Save Personal Information" button
+4. If email was changed, check for verification email
 
 **Expected Outcome:**
-- Edit form pre-populated
-- Changes save successfully
-- Updated info displays immediately
-- If email changed, verification email sent to new address
+- All fields are directly editable without needing to click an "Edit" button
+- Changes save successfully when "Save Personal Information" is clicked
+- Success toast notification appears confirming save
+- Updated information displays immediately
+- If email changed, verification message shown and verification email sent to new address
 - Email change requires verification before becoming active
 
 ### Test 10.3: Edit Professional Details
