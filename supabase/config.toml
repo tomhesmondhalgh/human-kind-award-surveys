@@ -95,6 +95,9 @@ verify_jwt = true
 [functions.get-active-script]
 verify_jwt = false
 
+[functions.accept-invitation]
+verify_jwt = true
+
 [functions.send-auth-email]
 verify_jwt = false
 

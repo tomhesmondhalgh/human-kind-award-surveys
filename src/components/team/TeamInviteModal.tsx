@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import { Mail, UserPlus } from 'lucide-react';
+import { Mail, UserPlus, AlertCircle } from 'lucide-react';
 
 interface TeamInviteModalProps {
   isOpen: boolean;
