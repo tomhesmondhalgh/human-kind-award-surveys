@@ -59,7 +59,8 @@ const MyPurchases = () => {
   } = useAuth();
   const {
     subscription,
-    isLoading: isSubscriptionLoading
+    isLoading: isSubscriptionLoading,
+    isPremium
   } = useSubscription();
 
   const fetchPurchases = async () => {
@@ -201,28 +202,6 @@ const MyPurchases = () => {
     <>
       <PageTitle title="My Purchases" subtitle="View your purchases including credit card payments and invoices" />
       
-      {/* View Available Plans Card */}
-      <Card className="mb-6 mt-6 border-purple-200 bg-purple-50">
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <TrendingUp className="h-6 w-6 text-purple-600 mt-1" />
-              <div>
-                <h3 className="font-semibold text-lg text-gray-900">Explore Available Plans</h3>
-                <p className="text-sm text-gray-600">
-                  View all pricing tiers and compare features
-                </p>
-              </div>
-            </div>
-            <Button asChild variant="default" className="shrink-0">
-              <Link to="/upgrade">
-                View Plans
-              </Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-      
       {activeSubscription && (
         <Card className="mb-8 mt-6">
           <CardHeader>
@@ -249,35 +228,45 @@ const MyPurchases = () => {
               </div>
               
               <div className="mt-4 pt-4 border-t">
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button 
-                      variant="destructive" 
-                      disabled={cancellingSubscription}
-                      className="w-full sm:w-auto"
-                    >
-                      {cancellingSubscription ? 'Cancelling...' : 'Cancel Subscription'}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  {!isPremium && (
+                    <Button asChild variant="default" className="w-full sm:w-auto">
+                      <Link to="/upgrade">
+                        Upgrade Plan
+                      </Link>
                     </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Cancel Subscription?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Your subscription will be cancelled at the end of the current billing period. 
-                        You'll retain access until {activeSubscription.end_date ? formatDate(activeSubscription.end_date) : 'the end of your billing cycle'}.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleCancelSubscription}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  )}
+                  
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button 
+                        variant="destructive" 
+                        disabled={cancellingSubscription}
+                        className="w-full sm:w-auto"
                       >
-                        Yes, Cancel Subscription
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                        {cancellingSubscription ? 'Cancelling...' : 'Cancel Subscription'}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Cancel Subscription?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Your subscription will be cancelled at the end of the current billing period. 
+                          You'll retain access until {activeSubscription.end_date ? formatDate(activeSubscription.end_date) : 'the end of your billing cycle'}.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleCancelSubscription}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Yes, Cancel Subscription
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
             </div>
           </CardContent>
