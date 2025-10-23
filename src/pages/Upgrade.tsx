@@ -42,11 +42,18 @@ const Upgrade = () => {
 
   return (
     <MainLayout>
-      <PageContainer>
-        <PageTitle 
-          title="Improving Staff Wellbeing Made Easy" 
-          subtitle="Effective evidence-based strategies in an easy-to-use plan" 
-        />
+      <PageContainer className="space-y-16">
+        {/* Hero Section */}
+        <div className="-mx-6 -mt-6 md:-mx-8 md:-mt-8 px-6 md:px-8 py-16 bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5 rounded-t-lg">
+          <div className="text-center max-w-3xl mx-auto">
+            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
+              Improving Staff Wellbeing Made Easy
+            </h1>
+            <p className="text-xl text-muted-foreground">
+              Effective evidence-based strategies in an easy-to-use plan
+            </p>
+          </div>
+        </div>
         
         <BenefitsSection />
         <IntroSection />
