@@ -20,7 +20,10 @@ export async function signUpWithEmail(email: string, password: string, userData?
         school_name: userData.schoolName,
         school_address: userData.schoolAddress
       },
-    } : {};
+      emailRedirectTo: `${window.location.origin}/login`
+    } : {
+      emailRedirectTo: `${window.location.origin}/login`
+    };
 
     console.log('Step 1: Creating user account with Supabase auth.signUp');
     const { data, error } = await supabase.auth.signUp({
@@ -151,6 +154,28 @@ export async function signUpWithEmail(email: string, password: string, userData?
       }
       
       console.log('Created user organization successfully:', orgId);
+    }
+
+    // Fallback safety check: Verify invited users have organization access
+    if (skipOrgCreation) {
+      console.log('⚠️ Organization creation skipped - verifying membership will be added via invitation');
+      
+      // Check if user has a session immediately (email confirmation disabled)
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      if (sessionData.session) {
+        console.log('✅ Session exists - checking for organization membership');
+        
+        const { data: memberships } = await supabase
+          .from('organization_memberships')
+          .select('id')
+          .eq('user_id', data.user.id)
+          .limit(1);
+        
+        if (!memberships || memberships.length === 0) {
+          console.warn('⚠️ User has no organizations immediately after signup - will be added via invitation acceptance');
+        }
+      }
     }
 
     return { error: null, success: true, user: data.user };

@@ -153,73 +153,24 @@ const SignUp = () => {
       }
 
       console.log('✅ Sign up successful');
-
-      // Check if email confirmation is required
-      const { data: { session } } = await supabase.auth.getSession();
       
-      if (!session) {
-        console.log('📧 Email confirmation required');
-        
-        // Store invitation info for post-confirmation
-        if (invitation) {
-          localStorage.setItem('pendingInvitation', JSON.stringify({
-            token: invitationToken,
-            organizationName: invitation.organizations?.name
-          }));
-        }
-        
-        navigate('/email-confirmation', { 
-          state: { 
-            email: data.email,
-            userData,
-            hasInvitation: !!invitation
-          } 
-        });
-        return;
+      // Store invitation info for post-confirmation
+      if (invitation) {
+        localStorage.setItem('pendingInvitation', JSON.stringify({
+          token: invitationToken,
+          organizationName: invitation.organizations?.name
+        }));
       }
-
-      // If invitation exists and we have a session, accept it immediately
-      if (invitation && invitationToken) {
-        console.log('🎯 Auto-accepting invitation via edge function');
-        
-        try {
-          const { data: acceptResult, error: acceptError } = await supabase.functions.invoke(
-            'accept-invitation',
-            {
-              body: { token: invitationToken }
-            }
-          );
-
-          if (acceptError) {
-            console.error('❌ Failed to accept invitation:', acceptError);
-            toast.error('Failed to join organisation automatically. Please accept the invitation manually.');
-          } else if (acceptResult?.alreadyMember) {
-            console.log('ℹ️ User already a member');
-            toast.success('You are already a member of this organisation');
-          } else if (acceptResult?.success) {
-            console.log('✅ Invitation accepted successfully');
-            toast.success('Successfully joined ' + (invitation.organizations?.name || 'organisation'));
-            
-            // Clean up stored token
-            localStorage.removeItem('pendingInvitationToken');
-            localStorage.removeItem('pendingInvitation');
-          }
-        } catch (acceptError) {
-          console.error('💥 Exception accepting invitation:', acceptError);
-          toast.error('Could not join organisation automatically. Please check your team page.');
-        }
-
-        // Navigate to team page
-        navigate('/team');
-      } else {
-        // No invitation, normal signup flow
-        navigate('/email-confirmation', { 
-          state: { 
-            email: data.email,
-            userData
-          } 
-        });
-      }
+      
+      // All users go to email confirmation page
+      // The Login page will handle token verification and invitation acceptance
+      navigate('/email-confirmation', { 
+        state: { 
+          email: data.email,
+          userData,
+          hasInvitation: !!invitation
+        } 
+      });
 
     } catch (error: any) {
       console.error('💥 Sign up error:', error);

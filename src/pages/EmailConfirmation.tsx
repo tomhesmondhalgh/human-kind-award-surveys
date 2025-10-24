@@ -14,65 +14,8 @@ const EmailConfirmation = () => {
   const email = location.state?.email || 'your email';
   const userData = location.state?.userData;
   const hasInvitation = location.state?.hasInvitation;
-  const [isAutoAccepting, setIsAutoAccepting] = useState(false);
-
-  useEffect(() => {
-    let mounted = true;
-    
-    const autoAcceptInvitation = async () => {
-      const pendingToken = localStorage.getItem('pendingInvitationToken');
-      
-      if (!pendingToken || !mounted) return;
-      
-      // Check if user has a session (email confirmed)
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (session && session.user) {
-        console.log('🎯 Session detected after confirmation, auto-accepting invitation');
-        setIsAutoAccepting(true);
-        
-        try {
-          const { data, error } = await supabase.functions.invoke('accept-invitation', {
-            body: { token: pendingToken }
-          });
-          
-          if (error) {
-            console.error('❌ Auto-accept failed:', error);
-            toast.error('Please accept your invitation manually from the team page');
-            setIsAutoAccepting(false);
-          } else if (data?.success) {
-            console.log('✅ Invitation auto-accepted successfully');
-            toast.success('Email confirmed and joined organisation!');
-            
-            // Clean up
-            localStorage.removeItem('pendingInvitationToken');
-            localStorage.removeItem('pendingInvitation');
-            
-            // Redirect to team page
-            setTimeout(() => {
-              if (mounted) navigate('/team');
-            }, 1500);
-          }
-        } catch (error) {
-          console.error('💥 Auto-accept error:', error);
-          toast.error('Failed to auto-accept invitation');
-          setIsAutoAccepting(false);
-        }
-      }
-    };
-    
-    // Check immediately on mount
-    autoAcceptInvitation();
-    
-    // Then check every 2 seconds for session establishment
-    const interval = setInterval(autoAcceptInvitation, 2000);
-    
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, [navigate]);
-
+  
+  // Admin notification on mount
   useEffect(() => {
     const sendAdminNotification = async () => {
       if (userData) {
@@ -132,15 +75,9 @@ const EmailConfirmation = () => {
               <p className="text-amber-700 text-sm">
                 You must confirm your email before you can log in. If you don't see the email, please check your spam folder.
               </p>
-              {hasInvitation && !isAutoAccepting && (
+              {hasInvitation && (
                 <p className="text-amber-700 text-sm mt-2">
                   After confirming your email, you'll be automatically added to your organisation.
-                </p>
-              )}
-              {hasInvitation && isAutoAccepting && (
-                <p className="text-blue-700 text-sm mt-2 flex items-center gap-2">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Accepting invitation...
                 </p>
               )}
             </div>

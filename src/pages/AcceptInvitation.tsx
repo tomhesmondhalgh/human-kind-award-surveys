@@ -111,7 +111,9 @@ const AcceptInvitation = () => {
     }
   };
 
-  const acceptInvitation = async () => {
+  const acceptInvitation = async (retryCount = 0) => {
+    const MAX_RETRIES = 3;
+    
     if (!user || !token) {
       console.error('❌ Cannot accept: missing user or token');
       return;
@@ -120,7 +122,7 @@ const AcceptInvitation = () => {
     setIsAccepting(true);
 
     try {
-      console.log('🎯 Accepting invitation via edge function');
+      console.log(`🎯 Accepting invitation via edge function (attempt ${retryCount + 1}/${MAX_RETRIES + 1})`);
       
       const { data, error } = await supabase.functions.invoke('accept-invitation', {
         body: { token }
@@ -128,6 +130,14 @@ const AcceptInvitation = () => {
 
       if (error) {
         console.error('❌ Failed to accept invitation:', error);
+        
+        // Retry on network/transient errors
+        if (retryCount < MAX_RETRIES && (error.message?.includes('network') || error.message?.includes('Failed to fetch'))) {
+          console.log(`⚠️ Retrying in ${(retryCount + 1) * 2} seconds...`);
+          setTimeout(() => acceptInvitation(retryCount + 1), (retryCount + 1) * 2000);
+          return;
+        }
+        
         throw error;
       }
 
@@ -146,9 +156,16 @@ const AcceptInvitation = () => {
       navigate('/team');
     } catch (error: any) {
       console.error('💥 Error accepting invitation:', error);
-      toast.error('Failed to accept invitation', {
-        description: error.message || 'Please try again'
-      });
+      
+      if (retryCount >= MAX_RETRIES) {
+        toast.error('Failed to accept invitation after multiple attempts', {
+          description: 'Please try again later or contact support'
+        });
+      } else {
+        toast.error('Failed to accept invitation', {
+          description: error.message || 'Please try again'
+        });
+      }
     } finally {
       setIsAccepting(false);
     }
@@ -327,7 +344,7 @@ const AcceptInvitation = () => {
             {isAuthenticated ? (
               <>
                 <Button 
-                  onClick={acceptInvitation} 
+                  onClick={() => acceptInvitation()} 
                   disabled={isAccepting}
                   className="w-full"
                 >
