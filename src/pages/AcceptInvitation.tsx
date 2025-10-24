@@ -60,16 +60,19 @@ const AcceptInvitation = () => {
 
       // Check if already accepted
       if (data.accepted_at) {
-        console.log('ℹ️ Invitation already accepted');
-        toast.success('This invitation has already been accepted');
+        console.log('⚠️ Invitation already accepted');
         
-        // Check if user is authenticated before redirecting to /team
+        // Check if user is authenticated before redirecting
         if (isAuthenticated) {
-          navigate('/team');
+          console.log('✅ User authenticated, redirecting to team page');
+          toast.info('This invitation has already been accepted. Taking you to your team...');
+          setTimeout(() => navigate('/team'), 1500);
         } else {
-          // If not authenticated, redirect to login with returnTo=/team
-          navigate('/login', { state: { returnTo: '/team' } });
+          console.log('⚠️ User not authenticated, showing login prompt');
+          toast.info('This invitation has already been accepted. Please log in to access your team.');
+          setTimeout(() => navigate('/login', { state: { returnTo: '/team' } }), 2000);
         }
+        
         return;
       }
 

@@ -92,29 +92,47 @@ export async function signUpWithEmail(email: string, password: string, userData?
       }
     }
     
-    try {
-      console.log('Setting up user profile');
-      const { error: profileError } = await supabase.rpc(
-        'create_or_update_profile',
-        {
-          profile_id: data.user.id,
-          profile_first_name: userData?.firstName || '',
-          profile_last_name: userData?.lastName || '',
-          profile_job_title: userData?.jobTitle || '',
-          profile_school_name: userData?.schoolName || '',
-          profile_school_address: userData?.schoolAddress || ''
+    // Profile creation is CRITICAL - retry with exponential backoff
+    let profileCreated = false;
+    let profileRetries = 0;
+    const maxProfileRetries = 3;
+
+    while (!profileCreated && profileRetries < maxProfileRetries) {
+      try {
+        console.log(`Attempt ${profileRetries + 1} to create user profile`);
+        const { error: profileError } = await supabase.rpc(
+          'create_or_update_profile',
+          {
+            profile_id: data.user.id,
+            profile_first_name: userData?.firstName || '',
+            profile_last_name: userData?.lastName || '',
+            profile_job_title: userData?.jobTitle || '',
+            profile_school_name: userData?.schoolName || '',
+            profile_school_address: userData?.schoolAddress || ''
+          }
+        );
+        
+        if (profileError) {
+          throw profileError;
         }
-      );
-      
-      if (profileError) {
-        console.error('Error creating profile:', profileError);
-        console.warn('Profile creation failed but continuing with signup');
-      } else {
-        console.log('Created user profile successfully');
+        
+        profileCreated = true;
+        console.log('✅ Profile created successfully');
+      } catch (profileError: any) {
+        profileRetries++;
+        console.error(`❌ Profile creation attempt ${profileRetries} failed:`, profileError);
+        
+        if (profileRetries === maxProfileRetries) {
+          console.error('🚨 CRITICAL: Profile creation failed after all retries');
+          // Profile creation is essential - abort signup
+          throw new Error(
+            'Failed to create user profile. Please try again or contact support.'
+          );
+        }
+        
+        // Wait before retry (exponential backoff: 1s, 2s, 4s)
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, profileRetries - 1) * 1000));
       }
-    } catch (profileError) {
-      console.error('Exception during profile creation:', profileError);
-      console.warn('Profile creation failed but continuing with signup');
     }
 
     // Set up user organization - REQUIRED for a functional account (unless invited)

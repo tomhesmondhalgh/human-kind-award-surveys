@@ -20,6 +20,7 @@ const Login = () => {
   const [isVerifyingToken, setIsVerifyingToken] = useState(false);
   const prefillEmail = location.state?.prefillEmail;
 
+  // Clean up stale invitation tokens on mount
   useEffect(() => {
     console.log('Login component mounted with:');
     console.log('- Current URL:', window.location.href);
@@ -27,7 +28,18 @@ const Login = () => {
     console.log('- Route location:', location);
     console.log('- Auth state:', isAuthenticated ? 'authenticated' : 'not authenticated');
     console.log('- Auth loading:', isLoading);
-  }, [location, isAuthenticated, isLoading]);
+    
+    // Clean up stale invitation tokens if no token in URL
+    const pendingToken = localStorage.getItem('pendingInvitationToken');
+    const params = new URLSearchParams(location.search);
+    const urlToken = params.get('token');
+    
+    if (pendingToken && !urlToken) {
+      console.log('🧹 Cleaning up stale invitation token from previous session');
+      localStorage.removeItem('pendingInvitationToken');
+      localStorage.removeItem('pendingInvitation');
+    }
+  }, [location, isAuthenticated, isLoading, location.search]);
 
   // Handle email confirmation tokens from email links
   useEffect(() => {

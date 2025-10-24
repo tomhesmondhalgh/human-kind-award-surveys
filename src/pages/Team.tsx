@@ -361,38 +361,59 @@ const Team = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {invitations.map((invitation) => (
-                        <div key={invitation.id} className="flex items-center justify-between p-4 border rounded-lg bg-yellow-50">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
-                              <Mail className="h-5 w-5 text-yellow-600" />
+                      {invitations.map((invitation) => {
+                        const expiresAt = new Date(invitation.expires_at);
+                        const isExpiringSoon = expiresAt.getTime() - Date.now() < 24 * 60 * 60 * 1000; // Less than 24 hours
+                        const isExpired = expiresAt < new Date();
+                        
+                        return (
+                          <div key={invitation.id} className={`flex items-center justify-between p-4 border rounded-lg ${isExpired ? 'bg-red-50' : 'bg-yellow-50'}`}>
+                            <div className="flex items-center gap-3 flex-1">
+                              <div className={`w-10 h-10 ${isExpired ? 'bg-red-100' : 'bg-yellow-100'} rounded-full flex items-center justify-center`}>
+                                <Mail className={`h-5 w-5 ${isExpired ? 'text-red-600' : 'text-yellow-600'}`} />
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-medium">{invitation.email}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <p className="text-sm text-gray-500">
+                                    Sent {new Date(invitation.created_at).toLocaleDateString()}
+                                  </p>
+                                  {isExpired ? (
+                                    <Badge variant="destructive" className="text-xs">
+                                      Expired
+                                    </Badge>
+                                  ) : isExpiringSoon ? (
+                                    <Badge variant="outline" className="text-xs text-orange-600 border-orange-300">
+                                      Expires {expiresAt.toLocaleDateString()}
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-xs text-gray-400">
+                                      Expires {expiresAt.toLocaleDateString()}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-medium">{invitation.email}</p>
-                              <p className="text-sm text-gray-500">
-                                Invited {new Date(invitation.created_at).toLocaleDateString()}
-                              </p>
+                            <div className="flex items-center gap-3">
+                              <Badge variant={getRoleBadgeVariant(invitation.role)} className="flex items-center gap-1">
+                                {getRoleIcon(invitation.role)}
+                                {invitation.role}
+                              </Badge>
+                              {canManageTeam && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleResendInvitation(invitation.id)}
+                                  disabled={resendInvitation.isPending}
+                                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                >
+                                  {resendInvitation.isPending ? 'Sending...' : 'Resend'}
+                                </Button>
+                              )}
                             </div>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <Badge variant={getRoleBadgeVariant(invitation.role)} className="flex items-center gap-1">
-                              {getRoleIcon(invitation.role)}
-                              {invitation.role}
-                            </Badge>
-                            {canManageTeam && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleResendInvitation(invitation.id)}
-                                disabled={resendInvitation.isPending}
-                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                              >
-                                {resendInvitation.isPending ? 'Sending...' : 'Resend'}
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </CardContent>
                 </Card>

@@ -74,53 +74,135 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('✅ Permission check passed');
 
-    // Skip duplicate checks if this is a resend
-    if (!isResend) {
-      // Check for existing pending invitation
-      const { data: existingInvitation } = await supabaseAdmin
+    // If this is a resend, update existing invitation instead of creating new one
+    if (isResend) {
+      console.log('🔄 Resending invitation - updating existing record');
+      
+      const newExpiresAt = new Date();
+      newExpiresAt.setDate(newExpiresAt.getDate() + 7);
+      
+      const { data: updatedInvitation, error: updateError } = await supabaseAdmin
         .from('organization_invitations')
-        .select('id')
+        .update({
+          expires_at: newExpiresAt.toISOString(),
+          // Keep the same token so existing links still work
+        })
         .eq('email', email)
         .eq('organization_id', organizationId)
         .is('accepted_at', null)
-        .gt('expires_at', new Date().toISOString())
+        .select(`
+          *,
+          organizations!organization_invitations_organization_id_fkey (name)
+        `)
         .single();
-
-      if (existingInvitation) {
-        console.warn('⚠️ Existing pending invitation found');
+      
+      if (updateError) {
+        console.error('❌ Failed to update invitation:', updateError);
         return new Response(
-          JSON.stringify({ error: 'An invitation has already been sent to this email' }),
+          JSON.stringify({ error: `Failed to update invitation: ${updateError.message}` }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      if (!updatedInvitation) {
+        console.error('❌ No existing invitation found to resend');
+        return new Response(
+          JSON.stringify({ error: 'No existing invitation found to resend' }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      console.log('✅ Invitation updated successfully');
+      
+      // Send email with existing token
+      try {
+        const { data: inviterProfile } = await supabaseAdmin
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', userId)
+          .single();
+
+        const inviterName = inviterProfile 
+          ? `${inviterProfile.first_name || ''} ${inviterProfile.last_name || ''}`.trim() || 'A colleague'
+          : 'A colleague';
+
+        const { error: emailError } = await supabaseAdmin.functions.invoke('send-team-invitation', {
+          body: {
+            email,
+            organizationName: updatedInvitation.organizations?.name || 'your organization',
+            role,
+            inviterName,
+            invitationToken: updatedInvitation.token // Use existing token
+          }
+        });
+
+        if (emailError) {
+          console.warn('⚠️ Email sending failed:', emailError);
+        } else {
+          console.log('✅ Email sent successfully');
+        }
+      } catch (emailError) {
+        console.warn('⚠️ Email error (non-blocking):', emailError);
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          invitation: updatedInvitation,
+          message: 'Invitation resent successfully'
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
+      );
+    }
+    
+    // Not a resend - check for duplicates and create new invitation
+    // Check for existing pending invitation
+    const { data: existingInvitation } = await supabaseAdmin
+      .from('organization_invitations')
+      .select('id')
+      .eq('email', email)
+      .eq('organization_id', organizationId)
+      .is('accepted_at', null)
+      .gt('expires_at', new Date().toISOString())
+      .single();
+
+    if (existingInvitation) {
+      console.warn('⚠️ Existing pending invitation found');
+      return new Response(
+        JSON.stringify({ error: 'An invitation has already been sent to this email' }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check if user with this email is already a member (efficient query)
+    const { data: existingUser, error: userError } = await supabaseAdmin
+      .from('auth.users')
+      .select('id')
+      .eq('email', email.toLowerCase())
+      .limit(1)
+      .maybeSingle();
+    
+    if (existingUser) {
+      const { data: existingMember } = await supabaseAdmin
+        .from('organization_memberships')
+        .select('id')
+        .eq('user_id', existingUser.id)
+        .eq('organization_id', organizationId)
+        .maybeSingle();
+        
+      if (existingMember) {
+        console.warn('⚠️ User is already a member');
+        return new Response(
+          JSON.stringify({ error: 'This user is already a member of the organisation' }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-
-      // Check if user with this email is already a member (efficient query)
-      const { data: existingUser, error: userError } = await supabaseAdmin
-        .from('auth.users')
-        .select('id')
-        .eq('email', email.toLowerCase())
-        .limit(1)
-        .maybeSingle();
-      
-      if (existingUser) {
-        const { data: existingMember } = await supabaseAdmin
-          .from('organization_memberships')
-          .select('id')
-          .eq('user_id', existingUser.id)
-          .eq('organization_id', organizationId)
-          .maybeSingle();
-          
-        if (existingMember) {
-          console.warn('⚠️ User is already a member');
-          return new Response(
-            JSON.stringify({ error: 'This user is already a member of the organisation' }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-      }
     }
 
-    // Create invitation
+    // Create new invitation
     const token = crypto.randomUUID();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
