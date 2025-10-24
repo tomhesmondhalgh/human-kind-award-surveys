@@ -94,27 +94,28 @@ const handler = async (req: Request): Promise<Response> => {
         );
       }
 
-      // Check if user with this email is already a member
-      const { data: authUser, error: authUserError } = await supabaseAdmin.auth.admin.listUsers();
+      // Check if user with this email is already a member (efficient query)
+      const { data: existingUser, error: userError } = await supabaseAdmin
+        .from('auth.users')
+        .select('id')
+        .eq('email', email.toLowerCase())
+        .limit(1)
+        .maybeSingle();
       
-      if (!authUserError && authUser?.users) {
-        const existingUser = authUser.users.find(u => u.email === email);
-        
-        if (existingUser) {
-          const { data: existingMember } = await supabaseAdmin
-            .from('organization_memberships')
-            .select('id')
-            .eq('user_id', existingUser.id)
-            .eq('organization_id', organizationId)
-            .single();
-            
-          if (existingMember) {
-            console.warn('⚠️ User is already a member');
-            return new Response(
-              JSON.stringify({ error: 'This user is already a member of the organisation' }),
-              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-          }
+      if (existingUser) {
+        const { data: existingMember } = await supabaseAdmin
+          .from('organization_memberships')
+          .select('id')
+          .eq('user_id', existingUser.id)
+          .eq('organization_id', organizationId)
+          .maybeSingle();
+          
+        if (existingMember) {
+          console.warn('⚠️ User is already a member');
+          return new Response(
+            JSON.stringify({ error: 'This user is already a member of the organisation' }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
         }
       }
     }

@@ -56,19 +56,20 @@ const AcceptInvitation = () => {
 
       console.log('✅ Invitation found:', data);
 
-      // Check if expired
-      if (new Date(data.expires_at) < new Date()) {
-        console.warn('⚠️ Invitation expired');
-        setStatus('expired');
-        setInvitation(data);
-        return;
-      }
+      // Server will handle expiry checks - client-side check removed to avoid clock sync issues
 
       // Check if already accepted
       if (data.accepted_at) {
         console.log('ℹ️ Invitation already accepted');
         toast.success('This invitation has already been accepted');
-        navigate('/team');
+        
+        // Check if user is authenticated before redirecting to /team
+        if (isAuthenticated) {
+          navigate('/team');
+        } else {
+          // If not authenticated, redirect to login with returnTo=/team
+          navigate('/login', { state: { returnTo: '/team' } });
+        }
         return;
       }
 
@@ -96,6 +97,10 @@ const AcceptInvitation = () => {
       
       if (error) {
         console.error('❌ Error checking email:', error);
+        // Show toast to user when email check fails
+        toast.error('Unable to verify account status', {
+          description: 'Please choose to log in if you have an account, or sign up if you are new'
+        });
         // Default to showing both options on error
         setEmailExists(null);
         return;
@@ -344,7 +349,11 @@ const AcceptInvitation = () => {
             {isAuthenticated ? (
               <>
                 <Button 
-                  onClick={() => acceptInvitation()} 
+                  onClick={() => {
+                    if (!isAccepting) {
+                      acceptInvitation();
+                    }
+                  }} 
                   disabled={isAccepting}
                   className="w-full"
                 >

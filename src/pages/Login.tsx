@@ -76,7 +76,23 @@ const Login = () => {
               
               if (inviteError) {
                 console.error('❌ Auto-accept invitation failed:', inviteError);
-                toast.error('Please accept your invitation from the team page');
+                
+                // Clean up localStorage even on failure
+                localStorage.removeItem('pendingInvitationToken');
+                localStorage.removeItem('pendingInvitation');
+                
+                // Provide actionable error message with retry option
+                toast.error('Failed to accept invitation automatically', {
+                  description: 'Click here to try again',
+                  action: {
+                    label: 'Retry',
+                    onClick: () => navigate(`/accept-invitation?token=${pendingToken}`)
+                  }
+                });
+                
+                // Don't block - let user continue to dashboard
+                navigate('/dashboard', { replace: true });
+                return;
               } else if (inviteData?.success) {
                 console.log('✅ Invitation auto-accepted');
                 toast.success('Joined organisation successfully!');
@@ -91,6 +107,19 @@ const Login = () => {
               }
             } catch (inviteError) {
               console.error('💥 Error auto-accepting invitation:', inviteError);
+              
+              // Clean up localStorage even on exception
+              localStorage.removeItem('pendingInvitationToken');
+              localStorage.removeItem('pendingInvitation');
+              
+              // Show error with retry option
+              toast.error('Could not process invitation', {
+                description: 'Click here to accept manually',
+                action: {
+                  label: 'Accept Now',
+                  onClick: () => navigate(`/accept-invitation?token=${pendingToken}`)
+                }
+              });
             }
           }
           
