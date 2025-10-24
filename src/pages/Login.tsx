@@ -18,6 +18,7 @@ const Login = () => {
   const { signIn, user, isAuthenticated, isLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isVerifyingToken, setIsVerifyingToken] = useState(false);
+  const prefillEmail = location.state?.prefillEmail;
 
   useEffect(() => {
     console.log('Login component mounted with:');
@@ -203,7 +204,8 @@ const Login = () => {
         <AuthForm 
           mode="login" 
           onSubmit={handleSubmit} 
-          isLoading={isSubmitting || isLoading || isVerifyingToken} 
+          isLoading={isSubmitting || isLoading || isVerifyingToken}
+          initialEmail={prefillEmail}
         />
       </div>
     </MainLayout>

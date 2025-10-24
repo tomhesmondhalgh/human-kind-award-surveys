@@ -18,6 +18,8 @@ const AcceptInvitation = () => {
   const [status, setStatus] = useState<'loading' | 'found' | 'not-found' | 'expired' | 'error'>('loading');
   const [invitation, setInvitation] = useState<any>(null);
   const [isAccepting, setIsAccepting] = useState(false);
+  const [emailExists, setEmailExists] = useState<boolean | null>(null);
+  const [checkingEmail, setCheckingEmail] = useState(false);
   const token = searchParams.get('token');
 
   useEffect(() => {
@@ -72,9 +74,40 @@ const AcceptInvitation = () => {
 
       setInvitation(data);
       setStatus('found');
+      
+      // Check if the invited email has an existing account
+      if (data.email) {
+        await checkIfEmailExists(data.email);
+      }
     } catch (error) {
       console.error('💥 Error fetching invitation:', error);
       setStatus('error');
+    }
+  };
+
+  const checkIfEmailExists = async (email: string) => {
+    setCheckingEmail(true);
+    try {
+      console.log('🔍 Checking if email exists:', email);
+      
+      const { data, error } = await supabase.functions.invoke('check-email-exists', {
+        body: { email }
+      });
+      
+      if (error) {
+        console.error('❌ Error checking email:', error);
+        // Default to showing both options on error
+        setEmailExists(null);
+        return;
+      }
+      
+      console.log('✅ Email check result:', data.exists);
+      setEmailExists(data.exists);
+    } catch (error) {
+      console.error('💥 Exception checking email:', error);
+      setEmailExists(null);
+    } finally {
+      setCheckingEmail(false);
     }
   };
 
@@ -320,25 +353,78 @@ const AcceptInvitation = () => {
               </>
             ) : (
               <>
-                <Button 
-                  onClick={() => navigate('/login', { 
-                    state: { returnTo: `/accept-invitation?token=${token}` }
-                  })}
-                  className="w-full"
-                >
-                  Log In to Accept
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => navigate(`/signup?token=${token}`)}
-                  className="w-full"
-                >
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Sign Up to Accept
-                </Button>
-                <p className="text-xs text-center text-muted-foreground">
-                  Don't have an account? Create one to accept this invitation
-                </p>
+                {checkingEmail ? (
+                  <div className="text-center py-4 w-full">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-primary" />
+                    <p className="text-sm text-muted-foreground">Checking your account status...</p>
+                  </div>
+                ) : emailExists === true ? (
+                  // User has existing account - show only LOGIN
+                  <>
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg w-full">
+                      <p className="text-sm text-blue-700">
+                        ✅ You already have an account with this email address.
+                        <strong> Please log in to accept this invitation.</strong>
+                      </p>
+                    </div>
+                    <Button 
+                      onClick={() => navigate('/login', { 
+                        state: { 
+                          returnTo: `/accept-invitation?token=${token}`,
+                          prefillEmail: invitation?.email
+                        }
+                      })}
+                      className="w-full"
+                    >
+                      Log In to Accept Invitation
+                    </Button>
+                    <p className="text-xs text-center text-muted-foreground mt-2">
+                      You'll be redirected back here after logging in
+                    </p>
+                  </>
+                ) : emailExists === false ? (
+                  // New user - show only SIGNUP
+                  <>
+                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg w-full">
+                      <p className="text-sm text-green-700">
+                        👋 Welcome! Create your account to accept this invitation.
+                      </p>
+                    </div>
+                    <Button 
+                      onClick={() => navigate(`/signup?token=${token}`)}
+                      className="w-full"
+                    >
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Create Account & Accept Invitation
+                    </Button>
+                    <p className="text-xs text-center text-muted-foreground mt-2">
+                      Your email will be pre-filled
+                    </p>
+                  </>
+                ) : (
+                  // Fallback: couldn't determine, show both options
+                  <>
+                    <Button 
+                      onClick={() => navigate('/login', { 
+                        state: { 
+                          returnTo: `/accept-invitation?token=${token}`,
+                          prefillEmail: invitation?.email
+                        }
+                      })}
+                      className="w-full"
+                    >
+                      Log In to Accept
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      onClick={() => navigate(`/signup?token=${token}`)}
+                      className="w-full"
+                    >
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Sign Up to Accept
+                    </Button>
+                  </>
+                )}
               </>
             )}
           </CardFooter>

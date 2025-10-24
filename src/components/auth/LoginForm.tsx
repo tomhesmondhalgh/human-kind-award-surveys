@@ -7,11 +7,12 @@ import ForgotPasswordModal from './ForgotPasswordModal';
 interface LoginFormProps {
   onSubmit: (data: any) => void;
   isLoading?: boolean;
+  initialEmail?: string;
 }
 
-const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, isLoading = false }) => {
+const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, isLoading = false, initialEmail }) => {
   const [formData, setFormData] = useState({
-    email: '',
+    email: initialEmail || '',
     password: '',
   });
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);

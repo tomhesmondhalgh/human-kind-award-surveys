@@ -24,7 +24,7 @@ const AuthForm: React.FC<AuthFormProps> = ({
   // Explicitly check the mode to ensure correct form rendering
   if (mode === 'login') {
     console.log('Rendering LoginForm component');
-    return <LoginForm onSubmit={onSubmit} isLoading={isLoading} />;
+    return <LoginForm onSubmit={onSubmit} isLoading={isLoading} initialEmail={initialEmail} />;
   }
   
   console.log('Rendering SignUpForm component');
