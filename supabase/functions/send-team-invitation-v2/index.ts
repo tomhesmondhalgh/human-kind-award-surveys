@@ -178,7 +178,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Check if user with this email is already a member (efficient query)
-    const { data: existingUser, error: userError } = await supabaseAdmin
+    const { data: existingUser, error: existingUserError } = await supabaseAdmin
       .from('auth.users')
       .select('id')
       .eq('email', email.toLowerCase())
