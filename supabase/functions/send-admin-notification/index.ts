@@ -100,7 +100,10 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Sending email via Resend");
     const emailResponse = await resend.emails.send({
       from: "Human Kind <contact@humankindaward.com>",
-      to: ["tom.hesmondhalgh@creativeeducation.co.uk"],
+      to: [
+        "tom.hesmondhalgh@creativeeducation.co.uk",
+        "sophie.beresford@creativeeducation.co.uk"
+      ],
       subject: "New Registration",
       html: html,
     });
