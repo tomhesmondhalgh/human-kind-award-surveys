@@ -82,9 +82,14 @@ const Login = () => {
             console.log('🎯 Pending invitation found, auto-accepting...');
             
             try {
-              const { data: inviteData, error: inviteError } = await supabase.functions.invoke('accept-invitation', {
-                body: { token: pendingToken }
-              });
+              // Use RPC function for reliable invitation acceptance
+              const { data: inviteData, error: inviteError } = await supabase.rpc(
+                'accept_invitation_during_signup',
+                {
+                  user_uuid: data.session.user.id,
+                  invitation_token: pendingToken
+                }
+              );
               
               if (inviteError) {
                 console.error('❌ Auto-accept invitation failed:', inviteError);
@@ -105,9 +110,17 @@ const Login = () => {
                 // Don't block - let user continue to dashboard
                 navigate('/dashboard', { replace: true });
                 return;
-              } else if (inviteData?.success) {
+              } else if (inviteData && typeof inviteData === 'object' && 'success' in inviteData && inviteData.success) {
                 console.log('✅ Invitation auto-accepted');
-                toast.success('Joined organisation successfully!');
+                
+                // Show appropriate message based on acceptance result
+                if ('already_accepted' in inviteData && inviteData.already_accepted) {
+                  toast.success('Welcome!', { description: 'You were already a member of this organisation.' });
+                } else if ('already_member' in inviteData && inviteData.already_member) {
+                  toast.success('Welcome!', { description: 'You were already a member of this organisation.' });
+                } else {
+                  toast.success('Joined organisation successfully!');
+                }
                 
                 // Clean up
                 localStorage.removeItem('pendingInvitationToken');
