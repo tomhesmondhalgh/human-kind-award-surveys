@@ -33,19 +33,11 @@ const SignUp = () => {
   const fetchInvitationDetails = async (token: string) => {
     setLoadingInvitation(true);
     try {
-      console.log('🔍 Fetching invitation details');
+      console.log('🔍 Fetching invitation details via edge function');
       
-      const { data, error } = await supabase
-        .from('organization_invitations')
-        .select(`
-          *,
-          organizations!organization_invitations_organization_id_fkey (
-            name,
-            address
-          )
-        `)
-        .eq('token', token)
-        .single();
+      const { data, error } = await supabase.functions.invoke('get-invitation-details', {
+        body: { token }
+      });
 
       if (error) {
         console.error('❌ Error fetching invitation:', error);
@@ -59,23 +51,20 @@ const SignUp = () => {
         return;
       }
 
-      // Check if expired
-      if (new Date(data.expires_at) < new Date()) {
-        console.warn('⚠️ Invitation expired');
-        toast.error('This invitation has expired');
-        return;
-      }
-
-      // Check if already accepted
-      if (data.accepted_at) {
-        console.warn('⚠️ Invitation already accepted');
-        toast.error('This invitation has already been accepted');
-        navigate('/login');
-        return;
-      }
-
       console.log('✅ Valid invitation found');
-      setInvitation(data);
+      
+      // Transform edge function response to match expected format
+      const transformedData = {
+        email: data.email,
+        role: data.role,
+        expires_at: data.expiresAt,
+        organization_id: data.organizationId,
+        organizations: {
+          name: data.organizationName
+        }
+      };
+      
+      setInvitation(transformedData);
     } catch (error) {
       console.error('💥 Error fetching invitation:', error);
       toast.error('Failed to load invitation details');
