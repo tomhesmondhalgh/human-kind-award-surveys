@@ -1,11 +1,23 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ensureValidSession } from '@/utils/auth/sessionValidator';
+import { OrganizationRole } from '@/types/organizations';
 
 interface PermissionCheckResult {
   hasPermission: boolean;
   error?: string;
   details?: any;
 }
+
+/**
+ * Helper functions for role-based UI permissions
+ */
+export const canEditContent = (role?: OrganizationRole): boolean => {
+  return role === 'admin' || role === 'editor';
+};
+
+export const canManageTeam = (role?: OrganizationRole): boolean => {
+  return role === 'admin';
+};
 
 /**
  * Enhanced permission checking with fallback mechanisms

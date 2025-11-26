@@ -10,6 +10,8 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '../ui/skeleton';
 import Pagination from '../surveys/Pagination';
+import { useOrganization } from '../../contexts/OrganizationContext';
+import { canEditContent } from '@/utils/organizationPermissions';
 
 const QuestionsListSkeleton = () => {
   return (
@@ -62,6 +64,7 @@ const QuestionsListSkeleton = () => {
 
 export default function QuestionsPage() {
   const { questions, isLoading, fetchQuestions, createQuestion, updateQuestion } = useQuestionStore();
+  const { currentOrganization } = useOrganization();
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<CustomQuestion | undefined>();
   const [showArchived, setShowArchived] = useState(false);
@@ -70,6 +73,8 @@ export default function QuestionsPage() {
   const itemsPerPage = 10;
   const totalPages = Math.ceil(questions.length / itemsPerPage);
   const paginatedQuestions = questions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  
+  const canEdit = canEditContent(currentOrganization?.role);
 
   useEffect(() => {
     const loadQuestions = async () => {
@@ -123,19 +128,23 @@ export default function QuestionsPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Custom Questions</h1>
           <p className="text-muted-foreground mt-1">
-            Create and manage custom questions for your surveys
+            {canEdit 
+              ? "Create and manage custom questions for your surveys" 
+              : "View custom questions for surveys"}
           </p>
         </div>
-        <Button
-          onClick={() => {
-            setSelectedQuestion(undefined);
-            setModalOpen(true);
-          }}
-          className="whitespace-nowrap"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Add Question
-        </Button>
+        {canEdit && (
+          <Button
+            onClick={() => {
+              setSelectedQuestion(undefined);
+              setModalOpen(true);
+            }}
+            className="whitespace-nowrap"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Question
+          </Button>
+        )}
       </div>
 
       <div className="flex items-center justify-between">
@@ -176,6 +185,7 @@ export default function QuestionsPage() {
             onEdit={handleEditClick}
             onArchive={handleArchive}
             showArchived={showArchived}
+            canEdit={canEdit}
           />
           
           {!isLoading && questions.length > itemsPerPage && (

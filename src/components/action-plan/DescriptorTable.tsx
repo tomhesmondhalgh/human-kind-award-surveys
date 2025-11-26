@@ -11,9 +11,10 @@ interface DescriptorTableProps {
   organizationId: string;
   section: string;
   onRefreshSummary: () => void;
+  readOnly?: boolean;
 }
 
-const DescriptorTable: React.FC<DescriptorTableProps> = ({ organizationId, section, onRefreshSummary }) => {
+const DescriptorTable: React.FC<DescriptorTableProps> = ({ organizationId, section, onRefreshSummary, readOnly = false }) => {
   const {
     descriptors,
     isLoading,
@@ -68,6 +69,7 @@ const DescriptorTable: React.FC<DescriptorTableProps> = ({ organizationId, secti
         onDateChange={handleDateChange}
         onViewNotes={setViewNotesId}
         onAddNote={setProgressNoteId}
+        readOnly={readOnly}
       />
 
       {progressNoteId && (
