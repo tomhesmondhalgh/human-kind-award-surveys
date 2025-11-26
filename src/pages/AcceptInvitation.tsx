@@ -35,48 +35,54 @@ const AcceptInvitation = () => {
     try {
       console.log('🔍 Fetching invitation with token:', token?.slice(0, 8));
       
-      const { data, error } = await supabase
-        .from('organization_invitations')
-        .select(`
-          *,
-          organizations!organization_invitations_organization_id_fkey (
-            id,
-            name,
-            address
-          )
-        `)
-        .eq('token', token)
-        .single();
+      // Use edge function to fetch invitation details (bypasses RLS)
+      const { data, error } = await supabase.functions.invoke('get-invitation-details', {
+        body: { token }
+      });
 
       if (error || !data) {
         console.error('❌ Invitation not found:', error);
-        setStatus('not-found');
+        
+        // Check for specific error types
+        if (error?.message?.includes('expired')) {
+          setStatus('expired');
+        } else if (error?.message?.includes('already accepted')) {
+          // Check if user is authenticated before redirecting
+          if (isAuthenticated) {
+            console.log('✅ User authenticated, redirecting to team page');
+            toast.info('This invitation has already been accepted. Taking you to your team...');
+            setTimeout(() => navigate('/team'), 1500);
+          } else {
+            console.log('⚠️ User not authenticated, showing login prompt');
+            toast.info('This invitation has already been accepted. Please log in to access your team.');
+            setTimeout(() => navigate('/login', { state: { returnTo: '/team' } }), 2000);
+          }
+          return;
+        } else {
+          setStatus('not-found');
+        }
         return;
       }
 
       console.log('✅ Invitation found:', data);
 
-      // Server will handle expiry checks - client-side check removed to avoid clock sync issues
-
-      // Check if already accepted
-      if (data.accepted_at) {
-        console.log('⚠️ Invitation already accepted');
-        
-        // Check if user is authenticated before redirecting
-        if (isAuthenticated) {
-          console.log('✅ User authenticated, redirecting to team page');
-          toast.info('This invitation has already been accepted. Taking you to your team...');
-          setTimeout(() => navigate('/team'), 1500);
-        } else {
-          console.log('⚠️ User not authenticated, showing login prompt');
-          toast.info('This invitation has already been accepted. Please log in to access your team.');
-          setTimeout(() => navigate('/login', { state: { returnTo: '/team' } }), 2000);
+      // Transform the data to match the expected format
+      const transformedData = {
+        id: data.id,
+        email: data.email,
+        role: data.role,
+        organization_id: data.organizationId,
+        invited_by: data.invitedBy,
+        expires_at: data.expiresAt,
+        accepted_at: data.acceptedAt,
+        created_at: data.createdAt,
+        organizations: {
+          id: data.organizationId,
+          name: data.organizationName,
         }
-        
-        return;
-      }
+      };
 
-      setInvitation(data);
+      setInvitation(transformedData);
       setStatus('found');
       
       // Check if the invited email has an existing account
