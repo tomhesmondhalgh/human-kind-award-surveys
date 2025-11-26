@@ -22,7 +22,7 @@ interface AuthContextType {
   lastSessionRefresh: Date | null;
   // Methods
   signIn: (email: string, password: string) => Promise<{ error: any; success: boolean }>;
-  signUp: (email: string, password: string, userData?: any, skipOrgCreation?: boolean) => Promise<{ error: any; success: boolean; user?: User }>;
+  signUp: (email: string, password: string, userData?: any, skipOrgCreation?: boolean, invitationToken?: string) => Promise<{ error: any; success: boolean; user?: User }>;
   signOut: () => Promise<void>;
   completeUserProfile: (userData: any) => Promise<{ error: any; success: boolean }>;
   // Enhanced session methods
@@ -98,9 +98,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Enhanced sign up handler
-  const signUp = async (email: string, password: string, userData?: any, skipOrgCreation?: boolean) => {
+  const signUp = async (email: string, password: string, userData?: any, skipOrgCreation?: boolean, invitationToken?: string) => {
     try {
-      const response = await signUpWithEmail(email, password, userData, skipOrgCreation);
+      const response = await signUpWithEmail(email, password, userData, skipOrgCreation, invitationToken);
       
       // Provide storage-aware guidance
       if (storageCapabilities && !storageCapabilities.localStorage) {

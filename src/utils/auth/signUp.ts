@@ -8,7 +8,7 @@ type SignUpResult =
   | { error: null; success: true; user: User }
   | { error: Error; success: false; user?: undefined };
 
-export async function signUpWithEmail(email: string, password: string, userData?: any, skipOrgCreation: boolean = false): Promise<SignUpResult> {
+export async function signUpWithEmail(email: string, password: string, userData?: any, skipOrgCreation: boolean = false, invitationToken?: string): Promise<SignUpResult> {
   try {
     console.log('Starting signUpWithEmail process for:', email);
     
@@ -174,26 +174,38 @@ export async function signUpWithEmail(email: string, password: string, userData?
       console.log('Created user organization successfully:', orgId);
     }
 
-    // Fallback safety check: Verify invited users have organization access
-    if (skipOrgCreation) {
-      console.log('⚠️ Organization creation skipped - verifying membership will be added via invitation');
+    // Accept invitation immediately if token provided
+    if (skipOrgCreation && invitationToken) {
+      console.log('📧 Accepting invitation immediately after signup');
       
-      // Check if user has a session immediately (email confirmation disabled)
-      const { data: sessionData } = await supabase.auth.getSession();
-      
-      if (sessionData.session) {
-        console.log('✅ Session exists - checking for organization membership');
+      try {
+        // Get a fresh session for the new user
+        const { data: sessionData } = await supabase.auth.getSession();
         
-        const { data: memberships } = await supabase
-          .from('organization_memberships')
-          .select('id')
-          .eq('user_id', data.user.id)
-          .limit(1);
-        
-        if (!memberships || memberships.length === 0) {
-          console.warn('⚠️ User has no organizations immediately after signup - will be added via invitation acceptance');
+        if (!sessionData.session) {
+          console.warn('⚠️ No session available immediately after signup - invitation will be accepted after email confirmation');
+        } else {
+          console.log('✅ Session available - calling accept-invitation edge function');
+          
+          const { data: acceptData, error: acceptError } = await supabase.functions.invoke('accept-invitation', {
+            body: { token: invitationToken }
+          });
+          
+          if (acceptError) {
+            console.error('❌ Failed to accept invitation during signup:', acceptError);
+            // Don't fail the whole signup, store token for later acceptance
+            console.log('💾 Invitation will be accepted after email confirmation');
+          } else {
+            console.log('✅ Invitation accepted successfully during signup:', acceptData);
+          }
         }
+      } catch (invitationError) {
+        console.error('💥 Error accepting invitation during signup:', invitationError);
+        // Don't fail the whole signup
+        console.log('💾 Invitation will be accepted after email confirmation');
       }
+    } else if (skipOrgCreation) {
+      console.log('⚠️ Organization creation skipped but no invitation token provided');
     }
 
     return { error: null, success: true, user: data.user };

@@ -107,6 +107,8 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSubmit, isLoading = false, in
             handlePageChange={handlePageChange}
             selectSchool={selectSchool}
             resetSelectedSchool={resetSelectedSchool}
+            isInvited={!!invitationData}
+            invitedOrgName={invitationData?.organizations?.name}
           />
         </div>
         
