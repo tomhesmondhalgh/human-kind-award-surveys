@@ -1472,6 +1472,10 @@ export type Database = {
       }
     }
     Functions: {
+      accept_invitation_during_signup: {
+        Args: { invitation_token: string; user_uuid: string }
+        Returns: Json
+      }
       admin_get_all_payments: {
         Args: never
         Returns: {

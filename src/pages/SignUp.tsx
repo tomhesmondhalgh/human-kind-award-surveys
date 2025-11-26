@@ -144,14 +144,6 @@ const SignUp = () => {
 
       console.log('✅ Sign up successful');
       
-      // Store invitation info for post-confirmation
-      if (invitation) {
-        localStorage.setItem('pendingInvitation', JSON.stringify({
-          token: invitationToken,
-          organizationName: invitation.organizations?.name
-        }));
-      }
-      
       // All users go to email confirmation page
       // The Login page will handle token verification and invitation acceptance
       navigate('/email-confirmation', { 
