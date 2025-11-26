@@ -116,12 +116,13 @@ const SignUp = () => {
 
       console.log('🚀 Calling signUp function');
       
-      // Pass skipOrgCreation if invitation exists
+      // Pass skipOrgCreation and invitation token if invitation exists
       const { error, success, user: newUser } = await signUp(
         data.email, 
         data.password, 
         userData, 
-        !!invitation // skipOrgCreation = true if invitation exists
+        !!invitation, // skipOrgCreation = true if invitation exists
+        invitationToken || undefined // Pass the invitation token
       );
 
       if (!success || error) {

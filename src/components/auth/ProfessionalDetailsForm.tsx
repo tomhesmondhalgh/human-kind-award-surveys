@@ -23,6 +23,8 @@ interface ProfessionalDetailsFormProps {
   handlePageChange: (page: number) => void;
   selectSchool: (school: SchoolSearchResult) => void;
   resetSelectedSchool: () => void;
+  isInvited?: boolean;
+  invitedOrgName?: string;
 }
 
 const ProfessionalDetailsForm: React.FC<ProfessionalDetailsFormProps> = ({
@@ -41,7 +43,9 @@ const ProfessionalDetailsForm: React.FC<ProfessionalDetailsFormProps> = ({
   handleSearchSchool,
   handlePageChange,
   selectSchool,
-  resetSelectedSchool
+  resetSelectedSchool,
+  isInvited = false,
+  invitedOrgName
 }) => {
   const toggleCustomSchool = () => {
     setUseCustomSchool(!useCustomSchool);
@@ -74,37 +78,47 @@ const ProfessionalDetailsForm: React.FC<ProfessionalDetailsFormProps> = ({
         />
       </div>
       
-      <div className="mt-4">
-        <h4 className="text-sm font-medium text-gray-700 mb-3">School/College details</h4>
-        
-        {!useCustomSchool ? (
-          <SchoolSearch 
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            searching={searching}
-            searchResults={searchResults}
-            currentPage={currentPage}
-            totalResults={totalResults}
-            resultsPerPage={resultsPerPage}
-            handleSearchSchool={handleSearchSchool}
-            handlePageChange={handlePageChange}
-            selectSchool={selectSchool}
-            toggleCustomSchool={toggleCustomSchool}
-            selectedSchool={selectedSchool}
-            onChangeSchool={resetSelectedSchool}
-            formData={formData}
-            onChange={onChange}
-            isLoading={isLoading}
-          />
-        ) : (
-          <CustomSchoolForm 
-            formData={formData}
-            onChange={onChange}
-            onToggleCustomSchool={toggleCustomSchool}
-            isLoading={isLoading}
-          />
-        )}
-      </div>
+      {isInvited ? (
+        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <h4 className="text-sm font-medium text-blue-900 mb-1">Organisation</h4>
+          <p className="text-base text-blue-800">{invitedOrgName}</p>
+          <p className="text-xs text-blue-600 mt-1">
+            You're joining this organisation via invitation
+          </p>
+        </div>
+      ) : (
+        <div className="mt-4">
+          <h4 className="text-sm font-medium text-gray-700 mb-3">School/College details</h4>
+          
+          {!useCustomSchool ? (
+            <SchoolSearch 
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              searching={searching}
+              searchResults={searchResults}
+              currentPage={currentPage}
+              totalResults={totalResults}
+              resultsPerPage={resultsPerPage}
+              handleSearchSchool={handleSearchSchool}
+              handlePageChange={handlePageChange}
+              selectSchool={selectSchool}
+              toggleCustomSchool={toggleCustomSchool}
+              selectedSchool={selectedSchool}
+              onChangeSchool={resetSelectedSchool}
+              formData={formData}
+              onChange={onChange}
+              isLoading={isLoading}
+            />
+          ) : (
+            <CustomSchoolForm 
+              formData={formData}
+              onChange={onChange}
+              onToggleCustomSchool={toggleCustomSchool}
+              isLoading={isLoading}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 };
