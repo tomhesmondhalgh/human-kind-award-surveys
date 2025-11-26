@@ -192,6 +192,28 @@ export async function signUpWithEmail(email: string, password: string, userData?
           console.log('💾 Invitation will need to be accepted after email confirmation');
         } else if (acceptResult && typeof acceptResult === 'object' && 'success' in acceptResult && acceptResult.success) {
           console.log('✅ Invitation accepted successfully during signup:', acceptResult);
+          
+          // Clean up localStorage since invitation was accepted
+          localStorage.removeItem('pendingInvitationToken');
+          localStorage.removeItem('pendingInvitation');
+          
+          // User feedback
+          if ('already_accepted' in acceptResult && acceptResult.already_accepted) {
+            toast.success({ 
+              title: 'Welcome!', 
+              description: 'You were already a member of this organisation.' 
+            });
+          } else if ('already_member' in acceptResult && acceptResult.already_member) {
+            toast.success({ 
+              title: 'Welcome!', 
+              description: 'You were already a member of this organisation.' 
+            });
+          } else {
+            toast.success({ 
+              title: 'Invitation accepted!', 
+              description: 'You have been added to the organisation.' 
+            });
+          }
         } else {
           console.warn('⚠️ Invitation acceptance returned:', acceptResult);
         }
