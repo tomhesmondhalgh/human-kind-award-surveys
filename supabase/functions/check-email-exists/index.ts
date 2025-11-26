@@ -30,21 +30,20 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Use more efficient query to check if user exists
-    // Query auth.users directly with a filter instead of listing all users
-    const { data, error } = await supabaseAdmin
-      .from('auth.users')
-      .select('id')
-      .eq('email', email.toLowerCase())
-      .limit(1)
-      .maybeSingle();
+    // Use Supabase Admin Auth API to check if user exists
+    console.log('Checking email with Admin Auth API:', email.toLowerCase());
     
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned, which is fine
-      console.error('Error checking email:', error);
+    const { data: users, error } = await supabaseAdmin.auth.admin.listUsers();
+    
+    if (error) {
+      console.error('Error checking email with Admin Auth API:', error);
       throw error;
     }
 
-    const userExists = data !== null;
+    // Check if any user has the matching email
+    const userExists = users.users.some(
+      user => user.email?.toLowerCase() === email.toLowerCase()
+    );
     console.log('Email check result:', userExists);
 
     return new Response(
