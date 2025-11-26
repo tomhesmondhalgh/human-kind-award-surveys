@@ -10,13 +10,15 @@ interface QuestionsListProps {
   onEdit: (question: CustomQuestion) => void;
   onArchive: (question: CustomQuestion) => void;
   showArchived: boolean;
+  canEdit: boolean;
 }
 
 const QuestionsList: React.FC<QuestionsListProps> = ({ 
   questions, 
   onEdit, 
   onArchive,
-  showArchived 
+  showArchived,
+  canEdit
 }) => {
   const isMobile = useMediaQuery("(max-width: 768px)");
 
@@ -54,6 +56,7 @@ const QuestionsList: React.FC<QuestionsListProps> = ({
               onEdit={onEdit}
               onArchive={onArchive}
               isMobile={false}
+              canEdit={canEdit}
             />
           ))}
         </div>
@@ -70,6 +73,7 @@ const QuestionsList: React.FC<QuestionsListProps> = ({
           onEdit={onEdit}
           onArchive={onArchive}
           isMobile={true}
+          canEdit={canEdit}
         />
       ))}
     </div>
@@ -81,13 +85,15 @@ interface QuestionRowProps {
   onEdit: (question: CustomQuestion) => void;
   onArchive: (question: CustomQuestion) => void;
   isMobile: boolean;
+  canEdit: boolean;
 }
 
 const QuestionRow: React.FC<QuestionRowProps> = ({ 
   question, 
   onEdit, 
   onArchive,
-  isMobile 
+  isMobile,
+  canEdit
 }) => {
   const { usage, isLoading } = useQuestionUsage(question.id);
 
@@ -152,23 +158,27 @@ const QuestionRow: React.FC<QuestionRowProps> = ({
         </div>
         
         <div className="col-span-3 flex justify-end space-x-3">
-          <button 
-            onClick={() => onEdit(question)}
-            className="flex items-center text-sm text-muted-foreground hover:text-primary transition-colors whitespace-nowrap"
-            title="Edit question"
-          >
-            <Edit size={16} className="mr-1" />
-            <span>Edit</span>
-          </button>
-          
-          <button 
-            onClick={() => onArchive(question)}
-            className="flex items-center text-sm text-muted-foreground hover:text-primary transition-colors whitespace-nowrap"
-            title={question.archived ? 'Unarchive question' : 'Archive question'}
-          >
-            <Archive size={16} className="mr-1" />
-            <span>{question.archived ? 'Unarchive' : 'Archive'}</span>
-          </button>
+          {canEdit && (
+            <>
+              <button 
+                onClick={() => onEdit(question)}
+                className="flex items-center text-sm text-muted-foreground hover:text-primary transition-colors whitespace-nowrap"
+                title="Edit question"
+              >
+                <Edit size={16} className="mr-1" />
+                <span>Edit</span>
+              </button>
+              
+              <button 
+                onClick={() => onArchive(question)}
+                className="flex items-center text-sm text-muted-foreground hover:text-primary transition-colors whitespace-nowrap"
+                title={question.archived ? 'Unarchive question' : 'Archive question'}
+              >
+                <Archive size={16} className="mr-1" />
+                <span>{question.archived ? 'Unarchive' : 'Archive'}</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
     );
@@ -209,23 +219,25 @@ const QuestionRow: React.FC<QuestionRowProps> = ({
         </div>
       </div>
       
-      <div className="border-t border-border pt-3 flex gap-3">
-        <button 
-          onClick={() => onEdit(question)}
-          className="flex-1 flex items-center justify-center text-sm text-muted-foreground hover:text-primary transition-colors py-2 border border-border rounded hover:border-primary"
-        >
-          <Edit size={16} className="mr-1" />
-          <span>Edit</span>
-        </button>
-        
-        <button 
-          onClick={() => onArchive(question)}
-          className="flex-1 flex items-center justify-center text-sm text-muted-foreground hover:text-primary transition-colors py-2 border border-border rounded hover:border-primary"
-        >
-          <Archive size={16} className="mr-1" />
-          <span>{question.archived ? 'Unarchive' : 'Archive'}</span>
-        </button>
-      </div>
+      {canEdit && (
+        <div className="border-t border-border pt-3 flex gap-3">
+          <button 
+            onClick={() => onEdit(question)}
+            className="flex-1 flex items-center justify-center text-sm text-muted-foreground hover:text-primary transition-colors py-2 border border-border rounded hover:border-primary"
+          >
+            <Edit size={16} className="mr-1" />
+            <span>Edit</span>
+          </button>
+          
+          <button 
+            onClick={() => onArchive(question)}
+            className="flex-1 flex items-center justify-center text-sm text-muted-foreground hover:text-primary transition-colors py-2 border border-border rounded hover:border-primary"
+          >
+            <Archive size={16} className="mr-1" />
+            <span>{question.archived ? 'Unarchive' : 'Archive'}</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };

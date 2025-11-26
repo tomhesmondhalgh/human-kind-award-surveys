@@ -15,6 +15,7 @@ interface DescriptorsTableProps {
   onDateChange: (id: string, date: string) => void;
   onViewNotes: (id: string) => void;
   onAddNote: (id: string) => void;
+  readOnly?: boolean;
 }
 
 const DescriptorsTable: React.FC<DescriptorsTableProps> = ({
@@ -27,7 +28,8 @@ const DescriptorsTable: React.FC<DescriptorsTableProps> = ({
   onStatusChange,
   onDateChange,
   onViewNotes,
-  onAddNote
+  onAddNote,
+  readOnly = false
 }) => {
   return (
     <div className="overflow-x-auto">
@@ -47,6 +49,7 @@ const DescriptorsTable: React.FC<DescriptorsTableProps> = ({
               onDateChange={onDateChange}
               onViewNotes={onViewNotes}
               onAddNote={onAddNote}
+              readOnly={readOnly}
             />
           ))}
         </tbody>

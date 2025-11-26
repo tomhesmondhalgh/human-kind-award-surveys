@@ -14,6 +14,7 @@ import { sendSurveyReminder } from '../utils/survey/sendReminder';
 import { AlertCircle, Archive, Eye, EyeOff, HelpCircle } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Skeleton } from '../components/ui/skeleton';
+import { canEditContent } from '../utils/organizationPermissions';
 
 const SURVEYS_PER_PAGE = 10;
 
@@ -331,7 +332,7 @@ const Surveys = () => {
             subtitle={`Manage wellbeing surveys for ${currentOrganization.name}`}
             className="mb-0"
           />
-          {user && (
+          {user && canEditContent(currentOrganization?.role) && (
             <div className={`flex gap-3 ${isMobile ? 'w-full flex-col' : ''}`}>
               <Link 
                 to="/custom-questions"
@@ -410,14 +411,20 @@ const Surveys = () => {
             {surveys.length === 0 && !fetchError ? (
               <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-12 text-center">
                 <h2 className="text-xl font-semibold mb-2">No surveys found</h2>
-                <p className="text-gray-500 mb-6">You haven't created any surveys for this organisation yet.</p>
-                <Link 
-                  to="/survey-editor" 
-                  className="bg-brandPurple-500 hover:bg-brandPurple-600 text-white font-medium py-2 px-6 rounded-md transition-all duration-200 inline-block"
-                  aria-label="Create your first survey"
-                >
-                  Create Your First Survey
-                </Link>
+                <p className="text-gray-500 mb-6">
+                  {canEditContent(currentOrganization?.role) 
+                    ? "You haven't created any surveys for this organisation yet." 
+                    : "There are no surveys available for this organisation yet."}
+                </p>
+                {canEditContent(currentOrganization?.role) && (
+                  <Link 
+                    to="/survey-editor" 
+                    className="bg-brandPurple-500 hover:bg-brandPurple-600 text-white font-medium py-2 px-6 rounded-md transition-all duration-200 inline-block"
+                    aria-label="Create your first survey"
+                  >
+                    Create Your First Survey
+                  </Link>
+                )}
               </div>
             ) : (
               <>
@@ -426,6 +433,7 @@ const Surveys = () => {
                     surveys={surveys} 
                     onSendReminder={handleSendReminder}
                     refreshList={refreshSurveys}
+                    userRole={currentOrganization?.role}
                   />
                 </div>
                 

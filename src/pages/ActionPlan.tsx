@@ -15,6 +15,7 @@ import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { RotateCcw } from 'lucide-react';
+import { canEditContent } from '../utils/organizationPermissions';
 
 interface SectionProgress {
   section: string;
@@ -37,6 +38,7 @@ const ActionPlan = () => {
   const [showResetDialog, setShowResetDialog] = useState(false);
 
   const currentSectionData = ACTION_PLAN_SECTIONS.find(s => s.key === currentSection);
+  const canEdit = canEditContent(currentOrganization?.role);
 
   useEffect(() => {
     const initializePlan = async () => {
@@ -225,15 +227,17 @@ const ActionPlan = () => {
             <h2 className="text-xl font-semibold text-gray-900">
               {currentSectionData?.title}
             </h2>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowResetDialog(true)}
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-            >
-              <RotateCcw className="h-4 w-4 mr-2" />
-              Reset to Template
-            </Button>
+            {canEdit && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowResetDialog(true)}
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Reset to Template
+              </Button>
+            )}
           </div>
           
           {currentOrganization && (
@@ -241,6 +245,7 @@ const ActionPlan = () => {
               organizationId={currentOrganization.id}
               section={currentSection}
               onRefreshSummary={refreshSummary}
+              readOnly={!canEdit}
             />
           )}
         </div>

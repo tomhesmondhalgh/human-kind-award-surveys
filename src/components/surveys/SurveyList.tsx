@@ -9,6 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { format } from 'date-fns';
+import { OrganizationRole } from '@/types/organizations';
+import { canEditContent } from '@/utils/organizationPermissions';
 
 interface Survey {
   id: string;
@@ -26,7 +28,8 @@ interface Survey {
 interface SurveyListProps {
   surveys: Survey[];
   onSendReminder: (id: string) => void;
-  refreshList?: () => void; // Added this prop to the interface
+  refreshList?: () => void;
+  userRole?: OrganizationRole;
 }
 
 const getStatusBadgeVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
@@ -81,17 +84,14 @@ const getCloseDateDisplay = (closeDate?: string | null) => {
   }
 };
 
-const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder, refreshList }) => {
+const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder, refreshList, userRole }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sendingReminder, setSendingReminder] = useState<string | null>(null);
-  const [canEditSurveys, setCanEditSurveys] = useState(true);
   const navigate = useNavigate();
   const { user } = useAuth();
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  useEffect(() => {
-    setCanEditSurveys(!!user);
-  }, [user]);
+  const canEdit = canEditContent(userRole);
 
   const copyToClipboard = async (id: string, text: string, currentStatus: string) => {
     try {
@@ -128,7 +128,7 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder, refres
   };
 
   const handleEditClick = (id: string) => {
-    if (!canEditSurveys) {
+    if (!canEdit) {
       toast.error("You don't have permission to edit surveys");
       return;
     }
@@ -138,7 +138,7 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder, refres
   };
   
   const handleSendReminder = async (survey: Survey) => {
-    if (!canEditSurveys) {
+    if (!canEdit) {
       toast.error("You don't have permission to send reminders");
       return;
     }
@@ -228,17 +228,17 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder, refres
               <div className="col-span-3">
                 <div>
                   <h3 className="text-gray-900 font-medium">
-                    {canEditSurveys ? (
+                    {canEdit ? (
                       <button 
                         onClick={() => handleEditClick(survey.id)}
                         className="hover:text-brandPurple-600 transition-colors text-left"
                       >
-                  {survey.name}
-                </button>
-              ) : (
-                <span>{survey.name}</span>
-              )}
-            </h3>
+                        {survey.name}
+                      </button>
+                    ) : (
+                      <span>{survey.name}</span>
+                    )}
+                  </h3>
             {(() => {
               const { text, className } = getCloseDateDisplay(survey.closeDate);
               return <p className={`text-xs mt-1 ${className}`}>{text}</p>;
@@ -261,7 +261,7 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder, refres
               </div>
               
               <div className="col-span-4 flex justify-end space-x-4">
-                {survey.status === 'Sent' && canEditSurveys && survey.emails && survey.emails.trim() !== '' && (
+                {survey.status === 'Sent' && canEdit && survey.emails && survey.emails.trim() !== '' && (
                   <button 
                     onClick={() => handleSendReminder(survey)}
                     className="flex items-center text-sm text-gray-500 hover:text-brandPurple-600 transition-colors whitespace-nowrap"
@@ -286,7 +286,7 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder, refres
                   </button>
                 )}
                 
-                {canEditSurveys && (
+                {canEdit && (
                   <button 
                     onClick={() => handleEditClick(survey.id)}
                     className="flex items-center text-sm text-gray-500 hover:text-brandPurple-600 transition-colors whitespace-nowrap"
@@ -310,7 +310,7 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder, refres
         <div key={survey.id} className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
           <div className="flex justify-between items-start mb-2">
             <h3 className="text-gray-900 font-medium">
-              {canEditSurveys ? (
+              {canEdit ? (
                 <button 
                   onClick={() => handleEditClick(survey.id)}
                   className="hover:text-brandPurple-600 transition-colors text-left"
@@ -318,9 +318,9 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder, refres
                   {survey.name}
                 </button>
               ) : (
-              <span>{survey.name}</span>
-            )}
-          </h3>
+                <span>{survey.name}</span>
+              )}
+            </h3>
           <Badge variant={getStatusBadgeVariant(survey.status)}>
             {survey.status}
           </Badge>
@@ -351,7 +351,7 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder, refres
         </div>
           
           <div className="border-t border-gray-100 pt-3 flex flex-wrap gap-3">
-            {survey.status === 'Sent' && canEditSurveys && survey.emails && survey.emails.trim() !== '' && (
+            {survey.status === 'Sent' && canEdit && survey.emails && survey.emails.trim() !== '' && (
               <button 
                 onClick={() => handleSendReminder(survey)}
                 className="flex items-center text-sm text-gray-500 hover:text-brandPurple-600 transition-colors"
@@ -374,7 +374,7 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder, refres
               </button>
             )}
             
-            {canEditSurveys && (
+            {canEdit && (
               <button 
                 onClick={() => handleEditClick(survey.id)}
                 className="flex items-center text-sm text-gray-500 hover:text-brandPurple-600 transition-colors"
