@@ -176,33 +176,27 @@ export async function signUpWithEmail(email: string, password: string, userData?
 
     // Accept invitation immediately if token provided
     if (skipOrgCreation && invitationToken) {
-      console.log('📧 Accepting invitation immediately after signup');
+      console.log('📧 Accepting invitation via RPC during signup');
       
       try {
-        // Get a fresh session for the new user
-        const { data: sessionData } = await supabase.auth.getSession();
-        
-        if (!sessionData.session) {
-          console.warn('⚠️ No session available immediately after signup - invitation will be accepted after email confirmation');
-        } else {
-          console.log('✅ Session available - calling accept-invitation edge function');
-          
-          const { data: acceptData, error: acceptError } = await supabase.functions.invoke('accept-invitation', {
-            body: { token: invitationToken }
-          });
-          
-          if (acceptError) {
-            console.error('❌ Failed to accept invitation during signup:', acceptError);
-            // Don't fail the whole signup, store token for later acceptance
-            console.log('💾 Invitation will be accepted after email confirmation');
-          } else {
-            console.log('✅ Invitation accepted successfully during signup:', acceptData);
+        const { data: acceptResult, error: acceptError } = await supabase.rpc(
+          'accept_invitation_during_signup',
+          {
+            user_uuid: data.user.id,
+            invitation_token: invitationToken
           }
+        );
+        
+        if (acceptError) {
+          console.error('❌ RPC error accepting invitation:', acceptError);
+          console.log('💾 Invitation will need to be accepted after email confirmation');
+        } else if (acceptResult && typeof acceptResult === 'object' && 'success' in acceptResult && acceptResult.success) {
+          console.log('✅ Invitation accepted successfully during signup:', acceptResult);
+        } else {
+          console.warn('⚠️ Invitation acceptance returned:', acceptResult);
         }
       } catch (invitationError) {
-        console.error('💥 Error accepting invitation during signup:', invitationError);
-        // Don't fail the whole signup
-        console.log('💾 Invitation will be accepted after email confirmation');
+        console.error('💥 Exception accepting invitation:', invitationError);
       }
     } else if (skipOrgCreation) {
       console.log('⚠️ Organization creation skipped but no invitation token provided');
