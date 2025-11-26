@@ -26,9 +26,20 @@ Deno.serve(async (req) => {
   try {
     console.log('🔍 get-invitation-details function called');
 
-    // Get token from query params
-    const url = new URL(req.url);
-    const token = url.searchParams.get('token');
+    // Get token from request body (preferred) or query params (fallback)
+    let token: string | null = null;
+    try {
+      const body = await req.json();
+      token = (body && typeof body.token === 'string') ? body.token : null;
+    } catch (e) {
+      console.log('ℹ️ No JSON body provided or failed to parse body:', e?.message || e);
+    }
+
+    if (!token) {
+      const url = new URL(req.url);
+      token = url.searchParams.get('token');
+    }
+
 
     if (!token) {
       console.error('❌ No token provided');
