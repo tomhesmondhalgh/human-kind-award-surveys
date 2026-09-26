@@ -463,25 +463,6 @@ isOneToOne: false
                         Relationships: [
                     
                   ]
-                },"public_survey_templates": {
-                  Row: {
-                    "close_date": string | null,"created_at": string | null,"date": string | null,"id": string | null,"name": string | null,"organization_id": string | null,"status": Database["public"]['Enums']["survey_status"] | null
-                  }
-                  Insert: {
-                           "close_date"?: string | null,"created_at"?: string | null,"date"?: string | null,"id"?: string | null,"name"?: string | null,"organization_id"?: string | null,"status"?: Database["public"]['Enums']["survey_status"] | null
-                         }
-                        Update: {
-                           "close_date"?: string | null,"created_at"?: string | null,"date"?: string | null,"id"?: string | null,"name"?: string | null,"organization_id"?: string | null,"status"?: Database["public"]['Enums']["survey_status"] | null
-                         }
-                        Relationships: [
-                    {
-      foreignKeyName: "survey_templates_organization_id_fkey"
-      columns: ["organization_id"]
-isOneToOne: false
-      referencedRelation: "organizations"
-      referencedColumns: ["id"]
-    }
-                  ]
                 },"user_payment_summary": {
                   Row: {
                     "amount": number | null,"billing_address": string | null,"billing_contact_email": string | null,"billing_contact_name": string | null,"billing_postcode": string | null,"billing_school_name_redacted": string | null,"created_at": string | null,"currency": string | null,"id": string | null,"invoice_number": string | null,"payment_date": string | null,"payment_method": Database["public"]['Enums']["payment_method"] | null,"payment_status": Database["public"]['Enums']["payment_status"] | null,"plan_type": Database["public"]['Enums']["plan_type"] | null,"purchase_type": string | null,"subscription_id": string | null,"user_id": string | null
@@ -537,6 +518,9 @@ isOneToOne: false
 { Args: { "user_uuid": string }; Returns: {
               "address": string,"created_at": string,"id": string,"name": string,"role": Database["public"]['Enums']["organization_role"],"updated_at": string,"urn": string
             }[]
+                           },
+"get_public_survey":
+{ Args: { "p_survey_id": string }; Returns: Json
                            },
 "get_user_subscription":
 { Args: { "user_uuid": string }; Returns: {
