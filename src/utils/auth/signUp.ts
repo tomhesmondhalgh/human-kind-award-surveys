@@ -2,7 +2,6 @@
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { sendUserToHubspot } from './hubspot';
-import { toast } from '@/services/toastService';
 
 type SignUpResult = 
   | { error: null; success: true; user: User }
@@ -12,16 +11,28 @@ export async function signUpWithEmail(email: string, password: string, userData?
   try {
     console.log('Starting signUpWithEmail process for:', email);
     
-    const options = userData ? {
+    // The handle_new_user database trigger creates the profile, the organisation
+    // (when org_name is set) and accepts the invitation (when invitation_token is set).
+    // Doing it there means none of it depends on having a session, which doesn't exist
+    // until the user confirms their email.
+    const organizationName = skipOrgCreation
+      ? undefined
+      : userData?.organizationName || userData?.schoolName || `${userData?.firstName || 'My'}'s Organisation`;
+
+    const options = {
       data: {
-        first_name: userData.firstName,
-        last_name: userData.lastName,
-        job_title: userData.jobTitle,
-        school_name: userData.schoolName,
-        school_address: userData.schoolAddress
+        first_name: userData?.firstName || '',
+        last_name: userData?.lastName || '',
+        job_title: userData?.jobTitle || '',
+        school_name: userData?.schoolName || '',
+        school_address: userData?.schoolAddress || '',
+        ...(organizationName && {
+          org_name: organizationName,
+          org_address: userData?.schoolAddress || '',
+          org_urn: userData?.schoolURN || '',
+        }),
+        ...(skipOrgCreation && invitationToken && { invitation_token: invitationToken }),
       },
-      emailRedirectTo: `${window.location.origin}/login`
-    } : {
       emailRedirectTo: `${window.location.origin}/login`
     };
 
@@ -36,6 +47,16 @@ export async function signUpWithEmail(email: string, password: string, userData?
       console.error('Supabase auth.signUp error:', error);
       
       // Check for duplicate email scenarios
+      // The handle_new_user trigger failed, most likely because an organisation with this
+      // school URN already exists. Depending on version, Supabase Auth reports either the
+      // raw constraint error or a generic one.
+      const message = error.message?.toLowerCase() || '';
+      if (message.includes('organizations_urn_key') || message.includes('database error saving new user')) {
+        throw new Error(
+          "We couldn't set up your account. If your school already uses the platform, ask its administrator to invite you; otherwise please contact support."
+        );
+      }
+
       if (error.message?.toLowerCase().includes('user already registered') ||
           error.message?.toLowerCase().includes('already exists') ||
           error.message?.toLowerCase().includes('duplicate') ||
@@ -92,138 +113,6 @@ export async function signUpWithEmail(email: string, password: string, userData?
       }
     }
     
-    // Profile creation is CRITICAL - retry with exponential backoff
-    let profileCreated = false;
-    let profileRetries = 0;
-    const maxProfileRetries = 3;
-
-    while (!profileCreated && profileRetries < maxProfileRetries) {
-      try {
-        console.log(`Attempt ${profileRetries + 1} to create user profile`);
-        const { error: profileError } = await supabase.rpc(
-          'create_or_update_profile',
-          {
-            profile_id: data.user.id,
-            profile_first_name: userData?.firstName || '',
-            profile_last_name: userData?.lastName || '',
-            profile_job_title: userData?.jobTitle || '',
-            profile_school_name: userData?.schoolName || '',
-            profile_school_address: userData?.schoolAddress || ''
-          }
-        );
-        
-        if (profileError) {
-          throw profileError;
-        }
-        
-        profileCreated = true;
-        console.log('✅ Profile created successfully');
-      } catch (profileError: any) {
-        profileRetries++;
-        console.error(`❌ Profile creation attempt ${profileRetries} failed:`, profileError);
-        
-        if (profileRetries === maxProfileRetries) {
-          console.error('🚨 CRITICAL: Profile creation failed after all retries');
-          // Profile creation is essential - abort signup
-          throw new Error(
-            'Failed to create user profile. Please try again or contact support.'
-          );
-        }
-        
-        // Wait before retry (exponential backoff: 1s, 2s, 4s)
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, profileRetries - 1) * 1000));
-      }
-    }
-
-    // Set up user organization - REQUIRED for a functional account (unless invited)
-    if (skipOrgCreation) {
-      console.log('⏭️ Skipping organization creation (user invited to existing org)');
-    } else {
-      console.log('Setting up user organization (required step)');
-      
-      const organizationName = userData?.organizationName || 
-                              userData?.schoolName || 
-                              `${userData?.firstName}'s Organisation`;
-      
-      const { data: orgId, error: orgError } = await supabase.rpc(
-        'setup_user_organization',
-        {
-          user_uuid: data.user.id,
-          org_name: organizationName,
-          org_address: userData?.schoolAddress || '',
-          org_urn: userData?.schoolURN || null
-        }
-      );
-      
-      if (orgError) {
-        console.error('CRITICAL: Failed to create organization for new user:', orgError);
-        
-        // Organization creation is essential - throw error to prevent incomplete signup
-        throw new Error(
-          orgError.message?.includes('duplicate') || orgError.code === '23505'
-            ? 'An organization with this name already exists'
-            : 'Failed to set up organization. Please try again or contact support.'
-        );
-      }
-      
-      if (!orgId) {
-        console.error('CRITICAL: Organization RPC returned no ID');
-        throw new Error('Failed to set up organization. Please try again or contact support.');
-      }
-      
-      console.log('Created user organization successfully:', orgId);
-    }
-
-    // Accept invitation immediately if token provided
-    if (skipOrgCreation && invitationToken) {
-      console.log('📧 Accepting invitation via RPC during signup');
-      
-      try {
-        const { data: acceptResult, error: acceptError } = await supabase.rpc(
-          'accept_invitation_during_signup',
-          {
-            user_uuid: data.user.id,
-            invitation_token: invitationToken
-          }
-        );
-        
-        if (acceptError) {
-          console.error('❌ RPC error accepting invitation:', acceptError);
-          console.log('💾 Invitation will need to be accepted after email confirmation');
-        } else if (acceptResult && typeof acceptResult === 'object' && 'success' in acceptResult && acceptResult.success) {
-          console.log('✅ Invitation accepted successfully during signup:', acceptResult);
-          
-          // Clean up localStorage since invitation was accepted
-          localStorage.removeItem('pendingInvitationToken');
-          localStorage.removeItem('pendingInvitation');
-          
-          // User feedback
-          if ('already_accepted' in acceptResult && acceptResult.already_accepted) {
-            toast.success({ 
-              title: 'Welcome!', 
-              description: 'You were already a member of this organisation.' 
-            });
-          } else if ('already_member' in acceptResult && acceptResult.already_member) {
-            toast.success({ 
-              title: 'Welcome!', 
-              description: 'You were already a member of this organisation.' 
-            });
-          } else {
-            toast.success({ 
-              title: 'Invitation accepted!', 
-              description: 'You have been added to the organisation.' 
-            });
-          }
-        } else {
-          console.warn('⚠️ Invitation acceptance returned:', acceptResult);
-        }
-      } catch (invitationError) {
-        console.error('💥 Exception accepting invitation:', invitationError);
-      }
-    } else if (skipOrgCreation) {
-      console.log('⚠️ Organization creation skipped but no invitation token provided');
-    }
-
     return { error: null, success: true, user: data.user };
   } catch (error: any) {
     console.error('Error signing up:', error);
