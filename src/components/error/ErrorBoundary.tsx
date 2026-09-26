@@ -1,5 +1,6 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Sentry } from '@/lib/sentry';
 import { toast } from 'sonner';
 
 interface Props {
@@ -21,6 +22,7 @@ class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
+    Sentry.captureException(error, { extra: { componentStack: errorInfo.componentStack } });
     toast.error('Something went wrong. Please try refreshing the page.');
   }
 
