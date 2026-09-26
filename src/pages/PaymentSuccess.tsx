@@ -2,9 +2,10 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
 import { Button } from '../components/ui/button';
-import { toast } from '../services/toastService';
+import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
-import { refreshUserSubscription } from '../services/subscriptionService';
+import { useQueryClient } from '@tanstack/react-query';
+import { fetchUserSubscription, subscriptionQueryKey } from '../services/subscriptionService';
 import { supabase } from '@/integrations/supabase/client';
 
 // How long to wait for the Stripe webhook to activate the plan.
@@ -19,6 +20,7 @@ type Status = 'verifying' | 'active' | 'pending';
 const PaymentSuccess = () => {
   const navigate = useNavigate();
   const [status, setStatus] = useState<Status>('verifying');
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     let cancelled = false;
@@ -33,16 +35,14 @@ const PaymentSuccess = () => {
 
       const deadline = Date.now() + POLL_TIMEOUT_MS;
       while (!cancelled && Date.now() < deadline) {
-        // refreshUserSubscription bypasses the 5-minute subscription cache.
-        const subscription = await refreshUserSubscription(user.id);
+        // Read straight from the database, not the 5-minute cache.
+        const subscription = await fetchUserSubscription(user.id).catch(() => null);
         const activated = subscription?.isActive
           && (expectedPlan ? subscription.plan === expectedPlan : subscription.plan !== 'free');
         if (activated) {
+          queryClient.setQueryData(subscriptionQueryKey(user.id), subscription);
           setStatus('active');
-          toast.success({
-            title: 'Payment Successful!',
-            description: 'Thank you for your purchase. Your plan is now active.'
-          });
+          toast.success('Payment Successful!', { description: 'Thank you for your purchase. Your plan is now active.' });
           return;
         }
         await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));

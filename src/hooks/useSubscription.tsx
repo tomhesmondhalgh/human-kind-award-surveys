@@ -1,72 +1,51 @@
-
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { useTestingMode } from '../contexts/TestingModeContext';
 import { useAdminRole } from './useAdminRole';
-import { PlanType, SubscriptionAccess } from '../lib/supabase/subscription';
-import { getUserSubscription, checkPlanAccess, refreshUserSubscription } from '../services/subscriptionService';
+import { PlanType, SubscriptionAccess, planIncludes } from '../lib/supabase/subscription';
+import { fetchUserSubscription, subscriptionQueryKey } from '../services/subscriptionService';
 
 export function useSubscription() {
-  const [subscription, setSubscription] = useState<SubscriptionAccess | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { isTestingMode, testingPlan } = useTestingMode();
   const { isAdmin } = useAdminRole();
 
-  const fetchSubscription = useCallback(async () => {
-    if (!user) {
-      setSubscription(null);
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const userSubscription = await getUserSubscription(user.id);
-      setSubscription(userSubscription);
-    } catch (error) {
-      console.error('Error fetching subscription data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    fetchSubscription();
-  }, [fetchSubscription]);
+  // Shared by every component that shows plan-dependent content, so a
+  // refresh (after a payment or redeemed code) updates all of them.
+  const { data: subscription = null, isLoading } = useQuery({
+    queryKey: subscriptionQueryKey(user?.id),
+    queryFn: () => fetchUserSubscription(user!.id),
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+  });
 
   // Only apply testing mode if user is actually an admin (security check)
-  const effectiveSubscription = (isTestingMode && testingPlan && isAdmin) ? {
-    plan: testingPlan,
-    isActive: true
-  } : subscription;
+  const effectiveSubscription: SubscriptionAccess | null = (isTestingMode && testingPlan && isAdmin)
+    ? { plan: testingPlan, isActive: true }
+    : subscription;
 
   const hasAccess = useCallback(async (requiredPlan: PlanType): Promise<boolean> => {
     if (!user) return false;
-    // Only allow testing mode access if user is admin
-    if (isTestingMode && testingPlan && isAdmin) {
-      const planLevels = { free: 0, foundation: 1, legacy: 1, progress: 2, premium: 3 };
-      return planLevels[testingPlan] >= planLevels[requiredPlan];
-    }
-    return checkPlanAccess(user.id, requiredPlan);
-  }, [user, isTestingMode, testingPlan, isAdmin]);
+    const current = effectiveSubscription
+      ?? await queryClient.fetchQuery({
+        queryKey: subscriptionQueryKey(user.id),
+        queryFn: () => fetchUserSubscription(user.id),
+        staleTime: 5 * 60 * 1000,
+      }).catch(() => null);
+    return !!current?.isActive && planIncludes(current.plan, requiredPlan);
+  }, [user, effectiveSubscription, queryClient]);
 
   // Force refresh subscription data
   const refreshSubscription = useCallback(async () => {
     if (!user) return;
-    setIsLoading(true);
-    try {
-      const refreshedSubscription = await refreshUserSubscription(user.id);
-      setSubscription(refreshedSubscription);
-    } catch (error) {
-      console.error('Error refreshing subscription data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user]);
+    await queryClient.invalidateQueries({ queryKey: subscriptionQueryKey(user.id) });
+  }, [user, queryClient]);
 
   return {
     subscription: effectiveSubscription,
-    isLoading,
+    isLoading: !!user && isLoading,
     hasAccess,
     refreshSubscription,
     isPremium: effectiveSubscription?.plan === 'premium' && effectiveSubscription?.isActive,

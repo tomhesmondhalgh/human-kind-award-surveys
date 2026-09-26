@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import PlanCard, { PlanType } from './PlanCard';
 import { useSubscription } from '../../hooks/useSubscription';
 import { useSubscriptionPlans } from '../../hooks/useSubscriptionPlans';
+import { PLAN_LEVELS } from '../../lib/supabase/subscription';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useToast } from '../../hooks/use-toast';
+import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
@@ -69,14 +70,13 @@ const PricingSection: React.FC<PricingSectionProps> = ({
     isPremium,
     isLegacy
   } = useSubscription();
+  const currentPlanLevel = subscription?.isActive ? PLAN_LEVELS[subscription.plan] : 0;
   
   const {
     plans,
     isLoading: isPlansLoading,
     formatPrice
   } = useSubscriptionPlans();
-  
-  const { toast } = useToast();
 
   const cleanupDialogState = () => {
     setShowInvoiceDialog(false);
@@ -100,11 +100,7 @@ const PricingSection: React.FC<PricingSectionProps> = ({
     const params = new URLSearchParams(location.search);
     if (params.get('payment') === 'cancelled') {
       cleanupDialogState();
-      toast({
-        title: 'Payment Cancelled',
-        description: 'Your payment process was cancelled.',
-        variant: 'default',
-      });
+      toast.info('Payment Cancelled', { description: 'Your payment process was cancelled.' });
       navigate(location.pathname, { replace: true });
     } else if (params.get('payment') === 'success' || params.get('payment') === 'invoice-requested') {
       cleanupDialogState();
@@ -170,10 +166,7 @@ const PricingSection: React.FC<PricingSectionProps> = ({
         userProfile
       });
 
-      toast({
-        title: 'Processing',
-        description: 'Preparing your payment session...',
-      });
+      toast.info('Processing', { description: 'Preparing your payment session...' });
 
       const defaultCancelUrl = `${window.location.origin}${location.pathname}?payment=cancelled`;
 
@@ -196,11 +189,7 @@ const PricingSection: React.FC<PricingSectionProps> = ({
 
       if (error) {
         console.error('Error creating payment session:', error);
-        toast({
-          title: 'Error',
-          description: `Failed to create payment session: ${error.message || 'Unknown error'}`,
-          variant: 'destructive'
-        });
+        toast.error('Error', { description: `Failed to create payment session: ${error.message || 'Unknown error'}` });
         setIsProcessing(false);
         throw error;
       }
@@ -210,21 +199,13 @@ const PricingSection: React.FC<PricingSectionProps> = ({
         window.location.href = data.url;
       } else {
         console.error('No checkout URL returned:', data);
-        toast({
-          title: 'Error',
-          description: 'No payment URL was returned. Please try again later.',
-          variant: 'destructive'
-        });
+        toast.error('Error', { description: 'No payment URL was returned. Please try again later.' });
         setIsProcessing(false);
         throw new Error('No checkout URL returned');
       }
     } catch (error) {
       console.error('Error upgrading plan:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to process your request. Please try again later.',
-        variant: 'destructive'
-      });
+      toast.error('Error', { description: 'Failed to process your request. Please try again later.' });
       setIsProcessing(false);
     }
   };
@@ -237,11 +218,7 @@ const PricingSection: React.FC<PricingSectionProps> = ({
 
   const handleInvoiceRequest = async () => {
     if (!currentPlan || !user) {
-      toast({
-        title: 'Error',
-        description: 'Missing plan information or user data',
-        variant: 'destructive'
-      });
+      toast.error('Error', { description: 'Missing plan information or user data' });
       return;
     }
 
@@ -267,20 +244,13 @@ const PricingSection: React.FC<PricingSectionProps> = ({
         throw error;
       }
 
-      toast({
-        title: 'Success',
-        description: 'Your invoice request has been submitted. Our team will contact you shortly.',
-      });
+      toast.success('Success', { description: 'Your invoice request has been submitted. Our team will contact you shortly.' });
 
       setShowInvoiceDialog(false);
       navigate('/dashboard?payment=invoice-requested');
     } catch (error) {
       console.error('Error requesting invoice:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to process your invoice request. Please try again.',
-        variant: 'destructive'
-      });
+      toast.error('Error', { description: 'Failed to process your invoice request. Please try again.' });
     } finally {
       setIsProcessing(false);
     }
@@ -302,15 +272,7 @@ const PricingSection: React.FC<PricingSectionProps> = ({
       return 'Your Current Plan';
     }
 
-    const planLevels = {
-      free: 0,
-      foundation: 1,
-      legacy: 1,
-      progress: 2,
-      premium: 3
-    };
-    const currentPlanLevel = isFree ? 0 : (isFoundation || isLegacy) ? 1 : isProgress ? 2 : isPremium ? 3 : 0;
-    const targetPlanLevel = planLevels[planType];
+    const targetPlanLevel = PLAN_LEVELS[planType];
     
     if (targetPlanLevel < currentPlanLevel) {
       return 'Contact to Downgrade';
@@ -330,28 +292,12 @@ const PricingSection: React.FC<PricingSectionProps> = ({
         planType === 'premium' && isPremium) {
       return 'outline';
     }
-    const planLevels = {
-      free: 0,
-      foundation: 1,
-      legacy: 1,
-      progress: 2,
-      premium: 3
-    };
-    const currentPlanLevel = isFree ? 0 : (isFoundation || isLegacy) ? 1 : isProgress ? 2 : isPremium ? 3 : 0;
-    const targetPlanLevel = planLevels[planType];
+    const targetPlanLevel = PLAN_LEVELS[planType];
     return targetPlanLevel > currentPlanLevel ? 'default' : 'outline';
   };
 
   const handleButtonClick = (planType: PlanType, onButtonClick: () => void) => {
-    const planLevels = {
-      free: 0,
-      foundation: 1,
-      legacy: 1,
-      progress: 2,
-      premium: 3
-    };
-    const currentPlanLevel = isFree ? 0 : (isFoundation || isLegacy) ? 1 : isProgress ? 2 : isPremium ? 3 : 0;
-    const targetPlanLevel = planLevels[planType];
+    const targetPlanLevel = PLAN_LEVELS[planType];
     
     if (targetPlanLevel < currentPlanLevel) {
       window.location.href = 'mailto:happytohelp@humankindaward.com?subject=Plan Downgrade Request';

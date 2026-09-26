@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/services/toastService';
+import { toast } from 'sonner';
 import { SchoolSearchResult, SignUpFormData } from '../types/auth';
 import { fixSchoolSearchResults } from '../utils/typeConversions';
 

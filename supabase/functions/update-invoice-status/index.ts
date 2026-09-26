@@ -86,13 +86,13 @@ async function handleCreateInvoiceRequest(
 
     console.log("Subscription created:", subscription.id);
 
-    // Add billing details to payment_history - price stored in pence
+    // payment_history amounts are in pounds (plans.price is in pence)
     const { data: payment, error: paymentError } = await supabase
       .from('payment_history')
       .insert({
         subscription_id: subscription.id,
         payment_method: 'invoice',
-        amount: planData.price, // Store in pence in the database
+        amount: priceInPounds,
         currency: planData.currency || 'GBP',
         payment_status: 'pending',
         billing_school_name: billingDetails.schoolName,

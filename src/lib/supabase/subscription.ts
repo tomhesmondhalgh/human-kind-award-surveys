@@ -5,6 +5,21 @@ export type PlanType = 'free' | 'foundation' | 'progress' | 'premium' | 'enterpr
 // This is the database-specific plan type, which includes legacy but not enterprise
 export type DatabasePlanType = 'free' | 'foundation' | 'progress' | 'premium' | 'legacy';
 
+// Access levels: a plan includes everything available to lower levels.
+// Legacy customers get the same access as Foundation.
+export const PLAN_LEVELS: Record<PlanType, number> = {
+  free: 0,
+  foundation: 1,
+  legacy: 1,
+  progress: 2,
+  premium: 3,
+  enterprise: 4,
+};
+
+export function planIncludes(plan: PlanType, requiredPlan: PlanType): boolean {
+  return PLAN_LEVELS[plan] >= PLAN_LEVELS[requiredPlan];
+}
+
 export interface SubscriptionAccess {
   plan: PlanType;
   isActive: boolean;
@@ -55,35 +70,6 @@ export async function getPlans(): Promise<Plan[]> {
   } catch (error) {
     console.error('Error in getPlans:', error);
     return [];
-  }
-}
-
-/**
- * Get a user's subscription details
- */
-export async function getUserSubscription(userId: string): Promise<SubscriptionAccess | null> {
-  if (!userId) return null;
-  
-  try {
-    const { data, error } = await supabase
-      .rpc('get_user_subscription', { user_uuid: userId });
-
-    if (error) {
-      console.error('Error fetching subscription:', error);
-      return null;
-    }
-
-    if (!data || data.length === 0) {
-      return { plan: 'free', isActive: false };
-    }
-
-    return { 
-      plan: data[0].plan as PlanType, 
-      isActive: data[0].is_active 
-    };
-  } catch (error) {
-    console.error('Error in getUserSubscription:', error);
-    return null;
   }
 }
 

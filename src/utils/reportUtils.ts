@@ -1,6 +1,6 @@
 
 import { SummaryData } from "./summaryUtils";
-import { supabase } from "../lib/supabase";
+import { supabase } from '@/integrations/supabase/client';
 import { DetailedQuestionResponse, TextResponse } from "./analysisUtils";
 
 // Function to generate PDF from the analysis content

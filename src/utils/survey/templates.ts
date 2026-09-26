@@ -1,4 +1,4 @@
-import { supabase } from "../../integrations/supabase/client";
+import { supabase } from '@/integrations/supabase/client';
 import { SurveyTemplate, SurveyWithResponses } from "../types/survey";
 import { countSurveyResponses } from "./responses";
 import { isSurveyClosed } from "./status";

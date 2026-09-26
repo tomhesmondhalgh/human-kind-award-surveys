@@ -8,7 +8,7 @@ import SurveyNotFound from '../components/survey-form/SurveyNotFound';
 import SurveyFormWrapper from '../components/survey-form/SurveyFormWrapper';
 import { CustomQuestionsProvider } from '../contexts/CustomQuestionsContext'; 
 import { toast } from 'sonner';
-import { supabase } from '../integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 
 const PublicSurveyForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();

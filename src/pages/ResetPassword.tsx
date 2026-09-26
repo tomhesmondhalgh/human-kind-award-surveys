@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2, Lock } from 'lucide-react';
-import { toast } from '../services/toastService';
+import { toast } from 'sonner';
 import MainLayout from '../components/layout/MainLayout';
 import PageTitle from '../components/ui/PageTitle';
 import { Input } from '@/components/ui/input';
@@ -25,10 +25,7 @@ const ResetPassword = () => {
       if (!token || type !== 'recovery') {
         console.log('❌ No valid token found in URL');
         setIsValidToken(false);
-        toast.error({
-          title: 'Invalid password reset link',
-          description: 'Please request a new password reset link'
-        });
+        toast.error('Invalid password reset link', { description: 'Please request a new password reset link' });
         setIsCheckingSession(false);
         return;
       }
@@ -43,10 +40,7 @@ const ResetPassword = () => {
         if (error) {
           console.error('❌ Token verification failed:', error);
           setIsValidToken(false);
-          toast.error({
-            title: 'Invalid or expired password reset link',
-            description: 'Please request a new password reset link'
-          });
+          toast.error('Invalid or expired password reset link', { description: 'Please request a new password reset link' });
         } else if (data.session) {
           console.log('✅ Token verified successfully, session created');
           setIsValidToken(true);
@@ -54,10 +48,7 @@ const ResetPassword = () => {
       } catch (error) {
         console.error('❌ Token verification exception:', error);
         setIsValidToken(false);
-        toast.error({
-          title: 'Failed to verify reset link',
-          description: 'Please try again or request a new link'
-        });
+        toast.error('Failed to verify reset link', { description: 'Please try again or request a new link' });
       } finally {
         setIsCheckingSession(false);
       }
@@ -70,17 +61,12 @@ const ResetPassword = () => {
     e.preventDefault();
     
     if (password !== confirmPassword) {
-      toast.error({
-        title: 'Passwords do not match'
-      });
+      toast.error('Passwords do not match');
       return;
     }
     
     if (password.length < 6) {
-      toast.error({
-        title: 'Invalid password',
-        description: 'Password must be at least 6 characters'
-      });
+      toast.error('Invalid password', { description: 'Password must be at least 6 characters' });
       return;
     }
     
@@ -93,18 +79,13 @@ const ResetPassword = () => {
         throw error;
       }
       
-      toast.success({
-        title: 'Password updated successfully'
-      });
+      toast.success('Password updated successfully');
       
       await supabase.auth.signOut();
       navigate('/login?password_reset=true');
     } catch (error: any) {
       console.error('Password update error:', error);
-      toast.error({
-        title: 'Failed to update password',
-        description: error.message || 'Please try again later'
-      });
+      toast.error('Failed to update password', { description: error.message || 'Please try again later' });
     } finally {
       setIsLoading(false);
     }

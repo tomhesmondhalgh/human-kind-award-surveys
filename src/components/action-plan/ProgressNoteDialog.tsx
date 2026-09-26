@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { addProgressNote } from '@/utils/actionPlanUtils';
 
 interface ProgressNoteDialogProps {
@@ -33,11 +33,7 @@ const ProgressNoteDialog: React.FC<ProgressNoteDialogProps> = ({
     if (e) e.preventDefault();
     
     if (!noteText.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please enter a note', 
-        variant: 'destructive'
-      });
+      toast.error('Error', { description: 'Please enter a note' });
       return;
     }
 
@@ -48,29 +44,18 @@ const ProgressNoteDialog: React.FC<ProgressNoteDialogProps> = ({
       
       if (result.success) {
         console.log('Note added successfully');
-        toast({
-          title: 'Success',
-          description: 'Progress note added'
-        });
+        toast.success('Success', { description: 'Progress note added' });
         setNoteText('');
         // Explicitly call onSuccess to refresh data in parent components
         onSuccess();
         onClose();
       } else {
         console.error('Failed to add note:', result.error);
-        toast({
-          title: 'Error',
-          description: 'Failed to add note',
-          variant: 'destructive'
-        });
+        toast.error('Error', { description: 'Failed to add note' });
       }
     } catch (error) {
       console.error('Exception adding note:', error);
-      toast({
-        title: 'Error',
-        description: 'An error occurred while saving the note',
-        variant: 'destructive'
-      });
+      toast.error('Error', { description: 'An error occurred while saving the note' });
     } finally {
       setIsSubmitting(false);
     }

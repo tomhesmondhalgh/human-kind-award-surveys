@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useToast } from '../../hooks/use-toast';
+import { toast } from 'sonner';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
@@ -11,7 +11,7 @@ import { Textarea } from '../../components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { AdminPlan, getPlans } from '../../lib/supabase/subscription';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { Pencil, Trash, Plus, Save, X } from 'lucide-react';
 import { fixPlanTypes } from '../../utils/typeConversions';
 
@@ -21,7 +21,6 @@ const PlansManagement: React.FC = () => {
   const [editingPlan, setEditingPlan] = useState<AdminPlan | null>(null);
   const [showDialog, setShowDialog] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const { toast } = useToast();
 
   // For new plan form
   const [newPlan, setNewPlan] = useState<Partial<AdminPlan>>({
@@ -57,11 +56,7 @@ const PlansManagement: React.FC = () => {
       
       if (error) {
         console.error('Error fetching plans:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load plans.',
-          variant: 'destructive'
-        });
+        toast.error('Error', { description: 'Failed to load plans.' });
       } else if (allPlans) {
         // Parse features for each plan
         const typedPlans = allPlans.map(plan => ({
@@ -73,11 +68,7 @@ const PlansManagement: React.FC = () => {
       }
     } catch (error) {
       console.error('Error fetching plans:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load plans.',
-        variant: 'destructive'
-      });
+      toast.error('Error', { description: 'Failed to load plans.' });
     } finally {
       setIsLoading(false);
     }
@@ -138,10 +129,7 @@ const PlansManagement: React.FC = () => {
           throw error;
         }
         
-        toast({
-          title: 'Success',
-          description: `Plan "${editingPlan.name}" has been updated.`
-        });
+        toast.success('Success', { description: `Plan "${editingPlan.name}" has been updated.` });
       } else {
         // Create new plan - ensure required properties
         const planToCreate = {
@@ -162,10 +150,7 @@ const PlansManagement: React.FC = () => {
           throw error;
         }
         
-        toast({
-          title: 'Success',
-          description: `New plan "${newPlan.name}" has been created.`
-        });
+        toast.success('Success', { description: `New plan "${newPlan.name}" has been created.` });
       }
       
       // Refresh plans list
@@ -173,11 +158,7 @@ const PlansManagement: React.FC = () => {
       setShowDialog(false);
     } catch (error) {
       console.error('Error saving plan:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to save plan.',
-        variant: 'destructive'
-      });
+      toast.error('Error', { description: 'Failed to save plan.' });
     } finally {
       setIsSaving(false);
     }
@@ -197,20 +178,13 @@ const PlansManagement: React.FC = () => {
         throw error;
       }
       
-      toast({
-        title: 'Success',
-        description: `Plan "${plan.name}" has been ${plan.is_active ? 'deactivated' : 'activated'}.`
-      });
+      toast.success('Success', { description: `Plan "${plan.name}" has been ${plan.is_active ? 'deactivated' : 'activated'}.` });
       
       // Refresh plans list
       await fetchPlans();
     } catch (error) {
       console.error('Error toggling plan status:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update plan status.',
-        variant: 'destructive'
-      });
+      toast.error('Error', { description: 'Failed to update plan status.' });
     }
   };
 

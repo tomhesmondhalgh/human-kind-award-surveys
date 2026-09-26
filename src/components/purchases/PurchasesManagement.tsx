@@ -9,7 +9,7 @@ import { Skeleton } from "../ui/skeleton";
 import { useAdminPurchaseData } from '../../hooks/useAdminPurchaseData';
 import { usePurchaseFilters } from '../../hooks/usePurchaseFilters';
 import { PurchaseTable } from './PurchaseTable';
-import { PurchasePagination } from './PurchasePagination';
+import Pagination from '../surveys/Pagination';
 import { UpdatePurchaseDialog } from './UpdatePurchaseDialog';
 import { Purchase } from '../../types/purchases';
 import PageTitle from '../ui/PageTitle';
@@ -164,8 +164,8 @@ const PurchasesManagement = () => {
                   ` (filtered from ${purchases.length} records)`}
               </div>
               
-              {!isFiltering && (
-                <PurchasePagination
+              {!isFiltering && totalPages > 1 && (
+                <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}
                   onPageChange={setCurrentPage}

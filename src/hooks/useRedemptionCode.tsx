@@ -2,13 +2,12 @@
 import { useState } from 'react';
 import { verifyRedemptionCode } from '../services/redemptionCodeService';
 import { useSubscription } from './useSubscription';
-import { useToast } from './use-toast';
+import { toast } from 'sonner';
 
 export function useRedemptionCode() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { refreshSubscription } = useSubscription();
-  const { toast } = useToast();
   
   const redeemCode = async (code: string): Promise<boolean> => {
     setIsProcessing(true);
@@ -19,31 +18,20 @@ export function useRedemptionCode() {
       
       if (!result.success) {
         setError(result.message);
-        toast({
-          title: 'Error',
-          description: result.message,
-          variant: 'destructive'
-        });
+        toast.error('Error', { description: result.message });
         return false;
       }
       
       // Refresh subscription data since we've just added a new subscription
       await refreshSubscription();
       
-      toast({
-        title: 'Success',
-        description: `Code redeemed successfully! You now have access to the ${result.planType?.toUpperCase()} plan.`,
-      });
+      toast.success('Success', { description: `Code redeemed successfully! You now have access to the ${result.planType?.toUpperCase()} plan.` });
       
       return true;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to redeem code';
       setError(message);
-      toast({
-        title: 'Error',
-        description: message,
-        variant: 'destructive'
-      });
+      toast.error('Error', { description: message });
       return false;
     } finally {
       setIsProcessing(false);

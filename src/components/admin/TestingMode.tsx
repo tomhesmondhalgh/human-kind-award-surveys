@@ -5,7 +5,7 @@ import { useAdminRole } from '@/hooks/useAdminRole';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlanType } from '@/lib/supabase/subscription';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 const TestingMode = () => {
   const { 
@@ -19,11 +19,7 @@ const TestingMode = () => {
   const handleSelectPlan = (plan: PlanType) => {
     // Security check: Only admins can enable testing mode
     if (!isAdmin) {
-      toast({
-        title: 'Access Denied',
-        description: 'Only administrators can enable testing mode',
-        variant: 'destructive',
-      });
+      toast.error('Access Denied', { description: 'Only administrators can enable testing mode' });
       return;
     }
 
@@ -33,10 +29,7 @@ const TestingMode = () => {
     }
     
     enableTestingMode(plan);
-    toast({
-      title: 'Testing Mode Enabled',
-      description: `Testing with ${plan} plan (session-only)`,
-    });
+    toast.success('Testing Mode Enabled', { description: `Testing with ${plan} plan (session-only)` });
   };
 
   // Show loading state while checking admin status
@@ -114,10 +107,7 @@ const TestingMode = () => {
                 size="sm" 
                 onClick={() => {
                   disableTestingMode();
-                  toast({
-                    title: 'Testing Mode Disabled',
-                    description: 'You are now using your actual subscription',
-                  });
+                  toast.success('Testing Mode Disabled', { description: 'You are now using your actual subscription' });
                 }}
                 className="mt-3 border-yellow-300 text-yellow-800 hover:bg-yellow-100"
               >

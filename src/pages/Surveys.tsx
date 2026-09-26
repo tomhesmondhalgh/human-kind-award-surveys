@@ -6,7 +6,7 @@ import PageTitle from '../components/ui/PageTitle';
 import SurveyList from '../components/surveys/SurveyList';
 import Pagination from '../components/surveys/Pagination';
 import { toast } from "sonner";
-import { supabase } from '../integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { useIsMobile } from '../hooks/use-mobile';

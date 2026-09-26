@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { CustomQuestion, convertToCustomQuestion, convertToCustomQuestions } from '../types/customQuestions';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/services/toastService';
+import { toast } from 'sonner';
 import { useOrganization } from '../contexts/OrganizationContext';
 
 // Helper function to create a DB question payload

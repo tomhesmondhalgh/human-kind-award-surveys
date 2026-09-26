@@ -19,7 +19,7 @@ import {
   Users
 } from "lucide-react";
 import { AdminRedemptionCodeService, RedemptionCode } from "../../services/redemptionCodeService";
-import { useToast } from "../../hooks/use-toast";
+import { toast } from 'sonner';
 
 const RedemptionCodesManagement: React.FC = () => {
   const [codes, setCodes] = useState<RedemptionCode[]>([]);
@@ -31,7 +31,6 @@ const RedemptionCodesManagement: React.FC = () => {
   const [redemptionsLoading, setRedemptionsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentCode, setCurrentCode] = useState<RedemptionCode | null>(null);
-  const { toast } = useToast();
   
   const [formValues, setFormValues] = useState({
     code: '',
@@ -52,11 +51,7 @@ const RedemptionCodesManagement: React.FC = () => {
       setCodes(data);
     } catch (error) {
       console.error('Error fetching redemption codes:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load redemption codes',
-        variant: 'destructive'
-      });
+      toast.error('Error', { description: 'Failed to load redemption codes' });
     } finally {
       setLoading(false);
     }
@@ -101,11 +96,7 @@ const RedemptionCodesManagement: React.FC = () => {
       setRedemptions(data);
     } catch (error) {
       console.error('Error fetching redemptions:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load redemption details',
-        variant: 'destructive'
-      });
+      toast.error('Error', { description: 'Failed to load redemption details' });
     } finally {
       setRedemptionsLoading(false);
     }
@@ -119,17 +110,11 @@ const RedemptionCodesManagement: React.FC = () => {
       if (currentCode) {
         // Update existing code
         await AdminRedemptionCodeService.updateCode(currentCode.id, formValues);
-        toast({
-          title: 'Success',
-          description: 'Redemption code updated successfully'
-        });
+        toast.success('Success', { description: 'Redemption code updated successfully' });
       } else {
         // Create new code
         await AdminRedemptionCodeService.createCode(formValues);
-        toast({
-          title: 'Success',
-          description: 'Redemption code created successfully'
-        });
+        toast.success('Success', { description: 'Redemption code created successfully' });
       }
       
       // Refresh the codes list
@@ -137,11 +122,7 @@ const RedemptionCodesManagement: React.FC = () => {
       setIsDialogOpen(false);
     } catch (error) {
       console.error('Error saving redemption code:', error);
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to save redemption code',
-        variant: 'destructive'
-      });
+      toast.error('Error', { description: error instanceof Error ? error.message : 'Failed to save redemption code' });
     } finally {
       setIsProcessing(false);
     }
@@ -153,21 +134,14 @@ const RedemptionCodesManagement: React.FC = () => {
     
     try {
       await AdminRedemptionCodeService.deleteCode(currentCode.id);
-      toast({
-        title: 'Success',
-        description: 'Redemption code deleted successfully'
-      });
+      toast.success('Success', { description: 'Redemption code deleted successfully' });
       
       // Refresh the codes list
       fetchCodes();
       setIsDeleteDialogOpen(false);
     } catch (error) {
       console.error('Error deleting redemption code:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete redemption code',
-        variant: 'destructive'
-      });
+      toast.error('Error', { description: 'Failed to delete redemption code' });
     } finally {
       setIsProcessing(false);
     }
@@ -185,10 +159,7 @@ const RedemptionCodesManagement: React.FC = () => {
   
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast({
-      title: 'Copied!',
-      description: 'Redemption code copied to clipboard'
-    });
+    toast.success('Copied!', { description: 'Redemption code copied to clipboard' });
   };
   
   const formatDate = (dateStr: string | null) => {
