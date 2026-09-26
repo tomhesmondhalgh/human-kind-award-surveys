@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Textarea } from '../components/ui/textarea';
 import { Input } from '../components/ui/input';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import Pagination from '../components/surveys/Pagination';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '../components/ui/form';
 import { zodResolver } from '@hookform/resolvers/zod';

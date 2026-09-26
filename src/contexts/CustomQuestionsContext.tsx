@@ -1,9 +1,8 @@
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { supabase } from '../integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CustomQuestionType } from '../types/surveyForm';
-import { getCacheItem, setCacheItem, clearCacheItem } from '@/utils/cache/cacheUtils';
 
 interface CustomQuestionsContextType {
   questions: CustomQuestionType[];
@@ -37,17 +36,6 @@ export const CustomQuestionsProvider: React.FC<CustomQuestionsProviderProps> = (
       setIsLoading(true);
       setError(null);
       console.log('Loading custom questions for survey:', surveyId);
-      
-      // Check cache first
-      const cacheKey = `survey_custom_questions_${surveyId}`;
-      const cachedQuestions = getCacheItem<CustomQuestionType[]>(cacheKey);
-      
-      if (cachedQuestions) {
-        console.log('Using cached custom questions for survey:', surveyId);
-        setQuestions(cachedQuestions);
-        setIsLoading(false);
-        return;
-      }
       
       // First get the question IDs linked to this survey
       const { data: linkedQuestions, error: linkError } = await supabase
@@ -117,9 +105,6 @@ export const CustomQuestionsProvider: React.FC<CustomQuestionsProviderProps> = (
       console.log('Formatted questions:', formattedQuestions);
       setQuestions(formattedQuestions);
       
-      // Cache the results
-      setCacheItem(cacheKey, formattedQuestions, 600); // Cache for 10 minutes
-      
     } catch (err: any) {
       const errorMessage = err?.message || 'Failed to load custom questions';
       console.error('Error in loadQuestions:', errorMessage);
@@ -130,10 +115,7 @@ export const CustomQuestionsProvider: React.FC<CustomQuestionsProviderProps> = (
     }
   };
 
-  const refreshQuestions = async (surveyId: string) => {
-    clearCacheItem(`survey_custom_questions_${surveyId}`);
-    await loadQuestions(surveyId);
-  };
+  const refreshQuestions = loadQuestions;
 
   return (
     <CustomQuestionsContext.Provider value={{ 

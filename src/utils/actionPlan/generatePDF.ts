@@ -1,5 +1,5 @@
 
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { ActionPlanDescriptor } from '../../types/actionPlan';
 
 export async function generatePDF(organizationId: string): Promise<{ success: boolean; error?: any }> {

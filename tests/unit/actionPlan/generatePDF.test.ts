@@ -26,7 +26,7 @@ vi.mock('jspdf', async (importOriginal) => {
   return { ...actual, jsPDF: TestPDF, default: TestPDF };
 });
 
-vi.mock('@/lib/supabase', () => {
+vi.mock('@/integrations/supabase/client', () => {
   const query: any = {
     select: () => query,
     eq: () => query,

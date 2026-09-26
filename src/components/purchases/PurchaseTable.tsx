@@ -111,7 +111,7 @@ export const PurchaseTable: React.FC<PurchaseTableProps> = ({
                   </div>
                 </TableCell>
                 <TableCell>
-                  {formatCurrency(purchase.amount, purchase.currency, purchase.amount > 10000)}
+                  {formatCurrency(purchase.amount, purchase.currency)}
                 </TableCell>
                 <TableCell className="hidden sm:table-cell">
                   <div className="flex items-center">

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { SurveyFormData } from '../types/surveyForm';
-import { supabase } from '../integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const initialFormData: SurveyFormData = {

@@ -1,85 +1,34 @@
-
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { getCacheItem, setCacheItem, clearCacheItem } from '@/utils/cache/cacheUtils';
 
-// Cache expiry time in seconds (5 minutes)
-const CACHE_EXPIRY = 5 * 60;
-
+// Whether the signed-in user is a platform admin (user_roles). Cached for five
+// minutes and shared by every component that asks.
 export function useAdminRole() {
-  const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
 
-  // Clear cache for a specific user
-  const clearCache = useCallback((userId: string) => {
-    clearCacheItem(`admin_status_${userId}`);
-  }, []);
-
-  // Function to check if user has admin role with caching
-  const checkAdminRole = useCallback(async () => {
-    if (!user) {
-      setIsAdmin(false);
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      // Check cache first
-      const cacheKey = `admin_status_${user.id}`;
-      const cachedStatus = getCacheItem<boolean>(cacheKey);
-      
-      if (cachedStatus !== null) {
-        console.log('Using cached admin status for user:', user.id);
-        setIsAdmin(cachedStatus);
-        setIsLoading(false);
-        return;
-      }
-
-      console.log('Fetching fresh admin status for user:', user.id);
-      setIsLoading(true);
-      
-      // Use the new secure is_admin function
-      const { data, error } = await supabase.rpc('is_admin', {
-        _user_id: user.id
-      });
-      
+  const { data: isAdmin = false, isLoading, refetch } = useQuery({
+    queryKey: ['isAdmin', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('is_admin', { _user_id: user!.id });
       if (error) {
         console.error('Error checking admin status:', error);
-        setIsAdmin(false);
-      } else {
-        const isUserAdmin = data === true;
-        console.log('Admin status from database:', isUserAdmin);
-        setIsAdmin(isUserAdmin);
-        
-        // Update cache
-        setCacheItem(cacheKey, isUserAdmin, CACHE_EXPIRY);
+        return false;
       }
-      
-    } catch (error) {
-      console.error('Error in admin role check:', error);
-      setIsAdmin(false);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user]);
+      return data === true;
+    },
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    checkAdminRole();
-  }, [user, checkAdminRole]);
-
-  // Expose method to force refresh the admin status
   const refreshAdminStatus = useCallback(() => {
-    if (user) {
-      clearCache(user.id);
-      checkAdminRole();
-    }
-  }, [user, clearCache, checkAdminRole]);
+    refetch();
+  }, [refetch]);
 
-  return { 
-    isAdmin, 
-    isLoading,
+  return {
+    isAdmin,
+    isLoading: !!user && isLoading,
     refreshAdminStatus
   };
 }

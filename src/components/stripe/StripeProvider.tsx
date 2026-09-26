@@ -2,7 +2,7 @@
 import React, { ReactNode, useEffect, useState } from 'react';
 import { loadStripe, Stripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
-import { useToast } from '../../hooks/use-toast';
+import { toast } from 'sonner';
 
 // Get the publishable key from environment variables
 const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 
@@ -17,7 +17,6 @@ interface StripeProviderProps {
 
 const StripeProvider: React.FC<StripeProviderProps> = ({ children }) => {
   const [stripeLoaded, setStripeLoaded] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     const checkStripeLoading = async () => {
@@ -28,19 +27,11 @@ const StripeProvider: React.FC<StripeProviderProps> = ({ children }) => {
           setStripeLoaded(true);
         } else {
           console.error('Stripe failed to load, no error thrown');
-          toast({
-            title: 'Warning',
-            description: 'Payment system failed to initialize properly.',
-            variant: 'destructive'
-          });
+          toast.error('Warning', { description: 'Payment system failed to initialize properly.' });
         }
       } catch (error) {
         console.error('Error loading Stripe:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load payment system. Please refresh the page.',
-          variant: 'destructive'
-        });
+        toast.error('Error', { description: 'Failed to load payment system. Please refresh the page.' });
       }
     };
 
