@@ -1,6 +1,9 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import { requirePlatformAdmin, requireUser } from "../_shared/auth.ts";
+import { HttpError } from "../_shared/http.ts";
+import { HUBSPOT_LISTS, upsertHubspotContact } from "../_shared/hubspot.ts";
 
 // Get environment variables
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
@@ -44,8 +47,26 @@ serve(async (req: Request) => {
   }
 
   try {
+    // Platform admins only: this pushes every user's personal details to HubSpot.
+    try {
+      const caller = await requireUser(req);
+      await requirePlatformAdmin(caller.id);
+    } catch (error) {
+      const status = error instanceof HttpError ? error.status : 500;
+      return new Response(
+        JSON.stringify({ success: false, message: status === 500 ? 'Authorisation check failed' : error.message }),
+        { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Parse request body
     const { syncType, listId } = await req.json();
+    if (!HUBSPOT_LISTS.includes(String(listId))) {
+      return new Response(
+        JSON.stringify({ success: false, message: 'Unknown list' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
     if (!syncType || !listId) {
       return new Response(
@@ -122,7 +143,15 @@ serve(async (req: Request) => {
     }
     
     // Get user emails from auth.users using admin API
-    const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+    // listUsers() returns one page (50 by default), so collect every page.
+    const authUsers = { users: [] as { id: string; email?: string }[] };
+    let authError = null;
+    for (let page = 1; ; page++) {
+      const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
+      if (error) { authError = error; break; }
+      authUsers.users.push(...data.users);
+      if (data.users.length < 1000) break;
+    }
     
     if (authError) {
       throw new Error(`Failed to fetch auth users: ${authError.message}`);
@@ -163,28 +192,15 @@ serve(async (req: Request) => {
       
       await Promise.all(batch.map(async (userData) => {
         try {
-          // Send to Hubspot using the existing edge function
-          const response = await supabase.functions.invoke('hubspot-integration', {
-            body: {
-              userData: {
-                email: userData.email,
-                firstName: userData.firstName || '',
-                lastName: userData.lastName || '',
-                jobTitle: userData.jobTitle || '',
-                schoolName: userData.schoolName || '',
-                schoolAddress: userData.schoolAddress || ''
-              },
-              listId: listId
-            }
-          });
-          
-          if (response.error) {
-            console.error(`Error syncing user ${userData.id} to Hubspot:`, response.error);
-            failCount++;
-            errors.push(`Failed to sync user ${userData.id}: ${response.error.message}`);
-          } else {
-            successCount++;
-          }
+          await upsertHubspotContact({
+            email: userData.email,
+            firstName: userData.firstName || '',
+            lastName: userData.lastName || '',
+            jobTitle: userData.jobTitle || '',
+            schoolName: userData.schoolName || '',
+            schoolAddress: userData.schoolAddress || ''
+          }, String(listId));
+          successCount++;
         } catch (err) {
           console.error(`Exception syncing user ${userData.id} to Hubspot:`, err);
           failCount++;

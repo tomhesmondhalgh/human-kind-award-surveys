@@ -4,7 +4,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 // Import Stripe using a URL instead of npm: prefix for better compatibility
 import Stripe from "https://esm.sh/stripe@13.9.0";
 
-const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "");
+const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+  httpClient: Stripe.createFetchHttpClient(),
+});
+// Deno needs the async, SubtleCrypto-based verifier; the sync constructEvent throws.
+const cryptoProvider = Stripe.createSubtleCryptoProvider();
 const endpointSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET") || "";
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -25,6 +29,21 @@ console.log('Stripe webhook function initialized', {
   supabaseUrl: supabaseUrl,
 });
 
+// Stripe subscription status -> our subscription_status enum. past_due keeps
+// access while Stripe retries the card; only terminal states cancel.
+function mapStripeStatus(status: string): 'active' | 'canceled' | 'pending' {
+  switch (status) {
+    case 'active':
+    case 'trialing':
+    case 'past_due':
+      return 'active';
+    case 'incomplete':
+      return 'pending';
+    default: // canceled, unpaid, incomplete_expired, paused
+      return 'canceled';
+  }
+}
+
 serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -43,7 +62,6 @@ serve(async (req: Request) => {
       bodyLength: body.length,
       method: req.method,
       url: req.url,
-      headers: Array.from(req.headers.entries()).map(([key, value]) => `${key}: ${key === 'stripe-signature' ? 'present' : value}`),
     });
 
     if (!signature) {
@@ -57,14 +75,15 @@ serve(async (req: Request) => {
     // Verify webhook signature
     let event;
     try {
-      // Only verify signature if endpointSecret is provided
-      if (endpointSecret) {
-        event = stripe.webhooks.constructEvent(body, signature, endpointSecret);
-      } else {
-        // For testing, if no secret is set, just parse the JSON
-        console.warn('No endpoint secret set, skipping signature verification');
-        event = JSON.parse(body);
+      // Fail closed: without the secret anyone could forge a "payment completed" event.
+      if (!endpointSecret) {
+        console.error('STRIPE_WEBHOOK_SECRET is not set; rejecting webhook');
+        return new Response(JSON.stringify({ error: "Webhook not configured" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
       }
+      event = await stripe.webhooks.constructEventAsync(body, signature, endpointSecret, undefined, cryptoProvider);
     } catch (err) {
       console.error(`Webhook signature verification failed: ${err.message}`, {
         error: err,
@@ -130,7 +149,7 @@ serve(async (req: Request) => {
           .eq('plan_type', planType);
           
         if (subCheckError) {
-          console.error('Error checking for existing subscriptions:', subCheckError);
+          throw new Error(`Checking for existing subscriptions: ${subCheckError.message}`);
         } else if (existingSubs && existingSubs.length > 0) {
           // Use the existing subscription if there is one
           existingSubscription = existingSubs[0];
@@ -151,7 +170,7 @@ serve(async (req: Request) => {
             .eq('id', subscriptionId);
             
           if (updateError) {
-            console.error('Error updating existing subscription:', updateError);
+            throw new Error(`Updating existing subscription: ${updateError.message}`);
           } else {
             console.log(`Updated existing subscription ID: ${subscriptionId}`);
           }
@@ -174,7 +193,7 @@ serve(async (req: Request) => {
             .select();
             
           if (createError) {
-            console.error('Error creating new subscription:', createError);
+            throw new Error(`Creating new subscription: ${createError.message}`);
           } else if (newSub && newSub.length > 0) {
             subscriptionId = newSub[0].id;
             console.log(`Created new subscription ID: ${subscriptionId}`);
@@ -218,7 +237,7 @@ serve(async (req: Request) => {
               .select();
 
             if (paymentError) {
-              console.error('Error creating payment record:', paymentError);
+              throw new Error(`Creating payment record: ${paymentError.message}`);
             } else if (paymentData) {
               console.log(`Created payment record ID: ${paymentData[0]?.id}`);
             }
@@ -286,7 +305,7 @@ serve(async (req: Request) => {
               .select();
               
             if (createError) {
-              console.error('Error creating new subscription:', createError);
+              throw new Error(`Creating new subscription: ${createError.message}`);
               break;
             }
             
@@ -313,7 +332,7 @@ serve(async (req: Request) => {
               .select();
 
             if (paymentError) {
-              console.error('Error creating payment record:', paymentError);
+              throw new Error(`Creating payment record: ${paymentError.message}`);
             } else if (paymentData) {
               console.log(`Created payment record ID: ${paymentData[0]?.id}`);
             }
@@ -339,7 +358,7 @@ serve(async (req: Request) => {
               .eq('stripe_subscription_id', invoice.subscription);
               
             if (error) {
-              console.error('Error updating subscription status:', error);
+              throw new Error(`Updating subscription status: ${error.message}`);
             }
           }
         }
@@ -353,12 +372,12 @@ serve(async (req: Request) => {
         const { error } = await supabase
           .from('subscriptions')
           .update({ 
-            status: subscription.status === 'active' ? 'active' : 'canceled'
+            status: mapStripeStatus(subscription.status)
           })
           .eq('stripe_subscription_id', subscription.id);
           
         if (error) {
-          console.error('Error updating subscription status:', error);
+          throw new Error(`Updating subscription status: ${error.message}`);
         }
         
         break;
@@ -377,7 +396,7 @@ serve(async (req: Request) => {
           .eq('stripe_subscription_id', subscription.id);
           
         if (error) {
-          console.error('Error updating subscription status:', error);
+          throw new Error(`Updating subscription status: ${error.message}`);
         }
         
         break;
@@ -398,7 +417,7 @@ serve(async (req: Request) => {
     });
   } catch (error) {
     console.error('Error processing webhook:', error);
-    return new Response(JSON.stringify({ error: 'Internal Server Error', details: error.message }), {
+    return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });

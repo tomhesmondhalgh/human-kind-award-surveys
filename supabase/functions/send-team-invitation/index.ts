@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 import { Resend } from "npm:resend@2.0.0";
 import { createEmailTemplate } from "../_shared/emailTemplate.ts";
+import { escapeHtml } from "../_shared/html.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -26,14 +27,28 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, organizationName, role, inviterName, invitationToken }: InvitationEmailRequest = await req.json();
+    // Internal only: send-team-invitation-v2 calls this with the service-role key
+    // after checking the inviter is an org admin. Nobody else may call it.
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!serviceKey || req.headers.get('Authorization') !== `Bearer ${serviceKey}`) {
+      return new Response(JSON.stringify({ error: 'Not authorised' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const request: InvitationEmailRequest = await req.json();
+    const { email, invitationToken } = request;
+    const organizationName = escapeHtml(request.organizationName);
+    const inviterName = escapeHtml(request.inviterName);
+    const role = escapeHtml(request.role);
 
     console.log('Sending team invitation email:', { email, organizationName, role, inviterName });
 
     // Fix URL construction to handle trailing slashes properly
     const siteUrl = Deno.env.get('SITE_URL') || 'http://localhost:5173';
     const baseUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
-    const acceptUrl = `${baseUrl}/accept-invitation?token=${invitationToken}`;
+    const acceptUrl = `${baseUrl}/accept-invitation?token=${encodeURIComponent(invitationToken)}`;
 
     const roleDescriptions = {
       'admin': 'Full access including team management',
@@ -58,7 +73,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const html = createEmailTemplate({
       title: "Team Invitation",
-      preheader: `You've been invited to join ${organizationName}`,
+      preheader: `You've been invited to join ${request.organizationName}`,
       content,
       buttonText: "Accept Invitation",
       buttonUrl: acceptUrl,
@@ -67,11 +82,14 @@ const handler = async (req: Request): Promise<Response> => {
     const emailResponse = await resend.emails.send({
       from: "Human Kind <contact@humankindaward.com>",
       to: [email],
-      subject: `You're invited to join ${organizationName}`,
+      subject: `You're invited to join ${request.organizationName}`,
       html: html,
     });
 
-    console.log("Team invitation email sent successfully:", emailResponse);
+    // Resend reports failures in the response rather than throwing.
+    if (emailResponse.error) {
+      throw new Error(`Resend error: ${emailResponse.error.message}`);
+    }
 
     return new Response(JSON.stringify({ success: true, emailId: emailResponse.data?.id }), {
       status: 200,

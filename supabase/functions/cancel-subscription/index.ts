@@ -1,128 +1,49 @@
+import Stripe from 'https://esm.sh/stripe@13.9.0'
+import { HttpError, json, serveJson } from '../_shared/http.ts'
+import { requireUser, serviceClient } from '../_shared/auth.ts'
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.14.0'
-import Stripe from 'https://esm.sh/stripe@11.1.0?target=deno'
+// Schedules the caller's own subscription to cancel at the end of the paid
+// period. The user comes from the JWT: the old version trusted a userId in the
+// request body, so anyone could cancel anyone's subscription.
+serveJson(async (req) => {
+  const user = await requireUser(req)
+  const { subscriptionId } = await req.json()
+  if (typeof subscriptionId !== 'string') throw new HttpError(400, 'subscriptionId is required')
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+  const db = serviceClient()
+  const { data: subscription, error } = await db
+    .from('subscriptions')
+    .select('id, stripe_subscription_id')
+    .eq('id', subscriptionId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+  if (error) throw new Error(`Subscription lookup failed: ${error.message}`)
+  if (!subscription) throw new HttpError(404, 'Subscription not found')
+  if (!subscription.stripe_subscription_id) throw new HttpError(400, 'No Stripe subscription ID found')
 
-serve(async (req) => {
-  // Handle CORS preflight request
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
-  }
+  const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
+    httpClient: Stripe.createFetchHttpClient(),
+  })
+  const stripeSubscription = await stripe.subscriptions.update(subscription.stripe_subscription_id, {
+    cancel_at_period_end: true,
+  })
 
-  try {
-    // Get the request body
-    const body = await req.json()
-    const { subscriptionId, userId } = body
-    
-    console.log(`Cancelling subscription: ${subscriptionId} for user: ${userId}`)
-    
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
-    
-    // Retrieve the subscription to check if it's from the correct user
-    const { data: subscription, error: fetchError } = await supabase
-      .from('subscriptions')
-      .select('*')
-      .eq('id', subscriptionId)
-      .eq('user_id', userId)
-      .single()
-    
-    if (fetchError || !subscription) {
-      console.error('Error fetching subscription:', fetchError)
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Subscription not found or access denied' 
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 404 
-        }
-      )
-    }
-    
-    // Check if there's a Stripe subscription ID
-    if (!subscription.stripe_subscription_id) {
-      console.error('No Stripe subscription ID found')
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'No Stripe subscription ID found' 
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400 
-        }
-      )
-    }
-    
-    // Initialize Stripe
-    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY') || ''
-    const stripe = new Stripe(stripeSecretKey, {
-      apiVersion: '2022-11-15',
-    })
-    
-    // Cancel the subscription at period end
-    const stripeSubscription = await stripe.subscriptions.update(
-      subscription.stripe_subscription_id,
-      { cancel_at_period_end: true }
-    )
-    
-    // Update our database record
-    const { error: updateError } = await supabase
-      .from('subscriptions')
-      .update({ 
-        status: 'canceled',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', subscriptionId)
-    
-    if (updateError) {
-      console.error('Error updating subscription status:', updateError)
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Failed to update subscription status' 
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 500 
-        }
-      )
-    }
-    
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: 'Subscription has been scheduled to cancel at the end of the current billing period',
-        data: { 
-          canceled_at: stripeSubscription.canceled_at,
-          current_period_end: stripeSubscription.current_period_end
-        }
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
-      }
-    )
-  } catch (error) {
-    console.error('Error processing request:', error)
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error.message || 'An unknown error occurred' 
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500 
-      }
-    )
-  }
+  // Keep access until the end of the paid period (get_user_subscription treats
+  // the plan as active until end_date). The stripe-webhook marks the row
+  // canceled when Stripe actually ends the subscription.
+  const periodEnd = new Date(stripeSubscription.current_period_end * 1000).toISOString()
+  const { error: updateError } = await db
+    .from('subscriptions')
+    .update({ end_date: periodEnd, updated_at: new Date().toISOString() })
+    .eq('id', subscription.id)
+  if (updateError) throw new Error(`Failed to update subscription: ${updateError.message}`)
+
+  return json(req, {
+    success: true,
+    message: 'Subscription has been scheduled to cancel at the end of the current billing period',
+    data: {
+      canceled_at: stripeSubscription.canceled_at,
+      current_period_end: stripeSubscription.current_period_end,
+    },
+  })
 })

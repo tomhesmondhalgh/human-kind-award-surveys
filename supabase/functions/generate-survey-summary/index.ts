@@ -2,6 +2,8 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { requireUser } from "../_shared/auth.ts";
+import { HttpError } from "../_shared/http.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,12 +19,27 @@ serve(async (req) => {
   }
 
   try {
-    const { 
-      recommendationScore, 
-      leavingContemplation, 
-      detailedResponses, 
-      textResponses 
-    } = await req.json();
+    // Logged-in users only: this spends OpenAI credit.
+    try {
+      await requireUser(req);
+    } catch (error) {
+      const status = error instanceof HttpError ? error.status : 500;
+      return new Response(JSON.stringify({ error: 'Not authenticated' }), {
+        status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const body = await req.json();
+    const { recommendationScore, leavingContemplation } = body;
+    // Cap what goes into the prompt so one request can't run up a large bill.
+    const detailedResponses = Array.isArray(body.detailedResponses) ? body.detailedResponses.slice(0, 50) : [];
+    const capText = (items: unknown) =>
+      (Array.isArray(items) ? items : []).slice(0, 300).map((r: any) => ({ ...r, response: String(r?.response ?? '').slice(0, 1000) }));
+    const textResponses = {
+      doingWell: capText(body.textResponses?.doingWell),
+      improvements: capText(body.textResponses?.improvements),
+    };
 
     // Check if we have enough data (10 responses minimum)
     // Instead of using leavingContemplation, let's use detailedResponses for consistency

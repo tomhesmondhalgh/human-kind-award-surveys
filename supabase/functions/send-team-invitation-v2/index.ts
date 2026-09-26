@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { findUserByEmail } from '../_shared/auth.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -178,13 +179,10 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Check if user with this email is already a member (efficient query)
-    const { data: existingUser, error: existingUserError } = await supabaseAdmin
-      .from('auth.users')
-      .select('id')
-      .eq('email', email.toLowerCase())
-      .limit(1)
-      .maybeSingle();
-    
+    // The auth schema isn't exposed over PostgREST, so the old .from('auth.users')
+    // query always failed and this check never ran. Use the admin API instead.
+    const existingUser = await findUserByEmail(email);
+
     if (existingUser) {
       const { data: existingMember } = await supabaseAdmin
         .from('organization_memberships')
