@@ -18,7 +18,6 @@ import {
   Gift, 
   Package, 
   FlaskConical, 
-  Code, 
   Database,
   Award
 } from 'lucide-react';
@@ -70,11 +69,6 @@ const AppSidebar: React.FC<AdminSidebarProps> = ({ activeTab, onTabChange }) => 
       title: "Testing Mode",
       value: "testing",
       icon: FlaskConical,
-    },
-    {
-      title: "Custom Scripts",
-      value: "scripts",
-      icon: Code,
     },
     {
       title: "Hubspot Integration",

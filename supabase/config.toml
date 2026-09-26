@@ -86,9 +86,6 @@ verify_jwt = true
 [functions.send-team-invitation-v2]
 verify_jwt = true
 
-[functions.get-active-script]
-verify_jwt = false
-
 [functions.accept-invitation]
 verify_jwt = true
 

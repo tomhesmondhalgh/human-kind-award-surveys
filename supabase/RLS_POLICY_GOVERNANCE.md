@@ -38,10 +38,9 @@ This document establishes strict governance rules for Row Level Security (RLS) p
 16. **redemption_codes** (1 policy): redemption_codes_admin_all
 17. **redemptions** (3 policies): redemptions_view_own, redemptions_create_own, redemptions_admin_view_all
 18. **schools** (1 policy): schools_public_read
-19. **custom_scripts** (1 policy): custom_scripts_admin_all
-20. **organization_invitations** (2 policies): org_invitations_view_own_email, org_invitations_admin_manage
-21. **organization_groups** (1 policy): org_groups_public_read
-22. **organization_group_memberships** (1 policy): org_group_memberships_admin_manage
+19. **organization_invitations** (2 policies): org_invitations_view_own_email, org_invitations_admin_manage
+20. **organization_groups** (1 policy): org_groups_public_read
+21. **organization_group_memberships** (1 policy): org_group_memberships_admin_manage
 
 ### Security Definer Functions
 1. `user_is_organization_member(uuid, uuid)` - Check basic membership

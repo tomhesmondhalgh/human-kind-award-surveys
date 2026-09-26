@@ -143,19 +143,6 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
-                },"custom_scripts": {
-                  Row: {
-                    "created_at": string,"id": string,"is_active": boolean,"script_content": string,"user_id": string | null
-                  }
-                  Insert: {
-                    "created_at"?: string,"id"?: string,"is_active"?: boolean,"script_content": string,"user_id"?: string | null
-                  }
-                  Update: {
-                    "created_at"?: string,"id"?: string,"is_active"?: boolean,"script_content"?: string,"user_id"?: string | null
-                  }
-                  Relationships: [
-                    
-                  ]
                 },"organization_group_memberships": {
                   Row: {
                     "created_at": string,"group_id": string,"id": string,"organization_id": string
