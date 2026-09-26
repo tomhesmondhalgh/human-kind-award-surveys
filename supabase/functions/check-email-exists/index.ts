@@ -1,60 +1,23 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { HttpError, json, serveJson } from '../_shared/http.ts';
+import { findUserByEmail, serviceClient } from '../_shared/auth.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// Tells the invitation page whether the invited person already has an account,
+// so it can offer "log in" or "sign up". It answers only for a valid pending
+// invitation token. The old version answered for any email address, which let
+// anyone find out who has an account.
+serveJson(async (req) => {
+  const { token } = await req.json();
+  if (typeof token !== 'string' || !token) throw new HttpError(400, 'token is required');
 
-serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const { data: invitation, error } = await serviceClient()
+    .from('organization_invitations')
+    .select('email')
+    .eq('token', token)
+    .is('accepted_at', null)
+    .gt('expires_at', new Date().toISOString())
+    .maybeSingle();
+  if (error) throw new Error(`Invitation lookup failed: ${error.message}`);
+  if (!invitation) throw new HttpError(404, 'Invitation not found');
 
-  try {
-    const { email } = await req.json();
-    
-    if (!email) {
-      return new Response(
-        JSON.stringify({ error: 'Email is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('Checking if email exists:', email);
-
-    // Create Supabase admin client
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    // Use Supabase Admin Auth API to check if user exists
-    console.log('Checking email with Admin Auth API:', email.toLowerCase());
-    
-    const { data: users, error } = await supabaseAdmin.auth.admin.listUsers();
-    
-    if (error) {
-      console.error('Error checking email with Admin Auth API:', error);
-      throw error;
-    }
-
-    // Check if any user has the matching email
-    const userExists = users.users.some(
-      user => user.email?.toLowerCase() === email.toLowerCase()
-    );
-    console.log('Email check result:', userExists);
-
-    return new Response(
-      JSON.stringify({ exists: userExists }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  } catch (error) {
-    console.error('Error checking email:', error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
+  return json(req, { exists: (await findUserByEmail(invitation.email)) !== null });
 });

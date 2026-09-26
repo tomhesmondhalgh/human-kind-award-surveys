@@ -10,9 +10,13 @@ const ALLOWED_ORIGINS = [
 // Vercel preview deployments of this project.
 const PREVIEW_ORIGIN = /^https:\/\/human-kind-surveys[a-z0-9-]*\.vercel\.app$/;
 
+export function isAllowedOrigin(origin: string): boolean {
+  return ALLOWED_ORIGINS.includes(origin) || PREVIEW_ORIGIN.test(origin);
+}
+
 export function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('Origin') ?? '';
-  const allowed = ALLOWED_ORIGINS.includes(origin) || PREVIEW_ORIGIN.test(origin);
+  const allowed = isAllowedOrigin(origin);
   return {
     'Access-Control-Allow-Origin': allowed ? origin : ALLOWED_ORIGINS[0],
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',

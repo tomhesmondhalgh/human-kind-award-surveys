@@ -63,3 +63,36 @@ export async function requireSurveyRole(userId: string, surveyId: string, role: 
   }
   return survey;
 }
+
+// Only accounts created within this window count as a "recent signup".
+const RECENT_SIGNUP_MS = 30 * 60 * 1000;
+
+// For functions called straight after signUp(), before the user has a session
+// (email confirmation is on). Uses the JWT user if there is one; otherwise
+// accepts a user id only if that account was created in the last few minutes.
+export async function requireUserOrRecentSignup(req: Request, userId: unknown): Promise<User> {
+  try {
+    return await requireUser(req);
+  } catch (error) {
+    if (!(error instanceof HttpError) || typeof userId !== 'string') throw error;
+  }
+  const { data, error } = await serviceClient().auth.admin.getUserById(userId);
+  if (error || !data.user) throw new HttpError(401, 'Not authenticated');
+  if (Date.now() - new Date(data.user.created_at).getTime() > RECENT_SIGNUP_MS) {
+    throw new HttpError(401, 'Not authenticated');
+  }
+  return data.user;
+}
+
+// Finds an auth user by email. listUsers() is paginated (50 per page by
+// default), so this walks every page; fine at this app's scale.
+export async function findUserByEmail(email: string): Promise<User | null> {
+  const target = email.toLowerCase();
+  for (let page = 1; ; page++) {
+    const { data, error } = await serviceClient().auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) throw new Error(`User lookup failed: ${error.message}`);
+    const match = data.users.find((u) => u.email?.toLowerCase() === target);
+    if (match) return match;
+    if (data.users.length < 1000) return null;
+  }
+}

@@ -35,7 +35,6 @@ const SurveyEditor = () => {
   const [savedSurveyId, setSavedSurveyId] = useState<string | null>(id || null);
   
   const isEditMode = !!id;
-  const knownHubspotId = "31923701";
   
   useEffect(() => {
     if (!user) {
@@ -291,14 +290,7 @@ const SurveyEditor = () => {
         } else if (profileData && user.email) {
           console.log('Attempting to send user data to Hubspot list 5418...');
           try {
-            const response = await sendUserToHubspot({
-              email: user.email,
-              firstName: profileData.first_name,
-              lastName: profileData.last_name,
-              jobTitle: profileData.job_title,
-              schoolName: profileData.school_name,
-              schoolAddress: profileData.school_address
-            }, '5418', knownHubspotId);
+            const response = await sendUserToHubspot(user.id, '5418');
             
             console.log('Hubspot API response:', response);
             console.log('User successfully added to Hubspot list 5418 after creating survey');

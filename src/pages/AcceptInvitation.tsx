@@ -86,8 +86,8 @@ const AcceptInvitation = () => {
       setStatus('found');
       
       // Check if the invited email has an existing account
-      if (data.email) {
-        await checkIfEmailExists(data.email);
+      if (data.email && token) {
+        await checkIfEmailExists(token);
       }
     } catch (error) {
       console.error('💥 Error fetching invitation:', error);
@@ -95,13 +95,14 @@ const AcceptInvitation = () => {
     }
   };
 
-  const checkIfEmailExists = async (email: string) => {
+  // Asks whether the invited email already has an account. Takes the invitation
+  // token: the edge function only answers for a valid pending invitation.
+  const checkIfEmailExists = async (invitationToken: string) => {
     setCheckingEmail(true);
     try {
-      console.log('🔍 Checking if email exists:', email);
       
       const { data, error } = await supabase.functions.invoke('check-email-exists', {
-        body: { email }
+        body: { token: invitationToken }
       });
       
       if (error) {

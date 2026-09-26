@@ -88,14 +88,7 @@ export async function signUpWithEmail(email: string, password: string, userData?
     while (!hubspotSuccess && retryCount < maxRetries) {
       try {
         console.log(`Attempt ${retryCount + 1} to add user to HubSpot`);
-        await sendUserToHubspot({
-          email,
-          firstName: userData?.firstName || '',
-          lastName: userData?.lastName || '',
-          jobTitle: userData?.jobTitle || '',
-          schoolName: userData?.schoolName || '',
-          schoolAddress: userData?.schoolAddress || ''
-        });
+        await sendUserToHubspot(data.user.id);
         hubspotSuccess = true;
         console.log('Successfully added user to HubSpot');
       } catch (hubspotError: any) {

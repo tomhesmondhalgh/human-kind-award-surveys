@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 import Stripe from "https://esm.sh/stripe@13.9.0";
+import { isAllowedOrigin } from "../_shared/http.ts";
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "");
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
@@ -24,11 +25,6 @@ serve(async (req: Request) => {
   }
 
   try {
-    console.log('Request received:', {
-      method: req.method,
-      headers: Object.fromEntries(req.headers.entries()),
-    });
-
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       console.error('Missing Authorization header');
@@ -51,7 +47,6 @@ serve(async (req: Request) => {
     }
 
     const requestData = await req.json();
-    console.log('Request data:', requestData);
 
     const { planId, successUrl, cancelUrl, billingDetails } = requestData;
 
@@ -59,6 +54,17 @@ serve(async (req: Request) => {
       console.error('Missing required fields:', { planId, successUrl, cancelUrl });
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Stripe redirects here after checkout, so only allow our own site.
+    const ownUrl = (u: unknown) => {
+      try { return typeof u === 'string' && isAllowedOrigin(new URL(u).origin); } catch { return false; }
+    };
+    if (!ownUrl(successUrl) || !ownUrl(cancelUrl)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid redirect URL' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -111,7 +117,7 @@ serve(async (req: Request) => {
 
     console.log('Creating Stripe session with:', {
       mode: purchaseType === 'subscription' ? 'subscription' : 'payment',
-      priceId: priceId,
+      stripePriceId,
       metadata,
       successUrl,
       cancelUrl

@@ -66,7 +66,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.hubspot-integration]
-verify_jwt = false
+verify_jwt = true
 
 [functions.update-invoice-status]
 verify_jwt = true
@@ -78,7 +78,7 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.generate-survey-summary]
-verify_jwt = false
+verify_jwt = true
 
 [functions.verify-redemption-code]
 verify_jwt = true
@@ -100,3 +100,18 @@ verify_jwt = false
 
 [functions.get-invitation-details]
 verify_jwt = false
+
+[functions.check-email-exists]
+verify_jwt = true
+
+[functions.send-accreditation-notification]
+verify_jwt = true
+
+[functions.send-team-invitation]
+verify_jwt = true
+
+[functions.submit-survey-response]
+verify_jwt = true
+
+[functions.sync-hubspot-users]
+verify_jwt = true
