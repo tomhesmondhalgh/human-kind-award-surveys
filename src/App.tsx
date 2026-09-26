@@ -10,7 +10,6 @@ import { CustomQuestionsProvider } from './contexts/CustomQuestionsContext';
 import StripeProvider from './components/stripe/StripeProvider';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import ErrorBoundary from './components/error/ErrorBoundary';
-import CustomScriptsLoader from './components/layout/CustomScriptsLoader';
 
 // Pages are loaded on demand so that survey respondents and visitors to the
 // login page don't download the admin, analysis and PDF code.
@@ -65,7 +64,6 @@ function App() {
                 <StripeProvider>
                   <Router>
                     <div className="App">
-                      <CustomScriptsLoader />
                       <Suspense fallback={<PageLoader />}>
                         <Routes>
                           {/* Public routes */}

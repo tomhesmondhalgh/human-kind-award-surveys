@@ -22,7 +22,7 @@ WITH expected_tables AS (
     'survey_questions', 'custom_questions', 'custom_question_responses',
     'organization_memberships', 'profiles', 'subscriptions', 'payment_history',
     'organizations', 'plans', 'redemption_codes', 'redemptions', 'schools',
-    'custom_scripts', 'organization_invitations', 'organization_groups',
+    'organization_invitations', 'organization_groups',
     'organization_group_memberships'
   ]) as table_name
 ),
@@ -79,7 +79,7 @@ AND tablename IN (
   'survey_questions', 'custom_questions', 'custom_question_responses',
   'organization_memberships', 'profiles', 'subscriptions', 'payment_history',
   'organizations', 'plans', 'redemption_codes', 'redemptions', 'schools',
-  'custom_scripts', 'organization_invitations', 'organization_groups',
+  'organization_invitations', 'organization_groups',
   'organization_group_memberships'
 )
 ORDER BY tablename;
