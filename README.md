@@ -1,69 +1,36 @@
-# Welcome to your Lovable project
+# Human Kind Wellbeing Surveys
 
-## Project info
+The National Staff Wellbeing Survey platform. Schools create staff wellbeing surveys, send them out, analyse the results against benchmarks and build action plans from them.
 
-**URL**: https://lovable.dev/projects/cc3a8c90-600a-4945-a4d6-ba60dbeb383d
+See [AppDescription.md](AppDescription.md) for a fuller description of the features.
 
-## How can I edit this code?
+## Stack
 
-There are several ways of editing your application.
+- React 18 + TypeScript, built with Vite
+- Tailwind CSS and shadcn/ui components
+- Supabase for the database, logins and server-side edge functions
+- Stripe for payments, Resend for email, HubSpot for CRM, OpenAI for survey summaries
+- Hosted on Vercel, deployed from GitHub
 
-**Use Lovable**
+## Running locally
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/cc3a8c90-600a-4945-a4d6-ba60dbeb383d) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+Requires Node.js 20 or later.
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The site runs at http://localhost:8080. It connects to the live Supabase project, so anything you do locally uses real data.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Tests: `npm test` (Vitest) and `npm run test:e2e` (Playwright).
 
-**Use GitHub Codespaces**
+## Deploying
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+The site is hosted on Vercel. Merging into `main` deploys to production, and every pull request gets a preview deployment.
 
-## What technologies are used for this project?
+Supabase edge functions in `supabase/functions/` are deployed separately with the Supabase CLI:
 
-This project is built with .
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/cc3a8c90-600a-4945-a4d6-ba60dbeb383d) and click on Share -> Publish.
-
-## I want to use a custom domain - is that possible?
-
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+```sh
+npx supabase functions deploy <function-name>
+```

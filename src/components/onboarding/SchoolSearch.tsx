@@ -4,7 +4,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Loader2, Search } from 'lucide-react';
 import Pagination from '../surveys/Pagination';
-import { SchoolSearchResult } from '../../types/auth';
+import { SchoolSearchResult, SignUpFormData } from '../../types/auth';
 
 interface SchoolSearchProps {
   searchQuery: string;
@@ -23,6 +23,9 @@ interface SchoolSearchProps {
     address: string;
   } | null;
   onChangeSchool: () => void;
+  formData: SignUpFormData;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  isLoading: boolean;
 }
 
 const SchoolSearch: React.FC<SchoolSearchProps> = ({
@@ -38,7 +41,10 @@ const SchoolSearch: React.FC<SchoolSearchProps> = ({
   selectSchool,
   toggleCustomSchool,
   selectedSchool,
-  onChangeSchool
+  onChangeSchool,
+  formData,
+  onChange,
+  isLoading
 }) => {
   return (
     <div className="space-y-4">
@@ -47,18 +53,43 @@ const SchoolSearch: React.FC<SchoolSearchProps> = ({
       </label>
       
       {selectedSchool ? (
-        <div className="p-4 border rounded-md bg-gray-50">
-          <p className="font-medium">{selectedSchool.name}</p>
-          <p className="text-sm text-gray-600 mt-1">{selectedSchool.address}</p>
-          <Button 
-            type="button" 
-            variant="outline" 
-            size="sm" 
-            className="mt-2"
-            onClick={onChangeSchool}
-          >
-            Change School
-          </Button>
+        <div className="space-y-4">
+          <div className="p-4 border rounded-md bg-gray-50">
+            <p className="font-medium">{selectedSchool.name}</p>
+            <p className="text-sm text-gray-600 mt-1">{selectedSchool.address}</p>
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="sm" 
+              className="mt-2"
+              onClick={onChangeSchool}
+            >
+              Change School
+            </Button>
+          </div>
+          
+          <div>
+            <label htmlFor="organizationName" className="block text-sm font-medium text-gray-700 mb-1">
+              Organisation Name
+              <span className="text-xs text-gray-500 ml-2">
+                (Customise if needed)
+              </span>
+            </label>
+            <Input
+              id="organizationName"
+              name="organizationName"
+              type="text"
+              required
+              className="form-input w-full"
+              value={formData.organizationName}
+              onChange={onChange}
+              disabled={isLoading}
+              placeholder="How would you like to name your organisation?"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              This will be the name of your organisation in the system. You can customise it (e.g., "HR Team" or "Wellbeing Committee").
+            </p>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">

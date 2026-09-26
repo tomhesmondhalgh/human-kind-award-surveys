@@ -1,25 +1,46 @@
 
 import { useState } from 'react';
 import { CustomQuestion, convertToCustomQuestion, convertToCustomQuestions } from '../types/customQuestions';
-import { supabase } from '../lib/supabase';
-import { toast } from 'sonner';
-import { isValidQuestionType, createDbQuestionPayload } from '../utils/questionTypeUtils';
-import { fixCustomQuestionTypes } from '../utils/typeConversions';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/services/toastService';
+import { useOrganization } from '../contexts/OrganizationContext';
+
+// Helper function to create a DB question payload
+const createDbQuestionPayload = (question: Partial<CustomQuestion>, organizationId?: string) => {
+  return {
+    text: question.text || '',
+    type: question.type || 'text',
+    options: question.options || null,
+    organization_id: organizationId || null
+  };
+};
 
 export function useQuestionStore() {
   const [questions, setQuestions] = useState<CustomQuestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { currentOrganization } = useOrganization();
 
   const fetchQuestions = async (showArchived: boolean = false) => {
     try {
       setIsLoading(true);
-      console.log(`Fetching questions (showArchived=${showArchived})`);
+      console.log(`Fetching questions (showArchived=${showArchived}) for organization:`, currentOrganization?.id);
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('custom_questions')
         .select('*')
         .eq('archived', showArchived)
         .order('created_at', { ascending: false });
+
+      // Filter by current organization or global questions (organization_id is null)
+      if (currentOrganization?.id) {
+        // Use .or() to properly handle NULL values
+        query = query.or(`organization_id.is.null,organization_id.eq.${currentOrganization.id}`);
+      } else {
+        // If no organization, only show global questions
+        query = query.is('organization_id', null);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching questions:', error);
@@ -51,7 +72,10 @@ export function useQuestionStore() {
       }
       
       const dbQuestion = {
-        ...createDbQuestionPayload(question),
+        text: question.text,
+        type: question.type,
+        options: question.options,
+        organization_id: question.organization_id || currentOrganization?.id || null,
         creator_id: user.id,
         archived: false
       };
@@ -87,11 +111,13 @@ export function useQuestionStore() {
     try {
       console.log('Raw update data:', updates);
       
-      const updateData: Partial<CustomQuestion> = {
-        text: updates.text,
-        type: 'text',
-        archived: updates.archived
-      };
+      // Build update data dynamically based on what's provided
+      const updateData: any = {};
+      
+      if (updates.text !== undefined) updateData.text = updates.text;
+      if (updates.type !== undefined) updateData.type = updates.type;
+      if (updates.options !== undefined) updateData.options = updates.options;
+      if (updates.archived !== undefined) updateData.archived = updates.archived;
       
       console.log('Sanitized update data:', updateData);
 
@@ -105,7 +131,7 @@ export function useQuestionStore() {
       // Update state with converted types
       setQuestions(prev => prev.map(q => {
         if (q.id === id) {
-          return { ...q, ...updateData };
+          return { ...q, ...updates };
         }
         return q;
       }));

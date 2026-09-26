@@ -14,6 +14,7 @@ interface EditableCellProps {
   onEditChange: (value: string) => void;
   onEditSave: () => void;
   isMultiline?: boolean;
+  readOnly?: boolean;
 }
 
 const EditableCell: React.FC<EditableCellProps> = ({
@@ -26,8 +27,17 @@ const EditableCell: React.FC<EditableCellProps> = ({
   onEditStart,
   onEditChange,
   onEditSave,
-  isMultiline = false
+  isMultiline = false,
+  readOnly = false
 }) => {
+  if (readOnly) {
+    return (
+      <div className={`${isMultiline ? 'min-h-[40px] text-sm flex items-center text-left' : 'h-8 flex items-center text-sm'}`}>
+        {value || <span className="text-gray-400 text-xs">{placeholder}</span>}
+      </div>
+    );
+  }
+
   if (isEditing) {
     return (
       <div className="flex">

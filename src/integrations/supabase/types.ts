@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "13.0.5"
+  }
   public: {
     Tables: {
       action_plan_descriptors: {
@@ -19,6 +24,7 @@ export type Database = {
           index_number: string | null
           key_actions: string | null
           last_updated: string | null
+          organization_id: string
           reference: string
           section: string
           status: Database["public"]["Enums"]["descriptor_status"]
@@ -34,6 +40,7 @@ export type Database = {
           index_number?: string | null
           key_actions?: string | null
           last_updated?: string | null
+          organization_id: string
           reference: string
           section: string
           status?: Database["public"]["Enums"]["descriptor_status"]
@@ -49,6 +56,7 @@ export type Database = {
           index_number?: string | null
           key_actions?: string | null
           last_updated?: string | null
+          organization_id?: string
           reference?: string
           section?: string
           status?: Database["public"]["Enums"]["descriptor_status"]
@@ -56,6 +64,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "action_plan_descriptors_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "action_plan_descriptors_template_id_fkey"
             columns: ["template_id"]
@@ -97,11 +112,65 @@ export type Database = {
           },
         ]
       }
+      action_plan_submissions: {
+        Row: {
+          approved_at: string | null
+          created_at: string
+          id: string
+          next_submission_due: string | null
+          organization_id: string
+          reviewed_at: string | null
+          reviewer_notes: string | null
+          status: Database["public"]["Enums"]["accreditation_status"]
+          submission_data: Json | null
+          submitted_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          created_at?: string
+          id?: string
+          next_submission_due?: string | null
+          organization_id: string
+          reviewed_at?: string | null
+          reviewer_notes?: string | null
+          status?: Database["public"]["Enums"]["accreditation_status"]
+          submission_data?: Json | null
+          submitted_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          created_at?: string
+          id?: string
+          next_submission_due?: string | null
+          organization_id?: string
+          reviewed_at?: string | null
+          reviewer_notes?: string | null
+          status?: Database["public"]["Enums"]["accreditation_status"]
+          submission_data?: Json | null
+          submitted_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "action_plan_submissions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       action_plan_templates: {
         Row: {
           created_at: string
           id: string
           name: string
+          organization_id: string
           updated_at: string
           user_id: string
         }
@@ -109,6 +178,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          organization_id: string
           updated_at?: string
           user_id: string
         }
@@ -116,10 +186,19 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          organization_id?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "action_plan_templates_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       custom_question_responses: {
         Row: {
@@ -167,6 +246,7 @@ export type Database = {
           creator_id: string
           id: string
           options: string[] | null
+          organization_id: string | null
           text: string
           type: string
         }
@@ -176,6 +256,7 @@ export type Database = {
           creator_id: string
           id?: string
           options?: string[] | null
+          organization_id?: string | null
           text: string
           type: string
         }
@@ -185,6 +266,7 @@ export type Database = {
           creator_id?: string
           id?: string
           options?: string[] | null
+          organization_id?: string | null
           text?: string
           type?: string
         }
@@ -196,57 +278,25 @@ export type Database = {
           id: string
           is_active: boolean
           script_content: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           is_active?: boolean
           script_content: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           is_active?: boolean
           script_content?: string
+          user_id?: string | null
         }
         Relationships: []
       }
-      group_members: {
-        Row: {
-          created_at: string
-          group_id: string
-          id: string
-          role: Database["public"]["Enums"]["user_role_type"]
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          group_id: string
-          id?: string
-          role?: Database["public"]["Enums"]["user_role_type"]
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          group_id?: string
-          id?: string
-          role?: Database["public"]["Enums"]["user_role_type"]
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "group_members_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "groups"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      group_organizations: {
+      organization_group_memberships: {
         Row: {
           created_at: string
           group_id: string
@@ -267,49 +317,55 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "group_organizations_group_id_fkey"
+            foreignKeyName: "organization_group_memberships_group_id_fkey"
             columns: ["group_id"]
             isOneToOne: false
-            referencedRelation: "groups"
+            referencedRelation: "organization_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_group_memberships_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
       }
-      groups: {
+      organization_groups: {
         Row: {
           created_at: string
-          description: string | null
           id: string
           name: string
+          type: string
           updated_at: string
         }
         Insert: {
           created_at?: string
-          description?: string | null
           id?: string
           name: string
+          type: string
           updated_at?: string
         }
         Update: {
           created_at?: string
-          description?: string | null
           id?: string
           name?: string
+          type?: string
           updated_at?: string
         }
         Relationships: []
       }
-      invitations: {
+      organization_invitations: {
         Row: {
           accepted_at: string | null
           created_at: string
           email: string
           expires_at: string
-          group_id: string | null
           id: string
           invited_by: string
-          organization_id: string | null
-          role: Database["public"]["Enums"]["user_role_type"]
+          organization_id: string
+          role: Database["public"]["Enums"]["organization_role"]
           token: string
         }
         Insert: {
@@ -317,11 +373,10 @@ export type Database = {
           created_at?: string
           email: string
           expires_at: string
-          group_id?: string | null
           id?: string
           invited_by: string
-          organization_id?: string | null
-          role: Database["public"]["Enums"]["user_role_type"]
+          organization_id: string
+          role?: Database["public"]["Enums"]["organization_role"]
           token: string
         }
         Update: {
@@ -329,23 +384,43 @@ export type Database = {
           created_at?: string
           email?: string
           expires_at?: string
-          group_id?: string | null
           id?: string
           invited_by?: string
-          organization_id?: string | null
-          role?: Database["public"]["Enums"]["user_role_type"]
+          organization_id?: string
+          role?: Database["public"]["Enums"]["organization_role"]
           token?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_organization_invitations_invited_by"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_organization_invitations_organization_id"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_invitations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
-      organization_members: {
+      organization_memberships: {
         Row: {
           created_at: string
           id: string
           is_primary: boolean
           organization_id: string
-          role: Database["public"]["Enums"]["user_role_type"]
-          updated_at: string
+          role: Database["public"]["Enums"]["organization_role"]
           user_id: string
         }
         Insert: {
@@ -353,8 +428,7 @@ export type Database = {
           id?: string
           is_primary?: boolean
           organization_id: string
-          role?: Database["public"]["Enums"]["user_role_type"]
-          updated_at?: string
+          role?: Database["public"]["Enums"]["organization_role"]
           user_id: string
         }
         Update: {
@@ -362,9 +436,57 @@ export type Database = {
           id?: string
           is_primary?: boolean
           organization_id?: string
-          role?: Database["public"]["Enums"]["user_role_type"]
-          updated_at?: string
+          role?: Database["public"]["Enums"]["organization_role"]
           user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_organization_memberships_organization_id"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_organization_memberships_user_id"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_memberships_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          address: string | null
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          urn: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          urn?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          urn?: string | null
         }
         Relationships: []
       }
@@ -494,14 +616,6 @@ export type Database = {
           school_address: string | null
           school_name: string | null
           updated_at: string
-          xero_access_token: string | null
-          xero_auth_state: string | null
-          xero_code_verifier: string | null
-          xero_connected: boolean | null
-          xero_connected_at: string | null
-          xero_redirect_uri: string | null
-          xero_refresh_token: string | null
-          xero_token_expires_at: number | null
         }
         Insert: {
           created_at?: string
@@ -512,14 +626,6 @@ export type Database = {
           school_address?: string | null
           school_name?: string | null
           updated_at?: string
-          xero_access_token?: string | null
-          xero_auth_state?: string | null
-          xero_code_verifier?: string | null
-          xero_connected?: boolean | null
-          xero_connected_at?: string | null
-          xero_redirect_uri?: string | null
-          xero_refresh_token?: string | null
-          xero_token_expires_at?: number | null
         }
         Update: {
           created_at?: string
@@ -530,49 +636,76 @@ export type Database = {
           school_address?: string | null
           school_name?: string | null
           updated_at?: string
-          xero_access_token?: string | null
-          xero_auth_state?: string | null
-          xero_code_verifier?: string | null
-          xero_connected?: boolean | null
-          xero_connected_at?: string | null
-          xero_redirect_uri?: string | null
-          xero_refresh_token?: string | null
-          xero_token_expires_at?: number | null
         }
         Relationships: []
       }
-      roles: {
+      redemption_codes: {
         Row: {
+          code: string
           created_at: string
-          description: string | null
-          display_name: string
-          hierarchy_order: number
+          created_by: string | null
+          current_uses: number | null
+          expires_at: string | null
           id: string
-          level: Database["public"]["Enums"]["role_hierarchy_level"]
-          name: string
+          is_active: boolean
+          max_uses: number | null
+          plan_type: Database["public"]["Enums"]["plan_type"]
           updated_at: string
         }
         Insert: {
+          code: string
           created_at?: string
-          description?: string | null
-          display_name: string
-          hierarchy_order: number
+          created_by?: string | null
+          current_uses?: number | null
+          expires_at?: string | null
           id?: string
-          level: Database["public"]["Enums"]["role_hierarchy_level"]
-          name: string
+          is_active?: boolean
+          max_uses?: number | null
+          plan_type: Database["public"]["Enums"]["plan_type"]
           updated_at?: string
         }
         Update: {
+          code?: string
           created_at?: string
-          description?: string | null
-          display_name?: string
-          hierarchy_order?: number
+          created_by?: string | null
+          current_uses?: number | null
+          expires_at?: string | null
           id?: string
-          level?: Database["public"]["Enums"]["role_hierarchy_level"]
-          name?: string
+          is_active?: boolean
+          max_uses?: number | null
+          plan_type?: Database["public"]["Enums"]["plan_type"]
           updated_at?: string
         }
         Relationships: []
+      }
+      redemptions: {
+        Row: {
+          code_id: string | null
+          id: string
+          redeemed_at: string
+          user_id: string | null
+        }
+        Insert: {
+          code_id?: string | null
+          id?: string
+          redeemed_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          code_id?: string | null
+          id?: string
+          redeemed_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "redemptions_code_id_fkey"
+            columns: ["code_id"]
+            isOneToOne: false
+            referencedRelation: "redemption_codes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       schools: {
         Row: {
@@ -1067,6 +1200,13 @@ export type Database = {
             foreignKeyName: "survey_questions_survey_id_fkey"
             columns: ["survey_id"]
             isOneToOne: false
+            referencedRelation: "public_survey_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_questions_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
             referencedRelation: "survey_templates"
             referencedColumns: ["id"]
           },
@@ -1132,6 +1272,13 @@ export type Database = {
             foreignKeyName: "survey_responses_survey_template_id_fkey"
             columns: ["survey_template_id"]
             isOneToOne: false
+            referencedRelation: "public_survey_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_responses_survey_template_id_fkey"
+            columns: ["survey_template_id"]
+            isOneToOne: false
             referencedRelation: "survey_templates"
             referencedColumns: ["id"]
           },
@@ -1141,388 +1288,387 @@ export type Database = {
         Row: {
           close_date: string | null
           created_at: string
-          creator_id: string | null
           date: string
           emails: string | null
           id: string
           name: string
+          organization_id: string
           status: Database["public"]["Enums"]["survey_status"] | null
           updated_at: string
         }
         Insert: {
           close_date?: string | null
           created_at?: string
-          creator_id?: string | null
           date?: string
           emails?: string | null
           id?: string
           name: string
+          organization_id: string
           status?: Database["public"]["Enums"]["survey_status"] | null
           updated_at?: string
         }
         Update: {
           close_date?: string | null
           created_at?: string
-          creator_id?: string | null
           date?: string
           emails?: string | null
           id?: string
           name?: string
+          organization_id?: string
           status?: Database["public"]["Enums"]["survey_status"] | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "survey_templates_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
           created_at: string | null
+          created_by: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
-          role_id: string
           user_id: string
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
           id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          role_id: string
+          role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
-          role_id?: string
           user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_roles_role_id_fkey"
-            columns: ["role_id"]
-            isOneToOne: false
-            referencedRelation: "roles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      xero_contact_mappings: {
-        Row: {
-          created_at: string
-          id: string
-          school_name: string
-          updated_at: string
-          xero_contact_id: string
-          xero_contact_name: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          school_name: string
-          updated_at?: string
-          xero_contact_id: string
-          xero_contact_name: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          school_name?: string
-          updated_at?: string
-          xero_contact_id?: string
-          xero_contact_name?: string
-        }
-        Relationships: []
-      }
-      xero_credentials: {
-        Row: {
-          access_token: string
-          expires_at: string
-          id: number
-          refresh_token: string
-          scope: string | null
-          token_type: string
-          updated_at: string
-        }
-        Insert: {
-          access_token: string
-          expires_at: string
-          id?: number
-          refresh_token: string
-          scope?: string | null
-          token_type: string
-          updated_at?: string
-        }
-        Update: {
-          access_token?: string
-          expires_at?: string
-          id?: number
-          refresh_token?: string
-          scope?: string | null
-          token_type?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      xero_invoice_links: {
-        Row: {
-          created_at: string
-          id: string
-          payment_id: string
-          status: string
-          updated_at: string
-          xero_invoice_id: string
-          xero_invoice_number: string
-          xero_invoice_url: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          payment_id: string
-          status: string
-          updated_at?: string
-          xero_invoice_id: string
-          xero_invoice_number: string
-          xero_invoice_url?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          payment_id?: string
-          status?: string
-          updated_at?: string
-          xero_invoice_id?: string
-          xero_invoice_number?: string
-          xero_invoice_url?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "xero_invoice_links_payment_id_fkey"
-            columns: ["payment_id"]
-            isOneToOne: false
-            referencedRelation: "payment_history"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      xero_oauth_states: {
-        Row: {
-          created_at: string
-          id: string
-          state: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          state: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          state?: string
-        }
-        Relationships: []
-      }
-      xero_tenants: {
-        Row: {
-          created_at: string
-          id: string
-          tenant_id: string
-          tenant_name: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          tenant_id: string
-          tenant_name: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          tenant_id?: string
-          tenant_name?: string
         }
         Relationships: []
       }
     }
     Views: {
-      [_ in never]: never
+      public_plans: {
+        Row: {
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          duration_months: number | null
+          features: Json | null
+          id: string | null
+          is_active: boolean | null
+          is_popular: boolean | null
+          name: string | null
+          price: number | null
+          purchase_type: string | null
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          duration_months?: number | null
+          features?: Json | null
+          id?: string | null
+          is_active?: boolean | null
+          is_popular?: boolean | null
+          name?: string | null
+          price?: number | null
+          purchase_type?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          duration_months?: number | null
+          features?: Json | null
+          id?: string | null
+          is_active?: boolean | null
+          is_popular?: boolean | null
+          name?: string | null
+          price?: number | null
+          purchase_type?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      public_survey_templates: {
+        Row: {
+          close_date: string | null
+          created_at: string | null
+          date: string | null
+          id: string | null
+          name: string | null
+          organization_id: string | null
+          status: Database["public"]["Enums"]["survey_status"] | null
+        }
+        Insert: {
+          close_date?: string | null
+          created_at?: string | null
+          date?: string | null
+          id?: string | null
+          name?: string | null
+          organization_id?: string | null
+          status?: Database["public"]["Enums"]["survey_status"] | null
+        }
+        Update: {
+          close_date?: string | null
+          created_at?: string | null
+          date?: string | null
+          id?: string | null
+          name?: string | null
+          organization_id?: string | null
+          status?: Database["public"]["Enums"]["survey_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_templates_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_payment_summary: {
+        Row: {
+          amount: number | null
+          billing_address: string | null
+          billing_contact_email: string | null
+          billing_contact_name: string | null
+          billing_postcode: string | null
+          billing_school_name_redacted: string | null
+          created_at: string | null
+          currency: string | null
+          id: string | null
+          invoice_number: string | null
+          payment_date: string | null
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          payment_status: Database["public"]["Enums"]["payment_status"] | null
+          plan_type: Database["public"]["Enums"]["plan_type"] | null
+          purchase_type: string | null
+          subscription_id: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_history_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
-      count_email_responses: {
-        Args: {
-          survey_id: string
-        }
-        Returns: number
+      accept_invitation_during_signup: {
+        Args: { invitation_token: string; user_uuid: string }
+        Returns: Json
       }
-      count_survey_responses: {
-        Args: {
-          survey_id: string
-        }
-        Returns: number
+      admin_get_all_payments: {
+        Args: never
+        Returns: {
+          amount: number
+          billing_address: string
+          billing_contact_email: string
+          billing_contact_name: string
+          billing_postcode: string
+          billing_school_name: string
+          created_at: string
+          currency: string
+          id: string
+          invoice_id: string
+          invoice_number: string
+          payment_date: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          payment_status: Database["public"]["Enums"]["payment_status"]
+          plan_type: string
+          purchase_type: string
+          stripe_payment_id: string
+          subscription_id: string
+        }[]
       }
+      can_respond_to_custom_question: {
+        Args: { question_uuid: string; response_uuid: string }
+        Returns: boolean
+      }
+      count_email_responses: { Args: { survey_id: string }; Returns: number }
+      count_survey_responses: { Args: { survey_id: string }; Returns: number }
       create_invitation_with_role: {
         Args: {
-          user_email: string
-          org_id: string
-          role_str: string
+          expiry_date: string
           invitation_token: string
           inviter_id: string
-          expiry_date: string
+          org_id: string
+          role_str: string
+          user_email: string
         }
         Returns: {
-          invitation_id: string
-          recipient_email: string
-          org_uuid: string
           creation_date: string
+          invitation_id: string
+          org_uuid: string
+          recipient_email: string
         }[]
       }
       create_or_update_profile: {
         Args: {
-          profile_id: string
           profile_first_name: string
-          profile_last_name: string
+          profile_id: string
           profile_job_title: string
-          profile_school_name: string
+          profile_last_name: string
           profile_school_address: string
+          profile_school_name: string
         }
         Returns: undefined
       }
-      get_organization_invitations: {
-        Args: {
-          org_id: string
-        }
+      get_user_memberships: {
+        Args: { user_uuid: string }
         Returns: {
-          accepted_at: string | null
           created_at: string
-          email: string
-          expires_at: string
-          group_id: string | null
           id: string
-          invited_by: string
-          organization_id: string | null
-          role: Database["public"]["Enums"]["user_role_type"]
-          token: string
+          is_primary: boolean
+          organization_id: string
+          role: Database["public"]["Enums"]["organization_role"]
+          user_id: string
         }[]
-      }
-      get_organization_role: {
-        Args: {
-          user_uuid: string
-          org_id: string
+        SetofOptions: {
+          from: "*"
+          to: "organization_memberships"
+          isOneToOne: false
+          isSetofReturn: true
         }
-        Returns: string
-      }
-      get_user_highest_role: {
-        Args: {
-          user_uuid: string
-        }
-        Returns: string
       }
       get_user_organizations: {
-        Args: {
-          user_uuid: string
-        }
+        Args: { user_uuid: string }
         Returns: {
-          organization_id: string
-          role: Database["public"]["Enums"]["user_role_type"]
+          address: string
+          created_at: string
+          id: string
+          name: string
+          role: Database["public"]["Enums"]["organization_role"]
+          updated_at: string
+          urn: string
         }[]
-      }
-      get_user_role: {
-        Args: {
-          user_id: string
-        }
-        Returns: Database["public"]["Enums"]["app_role"]
-      }
-      get_user_role_v2: {
-        Args: {
-          user_id: string
-        }
-        Returns: string
       }
       get_user_subscription: {
-        Args: {
-          user_uuid: string
-        }
+        Args: { user_uuid: string }
         Returns: {
-          plan: Database["public"]["Enums"]["plan_type"]
           is_active: boolean
+          plan: Database["public"]["Enums"]["plan_type"]
         }[]
       }
-      has_role_v2: {
+      has_role: {
         Args: {
-          user_uuid: string
-          required_role: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
         }
         Returns: boolean
       }
-      role_has_permission: {
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_owner: { Args: { record_user_id: string }; Returns: boolean }
+      is_survey_open: { Args: { survey_id: string }; Returns: boolean }
+      redeem_code: {
         Args: {
-          user_role: string
-          required_role: string
+          code_uuid: string
+          plan: Database["public"]["Enums"]["plan_type"]
+          user_uuid: string
         }
+        Returns: Json
+      }
+      setup_user_organization: {
+        Args: {
+          org_address: string
+          org_name: string
+          org_urn: string
+          user_uuid: string
+        }
+        Returns: string
+      }
+      user_can_access_custom_question_response: {
+        Args: { question_uuid: string; user_uuid: string }
+        Returns: boolean
+      }
+      user_can_access_progress_note: {
+        Args: { note_descriptor_id: string; user_uuid: string }
+        Returns: boolean
+      }
+      user_can_access_survey_response: {
+        Args: { template_id: string; user_uuid: string }
+        Returns: boolean
+      }
+      user_can_edit_progress_note: {
+        Args: { note_descriptor_id: string; user_uuid: string }
         Returns: boolean
       }
       user_can_edit_survey: {
-        Args: {
-          user_uuid: string
-          template_id: string
-        }
+        Args: { template_id: string; user_uuid: string }
+        Returns: boolean
+      }
+      user_can_manage_org_membership: {
+        Args: { org_id: string; user_uuid: string }
         Returns: boolean
       }
       user_can_view_survey: {
-        Args: {
-          user_uuid: string
-          template_id: string
-        }
+        Args: { template_id: string; user_uuid: string }
         Returns: boolean
       }
       user_has_access: {
         Args: {
-          user_uuid: string
           required_plan: Database["public"]["Enums"]["plan_type"]
+          user_uuid: string
         }
         Returns: boolean
       }
       user_has_organization_role: {
-        Args: {
-          user_uuid: string
-          org_id: string
-          required_role: Database["public"]["Enums"]["user_role_type"]
-        }
+        Args: { org_id: string; required_role: string; user_uuid: string }
         Returns: boolean
       }
-      user_has_organization_role_v2: {
-        Args: {
-          user_uuid: string
-          org_id: string
-          required_role: string
-        }
+      user_is_organization_admin: {
+        Args: { org_id: string; user_uuid: string }
+        Returns: boolean
+      }
+      user_is_organization_member: {
+        Args: { org_id: string; user_uuid: string }
         Returns: boolean
       }
     }
     Enums: {
-      app_role: "administrator" | "user"
+      accreditation_status:
+        | "not_submitted"
+        | "submitted"
+        | "under_review"
+        | "approved"
+        | "rejected"
+      app_role: "admin" | "user"
       descriptor_status:
         | "Not Started"
         | "In Progress"
         | "Blocked"
         | "Completed"
         | "Not Applicable"
-      payment_method: "stripe" | "invoice" | "manual"
+      organization_role: "admin" | "editor" | "viewer"
+      payment_method: "stripe" | "invoice" | "manual" | "redemption_code"
       payment_status:
         | "pending"
         | "invoice_raised"
         | "payment_made"
         | "cancelled"
         | "refunded"
-      plan_type: "free" | "foundation" | "progress" | "premium"
+      plan_type: "free" | "foundation" | "progress" | "premium" | "legacy"
       role_hierarchy_level: "system" | "group" | "organization" | "standard"
       subscription_status: "active" | "canceled" | "expired" | "pending"
       survey_status: "Saved" | "Scheduled" | "Sent" | "Completed" | "Archived"
-      user_role_type:
-        | "administrator"
-        | "group_admin"
-        | "organization_admin"
-        | "editor"
-        | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1530,27 +1676,33 @@ export type Database = {
   }
 }
 
-type PublicSchema = Database[Extract<keyof Database, "public">]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
-  PublicTableNameOrOptions extends
-    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-        Database[PublicTableNameOrOptions["schema"]]["Views"])
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
-        PublicSchema["Views"])
-    ? (PublicSchema["Tables"] &
-        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -1558,20 +1710,24 @@ export type Tables<
     : never
 
 export type TablesInsert<
-  PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -1579,20 +1735,24 @@ export type TablesInsert<
     : never
 
 export type TablesUpdate<
-  PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -1600,29 +1760,70 @@ export type TablesUpdate<
     : never
 
 export type Enums<
-  PublicEnumNameOrOptions extends
-    | keyof PublicSchema["Enums"]
-    | { schema: keyof Database },
-  EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = PublicEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
-    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof PublicSchema["CompositeTypes"]
-    | { schema: keyof Database },
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
-    ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      accreditation_status: [
+        "not_submitted",
+        "submitted",
+        "under_review",
+        "approved",
+        "rejected",
+      ],
+      app_role: ["admin", "user"],
+      descriptor_status: [
+        "Not Started",
+        "In Progress",
+        "Blocked",
+        "Completed",
+        "Not Applicable",
+      ],
+      organization_role: ["admin", "editor", "viewer"],
+      payment_method: ["stripe", "invoice", "manual", "redemption_code"],
+      payment_status: [
+        "pending",
+        "invoice_raised",
+        "payment_made",
+        "cancelled",
+        "refunded",
+      ],
+      plan_type: ["free", "foundation", "progress", "premium", "legacy"],
+      role_hierarchy_level: ["system", "group", "organization", "standard"],
+      subscription_status: ["active", "canceled", "expired", "pending"],
+      survey_status: ["Saved", "Scheduled", "Sent", "Completed", "Archived"],
+    },
+  },
+} as const

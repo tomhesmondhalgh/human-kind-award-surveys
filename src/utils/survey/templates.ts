@@ -1,4 +1,4 @@
-import { supabase } from "../../lib/supabase";
+import { supabase } from "../../integrations/supabase/client";
 import { SurveyTemplate, SurveyWithResponses } from "../types/survey";
 import { countSurveyResponses } from "./responses";
 import { isSurveyClosed } from "./status";
@@ -7,15 +7,42 @@ export const getSurveyById = async (id: string): Promise<SurveyTemplate | null> 
   try {
     console.log(`Fetching survey template with ID: ${id}`);
     
-    const { data, error } = await supabase
-      .from('survey_templates')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
+    // Check if Supabase client is properly initialized
+    if (!supabase) {
+      console.error('Supabase client is not initialized');
+      throw new Error('Database connection error');
+    }
+    
+    // Try to get the user's session to determine which table to query
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    // If user is authenticated, use the full table (includes emails)
+    // Otherwise, use the public-safe view (excludes emails to prevent exposure)
+    let data, error;
+    
+    if (session?.user) {
+      // Authenticated user - query full table
+      const result = await supabase
+        .from('survey_templates')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+      data = result.data;
+      error = result.error;
+    } else {
+      // Public/anonymous user - query public-safe view
+      const result = await supabase
+        .from('public_survey_templates')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+      data = result.data;
+      error = result.error;
+    }
     
     if (error) {
       console.error('Error fetching survey template:', error);
-      return null;
+      throw error;
     }
     
     if (!data) {
@@ -31,12 +58,38 @@ export const getSurveyById = async (id: string): Promise<SurveyTemplate | null> 
   }
 };
 
-export const getAllSurveyTemplates = async (): Promise<SurveyTemplate[]> => {
+export const getAllSurveyTemplates = async (organizationId?: string): Promise<SurveyTemplate[]> => {
   try {
-    const { data, error } = await supabase
+    // Verify authentication
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session?.user) {
+      console.error('No valid session for survey templates fetch:', sessionError);
+      return [];
+    }
+    
+    let query = supabase
       .from('survey_templates')
       .select('*')
-      .order('date', { ascending: false });
+      .order('created_at', { ascending: false });
+    
+    if (organizationId) {
+      // Verify user has access to this organization
+      const { data: hasAccess, error: accessError } = await supabase
+        .rpc('user_is_organization_member', { 
+          user_uuid: session.user.id, 
+          org_id: organizationId 
+        });
+      
+      if (accessError || !hasAccess) {
+        console.error('User does not have access to organization:', organizationId);
+        return [];
+      }
+      
+      query = query.eq('organization_id', organizationId);
+    }
+    
+    const { data, error } = await query;
     
     if (error) {
       console.error('Error fetching survey templates:', error);
@@ -50,21 +103,42 @@ export const getAllSurveyTemplates = async (): Promise<SurveyTemplate[]> => {
   }
 };
 
-export const getRecentSurveys = async (limit: number = 3, userId?: string): Promise<SurveyWithResponses[]> => {
+export const getRecentSurveys = async (limit: number = 3, organizationId?: string): Promise<SurveyWithResponses[]> => {
   try {
-    console.log(`Fetching recent surveys, limit: ${limit}, userId: ${userId}`);
+    console.log(`Fetching recent surveys, limit: ${limit}, organizationId: ${organizationId}`);
     
-    let query = supabase
-      .from('survey_templates')
-      .select('*')
-      .order('date', { ascending: false })
-      .limit(limit);
+    // Verify authentication
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
-    if (userId) {
-      query = query.eq('creator_id', userId);
+    if (sessionError || !session?.user) {
+      console.error('No valid session for recent surveys fetch:', sessionError);
+      return [];
     }
     
-    const { data: templates, error: templatesError } = await query;
+    if (!organizationId) {
+      console.warn('No organization ID provided for recent surveys');
+      return [];
+    }
+    
+    // Verify user has access to this organization
+    const { data: hasAccess, error: accessError } = await supabase
+      .rpc('user_is_organization_member', { 
+        user_uuid: session.user.id, 
+        org_id: organizationId 
+      });
+    
+    if (accessError || !hasAccess) {
+      console.error('User does not have access to organization:', organizationId);
+      return [];
+    }
+    
+    const { data: templates, error: templatesError } = await supabase
+      .from('survey_templates')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .neq('status', 'Archived')
+      .order('created_at', { ascending: false })
+      .limit(limit);
     
     if (templatesError) {
       console.error('Error fetching recent surveys:', templatesError);
@@ -109,7 +183,7 @@ export const checkForClosedSurveys = async () => {
         id,
         name,
         close_date,
-        creator_id,
+        organization_id,
         profiles(
           email,
           first_name,
@@ -118,7 +192,7 @@ export const checkForClosedSurveys = async () => {
       `)
       .gte('close_date', todayStart)
       .lte('close_date', todayEnd)
-      .not('creator_id', 'is', null)
+      .not('organization_id', 'is', null)
       .not('close_date', 'is', null);
     
     if (error) {
@@ -130,8 +204,8 @@ export const checkForClosedSurveys = async () => {
     
     if (closedSurveys && closedSurveys.length > 0) {
       for (const survey of closedSurveys) {
-        if (!survey.creator_id || !survey.profiles) {
-          console.log(`Survey ${survey.id} has no creator, skipping notification`);
+        if (!survey.organization_id || !survey.profiles) {
+          console.log(`Survey ${survey.id} has no organization or profiles, skipping notification`);
           continue;
         }
         
@@ -145,7 +219,7 @@ export const checkForClosedSurveys = async () => {
         }
         
         const creator = {
-          id: survey.creator_id,
+          id: survey.organization_id,
           email: creatorProfile.email,
           firstName: creatorProfile.first_name,
           lastName: creatorProfile.last_name

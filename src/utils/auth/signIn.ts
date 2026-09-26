@@ -1,7 +1,4 @@
-
-import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
 
 // Handle sign in with email and password
 export async function signInWithEmail(email: string, password: string) {
@@ -27,10 +24,6 @@ export async function signInWithEmail(email: string, password: string) {
       throw error;
     }
 
-    toast({
-      title: 'Success',
-      description: 'Logged in successfully!'
-    });
     return { error: null, success: true };
   } catch (error) {
     console.error('Error signing in:', error);

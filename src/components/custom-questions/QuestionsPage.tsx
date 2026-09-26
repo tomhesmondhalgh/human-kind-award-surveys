@@ -2,56 +2,94 @@
 import React, { useEffect, useState } from 'react';
 import { useQuestionStore } from '../../hooks/useQuestionStore';
 import { Button } from '../ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../ui/card';
-import { Archive, Edit, Plus } from 'lucide-react';
+import { Plus, Eye, EyeOff, Archive } from 'lucide-react';
 import QuestionModal from './QuestionModal';
+import QuestionsList from './QuestionsList';
 import { CustomQuestion } from '../../types/customQuestions';
-import { Badge } from '../ui/badge';
-import { usePermissions } from '../../hooks/usePermissions';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { Skeleton } from '../ui/skeleton';
+import Pagination from '../surveys/Pagination';
+import { useOrganization } from '../../contexts/OrganizationContext';
+import { canEditContent } from '@/utils/organizationPermissions';
+
+const QuestionsListSkeleton = () => {
+  return (
+    <div className="space-y-4">
+      <div className="hidden md:block border rounded-lg overflow-hidden">
+        <div className="bg-muted p-4 border-b">
+          <div className="grid grid-cols-12 gap-4">
+            <Skeleton className="h-4 w-24 col-span-5" />
+            <Skeleton className="h-4 w-24 col-span-2" />
+            <Skeleton className="h-4 w-16 col-span-2" />
+            <Skeleton className="h-4 w-20 col-span-3" />
+          </div>
+        </div>
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="p-4 border-b last:border-b-0">
+            <div className="grid grid-cols-12 gap-4 items-center">
+              <div className="col-span-5">
+                <Skeleton className="h-5 w-full max-w-md" />
+              </div>
+              <Skeleton className="h-6 w-24 rounded-full col-span-2" />
+              <Skeleton className="h-4 w-16 col-span-2" />
+              <div className="col-span-3 flex gap-2 justify-end">
+                <Skeleton className="h-9 w-16" />
+                <Skeleton className="h-9 w-20" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      <div className="md:hidden space-y-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="border rounded-lg p-4 space-y-3">
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="h-5 w-32" />
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Skeleton className="h-9 flex-1" />
+              <Skeleton className="h-9 flex-1" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 export default function QuestionsPage() {
   const { questions, isLoading, fetchQuestions, createQuestion, updateQuestion } = useQuestionStore();
+  const { currentOrganization } = useOrganization();
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<CustomQuestion | undefined>();
   const [showArchived, setShowArchived] = useState(false);
-  const [canEditQuestions, setCanEditQuestions] = useState(false);
-  const permissions = usePermissions();
+  const [currentPage, setCurrentPage] = useState(1);
+  
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(questions.length / itemsPerPage);
+  const paginatedQuestions = questions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  
+  const canEdit = canEditContent(currentOrganization?.role);
 
   useEffect(() => {
     const loadQuestions = async () => {
       await fetchQuestions(showArchived);
+      setCurrentPage(1); // Reset to page 1 when toggling archive view
     };
     loadQuestions();
   }, [showArchived]);
 
-  useEffect(() => {
-    const checkEditPermission = async () => {
-      if (permissions && !permissions.isLoading) {
-        const canEdit = await permissions.canEdit();
-        setCanEditQuestions(canEdit);
-      }
-    };
-    
-    checkEditPermission();
-  }, [permissions]);
-
   const handleCreate = async (questionData: Omit<CustomQuestion, 'id' | 'created_at' | 'archived' | 'creator_id'>) => {
-    if (!canEditQuestions) {
-      toast.error("You don't have permission to create questions");
-      return;
-    }
-    
     await createQuestion(questionData);
     setModalOpen(false);
   };
 
   const handleEdit = async (questionData: Omit<CustomQuestion, 'id' | 'created_at' | 'archived' | 'creator_id'>) => {
-    if (!canEditQuestions) {
-      toast.error("You don't have permission to edit questions");
-      return;
-    }
-    
     if (selectedQuestion) {
       await updateQuestion(selectedQuestion.id, questionData);
       setSelectedQuestion(undefined);
@@ -60,104 +98,114 @@ export default function QuestionsPage() {
   };
 
   const handleArchive = async (question: CustomQuestion) => {
-    if (!canEditQuestions) {
-      toast.error("You don't have permission to archive questions");
-      return;
+    // Check usage before archiving
+    if (!question.archived) {
+      const { data: usageData } = await supabase
+        .from('survey_questions')
+        .select('survey_id')
+        .eq('question_id', question.id);
+      
+      if (usageData && usageData.length > 0) {
+        const confirmArchive = window.confirm(
+          `This question is currently used in ${usageData.length} survey(s). Archiving it will not remove it from existing surveys, but it will not be available for new surveys. Continue?`
+        );
+        
+        if (!confirmArchive) return;
+      }
     }
     
     await updateQuestion(question.id, { archived: !question.archived });
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[200px]">
-        <p>Loading questions...</p>
-      </div>
-    );
-  }
+  const handleEditClick = (question: CustomQuestion) => {
+    setSelectedQuestion(question);
+    setModalOpen(true);
+  };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Custom Questions</h1>
-        <div className="space-x-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowArchived(!showArchived)}
-          >
-            {showArchived ? 'Hide Archived' : 'Show Archived'}
-          </Button>
-          {canEditQuestions && (
-            <Button
-              onClick={() => {
-                setSelectedQuestion(undefined);
-                setModalOpen(true);
-              }}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Question
-            </Button>
-          )}
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Custom Questions</h1>
+          <p className="text-muted-foreground mt-1">
+            {canEdit 
+              ? "Create and manage custom questions for your surveys" 
+              : "View custom questions for surveys"}
+          </p>
         </div>
+        {canEdit && (
+          <Button
+            onClick={() => {
+              setSelectedQuestion(undefined);
+              setModalOpen(true);
+            }}
+            className="whitespace-nowrap"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Question
+          </Button>
+        )}
       </div>
 
-      {questions.length === 0 ? (
-        <div className="text-center py-8">
-          <p className="text-gray-500">No questions found. {canEditQuestions ? "Click 'Add Question' to create one." : "You don't have permission to create questions."}</p>
-        </div>
+      <div className="flex items-center justify-between">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setShowArchived(!showArchived);
+          }}
+          className="gap-2"
+        >
+          {showArchived ? (
+            <>
+              <EyeOff className="h-4 w-4" />
+              Active Only
+            </>
+          ) : (
+            <>
+              <Eye className="h-4 w-4" />
+              Show Archived
+            </>
+          )}
+        </Button>
+        {showArchived && (
+          <p className="text-sm text-muted-foreground flex items-center gap-2">
+            <Archive className="h-4 w-4" />
+            Showing all questions
+          </p>
+        )}
+      </div>
+
+      {isLoading ? (
+        <QuestionsListSkeleton />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {questions.map((question) => (
-            <Card key={question.id} className={question.archived ? 'opacity-60' : ''}>
-              <CardHeader className="text-center pb-2">
-                <Badge variant="outline" className="w-fit mx-auto bg-brandPurple-400 text-white border-none">
-                  {question.type === 'text' ? 'Free Text' : 'Multiple Choice'}
-                </Badge>
-                {question.archived && (
-                  <Badge variant="outline" className="w-fit mx-auto mt-2">
-                    Archived
-                  </Badge>
-                )}
-              </CardHeader>
-              <CardContent className="text-center py-6 flex items-center justify-center min-h-[80px]">
-                <h3 className="font-semibold text-base">{question.text}</h3>
-              </CardContent>
-              {canEditQuestions && (
-                <CardFooter className="flex justify-center space-x-2 pt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedQuestion(question);
-                      setModalOpen(true);
-                    }}
-                  >
-                    <Edit className="h-4 w-4 mr-1" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleArchive(question)}
-                  >
-                    <Archive className="h-4 w-4 mr-1" />
-                    {question.archived ? 'Unarchive' : 'Archive'}
-                  </Button>
-                </CardFooter>
-              )}
-            </Card>
-          ))}
-        </div>
+        <>
+          <QuestionsList
+            questions={paginatedQuestions}
+            onEdit={handleEditClick}
+            onArchive={handleArchive}
+            showArchived={showArchived}
+            canEdit={canEdit}
+          />
+          
+          {!isLoading && questions.length > itemsPerPage && (
+            <div className="flex justify-center mt-6">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
+        </>
       )}
 
-      {canEditQuestions && (
-        <QuestionModal
-          open={modalOpen}
-          onOpenChange={setModalOpen}
-          onSave={selectedQuestion ? handleEdit : handleCreate}
-          initialData={selectedQuestion}
-        />
-      )}
+      <QuestionModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        onSave={selectedQuestion ? handleEdit : handleCreate}
+        initialData={selectedQuestion}
+      />
     </div>
   );
 }

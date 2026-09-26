@@ -1,108 +1,102 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { UserRoleType } from '@/lib/supabase/client';
-
-// In-memory cache for user role checks
-const roleCache: Record<string, {
-  roles: Record<string, boolean>,
-  timestamp: number,
-  expiresAt: number
-}> = {};
+import { getCacheItem, setCacheItem, clearCacheItem } from '@/utils/cache/cacheUtils';
 
 // Cache expiry time (5 minutes)
-const CACHE_EXPIRY = 5 * 60 * 1000;
+const CACHE_EXPIRY = 5 * 60;
 
 /**
- * Check if a user has a specific role
+ * Check if a user is authenticated
  * Uses caching to minimize API requests
  */
-export async function checkUserRole(userId: string, role: UserRoleType): Promise<boolean> {
-  if (!userId) return false;
-  
-  const now = Date.now();
-  
+export async function checkAuthentication(): Promise<boolean> {
   // Check cache first
-  if (roleCache[userId] && 
-      roleCache[userId].roles[role] !== undefined && 
-      now < roleCache[userId].expiresAt) {
-    return roleCache[userId].roles[role];
+  const cacheKey = 'auth_status';
+  const cachedStatus = getCacheItem<boolean>(cacheKey);
+  
+  if (cachedStatus !== null) {
+    return cachedStatus;
   }
   
-  // Cache miss or expired cache, fetch from database using the new function
+  // Cache miss, check authentication status
   try {
-    // Use the has_role_v2 function to check if user has the role
-    const { data, error } = await supabase.rpc(
-      'has_role_v2',
-      {
-        user_uuid: userId,
-        required_role: role
-      }
-    );
+    const { data: { user }, error } = await supabase.auth.getUser();
     
     if (error) {
-      console.error('Error checking role:', error);
+      console.error('Error checking authentication:', error);
       return false;
     }
     
-    const hasRole = !!data;
+    const isAuthenticated = !!user;
     
-    // Initialize or update cache
-    if (!roleCache[userId]) {
-      roleCache[userId] = {
-        roles: {},
-        timestamp: now,
-        expiresAt: now + CACHE_EXPIRY
-      };
-    }
+    // Update cache
+    setCacheItem(cacheKey, isAuthenticated, CACHE_EXPIRY);
     
-    // Update role in cache
-    roleCache[userId].roles[role] = hasRole;
-    roleCache[userId].timestamp = now;
-    roleCache[userId].expiresAt = now + CACHE_EXPIRY;
-    
-    return hasRole;
+    return isAuthenticated;
   } catch (error) {
-    console.error('Error in role check:', error);
+    console.error('Error in authentication check:', error);
     return false;
   }
 }
 
 /**
- * Clear role cache for a specific user
+ * Clear authentication cache
  */
-export function clearRoleCache(userId?: string) {
-  if (userId) {
-    delete roleCache[userId];
-  } else {
-    // Clear entire cache
-    Object.keys(roleCache).forEach(key => delete roleCache[key]);
-  }
+export function clearAuthCache() {
+  clearCacheItem('auth_status');
 }
 
 /**
- * Get all roles for a user
- * This is a more expensive operation so use sparingly
+ * Check if current user can access a survey resource
  */
-export async function getUserRoles(userId: string): Promise<UserRoleType[]> {
-  if (!userId) return [];
-  
+export async function isResourceOwner(resourceId: string): Promise<boolean> {
   try {
-    // Get user roles using the new get_user_role_v2 function and join with roles table
-    const { data, error } = await supabase
-      .from('user_roles')
-      .select('role_id, roles(name)')
-      .eq('user_id', userId);
+    // Get the current user
+    const { data: { user }, error } = await supabase.auth.getUser();
     
-    if (error) {
-      console.error('Error fetching user roles:', error);
-      return [];
+    if (error || !user) {
+      return false;
     }
     
-    return data
-      .filter(item => item.roles && item.roles.name)
-      .map(item => item.roles.name as UserRoleType);
+    const cacheKey = `resource_owner_${user.id}_${resourceId}`;
+    const cachedResult = getCacheItem<boolean>(cacheKey);
+    
+    if (cachedResult !== null) {
+      return cachedResult;
+    }
+    
+    // Query for the resource and check organization membership
+    const { data, error: resourceError } = await supabase
+      .from('survey_templates')
+      .select('organization_id')
+      .eq('id', resourceId)
+      .single();
+    
+    if (resourceError || !data) {
+      return false;
+    }
+    
+    // Check if the user is a member of the organization that owns this resource
+    const { data: membershipData, error: membershipError } = await supabase
+      .from('organization_memberships')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('organization_id', data.organization_id)
+      .single();
+    
+    if (membershipError || !membershipData) {
+      return false;
+    }
+    
+    // User has access if they're a member of the organization
+    const hasAccess = !!membershipData;
+    
+    // Cache the result
+    setCacheItem(cacheKey, hasAccess, CACHE_EXPIRY);
+    
+    return hasAccess;
   } catch (error) {
-    console.error('Unexpected error fetching roles:', error);
-    return [];
+    console.error('Error checking resource ownership:', error);
+    return false;
   }
 }

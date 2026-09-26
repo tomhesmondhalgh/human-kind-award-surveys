@@ -1,54 +1,87 @@
 
-import React, { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import SurveyForm, { SurveyFormData } from '../pages/SurveyForm';
-import { supabase } from '../lib/supabase';
+import React, { useEffect } from 'react';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { useSurveyData } from '../hooks/useSurveyData';
+import { useSurveyForm } from '../hooks/useSurveyForm';
+import SurveyLoading from '../components/survey-form/SurveyLoading';
+import SurveyNotFound from '../components/survey-form/SurveyNotFound';
+import SurveyFormWrapper from '../components/survey-form/SurveyFormWrapper';
+import { CustomQuestionsProvider } from '../contexts/CustomQuestionsContext'; 
 import { toast } from 'sonner';
+import { supabase } from '../integrations/supabase/client';
 
 const PublicSurveyForm: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
-  const surveyId = searchParams.get('id');
+  const navigate = useNavigate();
+  const surveyId = id || null;
   const isPreview = searchParams.get('preview') === 'true';
-  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const handleSubmit = async (data: SurveyFormData, selectedQuestionIds: string[]) => {
+  const { 
+    isLoading, 
+    surveyData,
+    error
+  } = useSurveyData(surveyId, isPreview);
+  
+  const {
+    formData,
+    isSubmitting,
+    handleInputChange,
+    handleCustomQuestionResponse,
+    submitForm
+  } = useSurveyForm(surveyId, isPreview);
+  
+  useEffect(() => {
+    if (surveyId) {
+      console.log(`Public survey form loaded with ID: ${surveyId}, preview mode: ${isPreview}`);
+      console.log(`Using anonymous client for survey submissions`);
+    } else {
+      console.error('No survey ID provided in URL parameters');
+    }
+    
+    if (surveyId && surveyData) {
+      console.log(`Survey data loaded for ID: ${surveyId}`);
+    }
+  }, [surveyId, surveyData, isPreview]);
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('Submitting form with data:', formData);
+    console.log('Custom responses being submitted:', formData.custom_responses);
+    
     try {
-      setIsSubmitting(true);
-      // Logic for submitting the survey response
-      const { error } = await supabase
-        .from('survey_responses')
-        .insert({
-          survey_template_id: surveyId,
-          response_data: data,
-          response_type: 'public',
-          created_at: new Date().toISOString()
-        });
-        
-      if (error) {
-        throw error;
+      // Note: The actual validation happens in SurveyFormContent before this function is called
+      const success = await submitForm(navigate);
+      if (success) {
+        toast.success('Survey submitted successfully');
       }
-        
-      toast.success('Survey submitted successfully');
     } catch (error) {
       console.error('Error submitting survey:', error);
       toast.error('Failed to submit survey');
-    } finally {
-      setIsSubmitting(false);
     }
   };
   
+  if (isLoading) {
+    return <SurveyLoading />;
+  }
+  
+  if (!surveyId || !surveyData || error) {
+    return <SurveyNotFound errorMessage={error || undefined} />;
+  }
+  
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-6">Wellbeing Survey</h1>
-      <SurveyForm
-        initialData={null}
-        onSubmit={handleSubmit}
-        submitButtonText="Submit Survey"
-        isEdit={false}
-        surveyId={surveyId || undefined}
+    <CustomQuestionsProvider>
+      <SurveyFormWrapper
+        surveyTemplate={surveyData}
+        formData={formData}
+        surveyId={surveyId}
         isSubmitting={isSubmitting}
+        isPreview={isPreview}
+        handleInputChange={handleInputChange}
+        handleCustomQuestionResponse={handleCustomQuestionResponse}
+        handleSubmit={handleSubmit}
       />
-    </div>
+    </CustomQuestionsProvider>
   );
 };
 

@@ -1,10 +1,9 @@
-
 // Type definitions for subscription-related functionality
 import { supabase } from '@/integrations/supabase/client';
 
-export type PlanType = 'free' | 'foundation' | 'progress' | 'premium' | 'enterprise';
-// This is the database-specific plan type, which doesn't include 'enterprise'
-export type DatabasePlanType = 'free' | 'foundation' | 'progress' | 'premium';
+export type PlanType = 'free' | 'foundation' | 'progress' | 'premium' | 'enterprise' | 'legacy';
+// This is the database-specific plan type, which includes legacy but not enterprise
+export type DatabasePlanType = 'free' | 'foundation' | 'progress' | 'premium' | 'legacy';
 
 export interface SubscriptionAccess {
   plan: PlanType;
@@ -19,7 +18,6 @@ export interface Plan {
   currency: string;
   purchase_type: 'subscription' | 'one-time' | null;
   duration_months: number | null;
-  stripe_price_id: string | null;
   features: string[];
   is_popular: boolean;
   is_active: boolean;
@@ -28,15 +26,19 @@ export interface Plan {
   updated_at?: string;
 }
 
+// Admin-only interface that includes sensitive Stripe data
+export interface AdminPlan extends Plan {
+  stripe_price_id: string | null;
+}
+
 /**
  * Fetch all active subscription plans from the database
  */
 export async function getPlans(): Promise<Plan[]> {
   try {
     const { data, error } = await supabase
-      .from('plans')
+      .from('public_plans')
       .select('*')
-      .eq('is_active', true)
       .order('sort_order');
     
     if (error) {
@@ -118,8 +120,8 @@ export async function checkAndCreateSubscription(
       endDate = date.toISOString();
     }
     
-    // Enterprise plan is not in the database, so we need to convert it to premium if necessary
-    const dbPlanType: DatabasePlanType = planType === 'enterprise' ? 'premium' : planType;
+    // Convert enterprise to premium, keep legacy and others as-is
+    const dbPlanType: DatabasePlanType = planType === 'enterprise' ? 'premium' : planType as DatabasePlanType;
     
     // Insert subscription record
     const { error } = await supabase

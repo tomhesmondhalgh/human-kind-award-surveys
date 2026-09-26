@@ -1,7 +1,6 @@
-
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/services/toastService';
 import { SchoolSearchResult, SignUpFormData } from '../types/auth';
 import { fixSchoolSearchResults } from '../utils/typeConversions';
 
@@ -82,6 +81,8 @@ export const useSchoolSearch = (
       ...formData,
       schoolName: school.EstablishmentName,
       schoolAddress: address,
+      schoolURN: school.URN,
+      organizationName: school.EstablishmentName,
     });
     
     setSearchResults([]);
@@ -92,7 +93,9 @@ export const useSchoolSearch = (
     setFormData(prev => ({
       ...prev,
       schoolName: '',
-      schoolAddress: ''
+      schoolAddress: '',
+      schoolURN: '',
+      organizationName: ''
     }));
   };
 

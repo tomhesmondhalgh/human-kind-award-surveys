@@ -1,92 +1,65 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
 import MainLayout from '../components/layout/MainLayout';
+import PageContainer from '../components/layout/PageContainer';
+import PageTitle from '../components/ui/PageTitle';
+import { useAuth } from '../contexts/AuthContext';
 import StatsGrid from '../components/dashboard/StatsGrid';
 import RecentSurveysList from '../components/dashboard/RecentSurveysList';
 import GettingStartedGuide from '../components/dashboard/GettingStartedGuide';
-import PageTitle from '../components/ui/PageTitle';
-import { Button } from '../components/ui/button';
-import { Plus } from 'lucide-react';
-import { toast } from 'sonner';
-import { useAuth } from '../contexts/AuthContext';
-import { getDashboardStats, getRecentSurveys, checkForClosedSurveys } from '../utils/surveyUtils';
-import { SurveyWithResponses } from '../utils/surveyUtils';
+import DashboardEmptyState from '../components/dashboard/DashboardEmptyState';
+import { useDashboardData } from '../hooks/useDashboardData';
 
 const Dashboard = () => {
-  const [totalSurveys, setTotalSurveys] = useState<number | null>(null);
-  const [totalRespondents, setTotalRespondents] = useState<number | null>(null);
-  const [responseRate, setResponseRate] = useState<string | null>(null);
-  const [benchmarkScore, setBenchmarkScore] = useState<string | null>(null);
-  const [recentSurveys, setRecentSurveys] = useState<SurveyWithResponses[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const navigate = useNavigate();
   const { user } = useAuth();
-
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      setIsLoading(true);
-      try {
-        // Fetch dashboard stats
-        const stats = await getDashboardStats();
-        if (stats) {
-          setTotalSurveys(stats.totalSurveys);
-          setTotalRespondents(stats.totalRespondents);
-          setResponseRate(stats.responseRate);
-          setBenchmarkScore(stats.benchmarkScore);
-        } else {
-          toast.error("Failed to load dashboard stats", {
-            description: "Please try again later."
-          });
-        }
-
-        // Fetch recent surveys
-        const surveys = await getRecentSurveys(3, user?.id);
-        setRecentSurveys(surveys);
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-        toast.error("Failed to load dashboard data", {
-          description: "Please check your connection and try again."
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchDashboardData();
-
-    // Check for closed surveys when the dashboard loads
-    if (user) {
-      checkForClosedSurveys();
-    }
-  }, [user]);
+  const { stats, surveys, isLoading, error, hasOrganization } = useDashboardData();
 
   return (
     <MainLayout>
-      <div className="page-container">
-        <div className="flex justify-between items-center mb-6">
-          <PageTitle 
-            title="Dashboard" 
-            subtitle="At a glance overview of your staff wellbeing"
-            alignment="left"
-          />
-          <Button onClick={() => navigate('/new-survey')}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Survey
-          </Button>
-        </div>
-
-        <StatsGrid
-          totalSurveys={totalSurveys}
-          totalRespondents={totalRespondents}
-          responseRate={responseRate}
-          benchmarkScore={benchmarkScore}
-          isLoading={isLoading}
+      <PageContainer>
+        <PageTitle 
+          title={`Welcome back${user?.user_metadata?.first_name ? `, ${user.user_metadata.first_name}` : ''}!`}
+          subtitle="Here's what's happening with your surveys today."
         />
 
-        <GettingStartedGuide />
+        {/* Show error state if there's an error */}
+        {error && (
+          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <h3 className="text-red-800 font-medium">Error loading dashboard data</h3>
+            <p className="text-red-600 text-sm mt-1">{error.message}</p>
+          </div>
+        )}
 
-        <RecentSurveysList surveys={recentSurveys} isLoading={isLoading} />
-      </div>
+        {/* Show message if no organization */}
+        {!hasOrganization && !isLoading && (
+          <div className="mb-8 p-6 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <h3 className="text-yellow-800 font-medium">No Organisation Found</h3>
+            <p className="text-yellow-700 text-sm mt-1">
+              Please contact support to set up your organisation or check your team membership.
+            </p>
+          </div>
+        )}
+
+        {!isLoading && stats.totalSurveys === 0 ? (
+          <DashboardEmptyState />
+        ) : (
+          <div className="space-y-8">
+            <GettingStartedGuide />
+            
+            <StatsGrid 
+              totalSurveys={stats.totalSurveys}
+              totalRespondents={stats.totalRespondents}
+              responseRate={stats.responseRate}
+              benchmarkScore={stats.benchmarkScore}
+              isLoading={isLoading}
+            />
+            
+            <RecentSurveysList 
+              surveys={surveys}
+              isLoading={isLoading}
+            />
+          </div>
+        )}
+      </PageContainer>
     </MainLayout>
   );
 };

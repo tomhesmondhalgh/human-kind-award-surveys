@@ -1,87 +1,238 @@
-import { useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
-import { supabase } from '../../../lib/supabase';
-import { OrganizationMember } from '../../../lib/supabase/client';
-import { TeamMember } from '../types';
-import { useAuth } from '../../../contexts/AuthContext';
-import { convertOrganizationMembers } from '../../../utils/typeConversions';
 
-export function useTeamMembers(organizationId: string | undefined) {
-  const { user } = useAuth();
-  const [useDirectQuery, setUseDirectQuery] = useState(false);
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { OrganizationMember } from '@/types/organizations';
+import { ensureValidSession } from '@/utils/auth/sessionValidator';
+import { sendTeamInvitation } from '@/utils/team/invitationUtils';
+
+export function useTeamMembers(organizationId?: string) {
+  const queryClient = useQueryClient();
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   
-  const isPersonalOrg = organizationId === user?.id;
-  
-  const { 
-    data: members, 
-    isLoading: membersLoading, 
-    error: membersError,
-    refetch: refetchMembers
+  const {
+    data: members,
+    isLoading,
+    isError,
+    error,
+    refetch
   } = useQuery({
-    queryKey: ['organizationMembers', organizationId, useDirectQuery],
+    queryKey: ['organizationMembers', organizationId],
     queryFn: async () => {
       if (!organizationId) return [];
       
       try {
-        if (isPersonalOrg || useDirectQuery) {
-          console.log('Using direct SQL query for members due to recursion prevention');
-          
-          if (isPersonalOrg && user) {
-            return convertOrganizationMembers([{
-              id: `personal-org-${user.id}`,
-              user_id: user.id,
-              organization_id: organizationId,
-              role: 'organization_admin',
-              is_primary: true,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }]);
-          }
-          
-          const { data: profiles, error: profilesError } = await supabase
-            .from('profiles')
-            .select('id, email, first_name, last_name, school_name')
-            .eq('school_name', organizationId);
-            
-          if (profilesError) throw profilesError;
-          
-          return convertOrganizationMembers(profiles.map((profile: any) => ({
-            id: `derived-${profile.id}`,
-            user_id: profile.id,
-            organization_id: organizationId,
-            role: 'organization_admin',
-            is_primary: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })));
-        }
+        console.log('🔍 Starting team members query with enhanced session validation');
         
-        // Use direct query instead of RPC function
+        // Enhanced session validation
+        const session = await ensureValidSession();
+        console.log('✅ Valid session confirmed for team members query');
+
         const { data, error } = await supabase
-          .from('organization_members')
-          .select('*')
+          .from('organization_memberships')
+          .select(`
+            *,
+            profiles!fk_organization_memberships_user_id (
+              first_name,
+              last_name,
+              job_title
+            )
+          `)
           .eq('organization_id', organizationId);
           
         if (error) {
-          console.error('Error fetching organization members:', error);
+          console.error('❌ Team members query error:', error);
           throw error;
         }
         
-        return convertOrganizationMembers(data || []);
+        console.log('✅ Team members fetched successfully:', data?.length || 0, 'members');
+        
+        return (data || []).map(membership => ({
+          ...membership,
+          profile: membership.profiles
+        })) as OrganizationMember[];
       } catch (error) {
-        console.error('Error fetching members:', error);
+        console.error('💥 Error fetching organization members:', error);
         throw error;
       }
     },
     enabled: !!organizationId,
-    retry: 1
+    retry: (failureCount, error) => {
+      // Don't retry auth errors
+      if (error?.message?.includes('Authentication required') || error?.message?.includes('Unable to establish valid session')) {
+        return false;
+      }
+      // Don't retry PostgREST syntax errors
+      if (error?.message?.includes('syntax error') || (error as any)?.code === 'PGRST116') {
+        return false;
+      }
+      return failureCount < 2;
+    }
+  });
+  
+  const sendInvitation = useMutation({
+    mutationFn: async ({ email, role }: { email: string; role: string }) => {
+      if (!organizationId) throw new Error('No organization selected');
+      
+      const result = await sendTeamInvitation({
+        email,
+        role,
+        organizationId
+      });
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Invitation failed');
+      }
+      
+      return result.invitation;
+    },
+    onSuccess: async () => {
+      console.log('🎉 Invitation process completed successfully');
+      toast.success('Invitation sent successfully');
+      setIsInviteModalOpen(false);
+      
+      // Invalidate and force refetch to ensure UI updates immediately
+      await queryClient.invalidateQueries({ queryKey: ['organizationMembers', organizationId] });
+      await queryClient.invalidateQueries({ queryKey: ['organizationInvitations', organizationId] });
+      await queryClient.refetchQueries({ queryKey: ['organizationInvitations', organizationId] });
+    },
+    onError: (error: any) => {
+      console.error('❌ Invitation mutation error:', error);
+      
+      let errorMessage = 'Failed to send invitation';
+      
+      if (error.message?.includes('Authentication required')) {
+        errorMessage = 'Authentication required - please refresh the page and log in again';
+      } else if (error.message?.includes('permission denied') || error.message?.includes('admin permissions')) {
+        errorMessage = 'You do not have permission to invite members to this organisation';
+      } else if (error.message?.includes('Database permission denied')) {
+        errorMessage = 'Database access issue - please refresh the page and try again';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
+    }
   });
 
+  const resendInvitation = useMutation({
+    mutationFn: async (invitationId: string) => {
+      console.log('🔄 Resending invitation:', invitationId);
+      
+      // Enhanced session validation
+      const session = await ensureValidSession();
+      console.log('✅ Valid session confirmed for resend invitation');
+
+      // Get the invitation details
+      const { data: invitation, error } = await supabase
+        .from('organization_invitations')
+        .select(`
+          *,
+          organizations!organization_invitations_organization_id_fkey (name)
+        `)
+        .eq('id', invitationId)
+        .single();
+
+      if (error) {
+        console.error('❌ Error fetching invitation for resend:', error);
+        throw new Error(`Failed to fetch invitation: ${error.message}`);
+      }
+
+      // Get inviter profile separately
+      const { data: inviterProfile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', invitation.invited_by)
+        .single();
+
+      const inviterName = inviterProfile 
+        ? `${inviterProfile.first_name || ''} ${inviterProfile.last_name || ''}`.trim() || 'A colleague'
+        : 'A colleague';
+
+      // Send the invitation using v2 function with resend flag
+      const { error: emailError } = await supabase.functions.invoke('send-team-invitation-v2', {
+        body: {
+          email: invitation.email,
+          role: invitation.role,
+          organizationId: invitation.organization_id,
+          isResend: true
+        }
+      });
+
+      if (emailError) {
+        console.error('❌ Error resending invitation email:', emailError);
+        throw new Error(`Failed to resend email: ${emailError.message}`);
+      }
+      
+      console.log('✅ Invitation resent successfully');
+      return invitation;
+    },
+    onSuccess: () => {
+      toast.success('Invitation email resent successfully');
+    },
+    onError: (error: any) => {
+      console.error('❌ Resend invitation error:', error);
+      
+      let errorMessage = 'Failed to resend invitation';
+      if (error.message?.includes('Authentication required') || error.message?.includes('Unable to establish valid session')) {
+        errorMessage = 'Authentication required - please refresh the page and log in again';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
+    }
+  });
+  
+  const removeMember = useMutation({
+    mutationFn: async (memberId: string) => {
+      console.log('🗑️ Removing member:', memberId);
+      
+      // Enhanced session validation
+      const session = await ensureValidSession();
+      console.log('✅ Valid session confirmed for remove member');
+
+      const { error } = await supabase
+        .from('organization_memberships')
+        .delete()
+        .eq('id', memberId);
+        
+      if (error) {
+        console.error('❌ Error removing member:', error);
+        throw new Error(`Failed to remove member: ${error.message}`);
+      }
+      
+      console.log('✅ Member removed successfully');
+    },
+    onSuccess: () => {
+      toast.success('Team member removed');
+      queryClient.invalidateQueries({ queryKey: ['organizationMembers', organizationId] });
+    },
+    onError: (error: any) => {
+      console.error('❌ Remove member error:', error);
+      
+      let errorMessage = 'Failed to remove team member';
+      if (error.message?.includes('Authentication required') || error.message?.includes('Unable to establish valid session')) {
+        errorMessage = 'Authentication required - please refresh the page and log in again';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
+    }
+  });
+  
   return {
     members,
-    membersLoading,
-    membersError,
-    refetchMembers,
-    isPersonalOrg
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isInviteModalOpen,
+    setIsInviteModalOpen,
+    sendInvitation,
+    removeMember,
+    resendInvitation
   };
 }

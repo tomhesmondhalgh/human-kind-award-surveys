@@ -10,20 +10,23 @@ import { SignUpFormData } from '../../types/auth';
 interface SignUpFormProps {
   onSubmit: (data: SignUpFormData) => void;
   isLoading?: boolean;
-  invitationData?: any; // Add support for invitation data
+  invitationData?: any;
+  initialEmail?: string;
 }
 
-const SignUpForm: React.FC<SignUpFormProps> = ({ onSubmit, isLoading = false, invitationData }) => {
-  console.log('Rendering SignUpForm with invitation data:', invitationData);
+const SignUpForm: React.FC<SignUpFormProps> = ({ onSubmit, isLoading = false, invitationData, initialEmail }) => {
+  console.log('Rendering SignUpForm with invitation data:', invitationData, 'initialEmail:', initialEmail);
   
   const [formData, setFormData] = useState<SignUpFormData>({
     firstName: '',
     lastName: '',
-    email: '',
+    email: initialEmail || '',
     password: '',
     jobTitle: '',
     schoolName: '',
     schoolAddress: '',
+    schoolURN: '',
+    organizationName: '',
     customStreetAddress: '',
     customStreetAddress2: '',
     customCity: '',
@@ -104,6 +107,8 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSubmit, isLoading = false, in
             handlePageChange={handlePageChange}
             selectSchool={selectSchool}
             resetSelectedSchool={resetSelectedSchool}
+            isInvited={!!invitationData}
+            invitedOrgName={invitationData?.organizations?.name}
           />
         </div>
         

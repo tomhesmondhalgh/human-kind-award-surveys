@@ -17,15 +17,15 @@ export const toast = (props: ToastProps) => {
   if (variant === "destructive") {
     return sonnerToast.error(title || 'Error', {
       description,
-      duration: duration || 5000,
+      duration: duration || 5000, // 5 seconds for errors
       ...rest
     });
   }
   
-  // Use success variant for non-destructive
+  // Use success variant for non-destructive - shorter duration
   return sonnerToast.success(title || 'Success', {
     description,
-    duration: duration || 5000,
+    duration: duration || 3000, // 3 seconds for success
     ...rest
   });
 };

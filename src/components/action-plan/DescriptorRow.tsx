@@ -16,6 +16,7 @@ interface DescriptorRowProps {
   onDateChange: (id: string, date: string) => void;
   onViewNotes: (id: string) => void;
   onAddNote: (id: string) => void;
+  readOnly?: boolean;
 }
 
 const DescriptorRow: React.FC<DescriptorRowProps> = ({
@@ -28,7 +29,8 @@ const DescriptorRow: React.FC<DescriptorRowProps> = ({
   onStatusChange,
   onDateChange,
   onViewNotes,
-  onAddNote
+  onAddNote,
+  readOnly = false
 }) => {
   // Ensure notes count is a number
   const notesCount = typeof descriptor.progress_notes_count === 'number' 
@@ -49,6 +51,7 @@ const DescriptorRow: React.FC<DescriptorRowProps> = ({
           deadline={descriptor.deadline}
           onStatusChange={(status) => onStatusChange(descriptor.id, status)}
           onDateChange={(date) => onDateChange(descriptor.id, date)}
+          readOnly={readOnly}
         />
       </td>
       <td className="p-2 border border-gray-200">
@@ -63,6 +66,7 @@ const DescriptorRow: React.FC<DescriptorRowProps> = ({
           onEditChange={onEditValueChange}
           onEditSave={onEditSave}
           isMultiline={false}
+          readOnly={readOnly}
         />
       </td>
       <td className="p-2 border border-gray-200">
@@ -77,6 +81,7 @@ const DescriptorRow: React.FC<DescriptorRowProps> = ({
           onEditChange={onEditValueChange}
           onEditSave={onEditSave}
           isMultiline={true}
+          readOnly={readOnly}
         />
       </td>
       <td className="p-2 border border-gray-200">
@@ -84,6 +89,7 @@ const DescriptorRow: React.FC<DescriptorRowProps> = ({
           notesCount={notesCount}
           onViewNotes={() => onViewNotes(descriptor.id)}
           onAddNote={() => onAddNote(descriptor.id)}
+          readOnly={readOnly}
         />
       </td>
     </tr>

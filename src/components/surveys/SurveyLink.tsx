@@ -2,30 +2,61 @@
 import React, { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '../../lib/supabase';
 
 interface SurveyLinkProps {
   surveyUrl: string | null;
+  surveyId?: string;
+  currentStatus?: string;
+  onStatusChange?: () => void;
 }
 
-const SurveyLink: React.FC<SurveyLinkProps> = ({ surveyUrl }) => {
+const SurveyLink: React.FC<SurveyLinkProps> = ({ 
+  surveyUrl, 
+  surveyId, 
+  currentStatus,
+  onStatusChange 
+}) => {
   const [copied, setCopied] = useState(false);
 
   if (!surveyUrl) return null;
 
-  const handleCopyUrl = () => {
-    navigator.clipboard.writeText(surveyUrl)
-      .then(() => {
-        setCopied(true);
-        toast.success("Survey link copied to clipboard", {
-          description: "You can now share this link with your staff."
-        });
-        setTimeout(() => setCopied(false), 2000);
-      })
-      .catch(() => {
-        toast.error("Failed to copy link", {
-          description: "Please try again or copy the URL manually."
-        });
+  const handleCopyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(surveyUrl);
+      setCopied(true);
+      toast.success("Survey link copied to clipboard", {
+        description: "You can now share this link with your staff."
       });
+      
+      // Update survey status to 'Sent' if it's not already 'Sent' or 'Completed'
+      if (surveyId && currentStatus && 
+          currentStatus !== 'Sent' && 
+          currentStatus !== 'Completed') {
+        console.log(`Updating survey ${surveyId} status to Sent after copying link`);
+        
+        const { error } = await supabase
+          .from('survey_templates')
+          .update({ status: 'Sent' })
+          .eq('id', surveyId);
+          
+        if (error) {
+          console.error('Error updating survey status:', error);
+        } else {
+          console.log('Successfully updated survey status to Sent');
+          if (onStatusChange) {
+            onStatusChange();
+          }
+        }
+      }
+      
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      toast.error("Failed to copy link", {
+        description: "Please try again or copy the URL manually."
+      });
+    }
   };
 
   return (

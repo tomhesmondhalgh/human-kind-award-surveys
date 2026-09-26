@@ -9,7 +9,7 @@ schemas = ["public", "storage", "graphql_public"]
 [db]
 port = 54322
 shadow_port = 54320
-major_version = 15
+major_version = 17
 
 [studio]
 enabled = true
@@ -44,6 +44,9 @@ vector_port = 54328
 backend = "postgres"
 
 [functions]
+[functions.admin-get-users]
+verify_jwt = true
+
 [functions.send-survey-email]
 verify_jwt = false
 
@@ -71,12 +74,6 @@ verify_jwt = true
 [functions.hubspot-integration]
 verify_jwt = false
 
-[functions.send-invitation-email]
-verify_jwt = false
-
-[functions.cancel-invitation]
-verify_jwt = true
-
 [functions.update-invoice-status]
 verify_jwt = true
 
@@ -87,4 +84,25 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.generate-survey-summary]
+verify_jwt = false
+
+[functions.verify-redemption-code]
+verify_jwt = true
+
+[functions.send-team-invitation-v2]
+verify_jwt = true
+
+[functions.get-active-script]
+verify_jwt = false
+
+[functions.accept-invitation]
+verify_jwt = true
+
+[functions.send-auth-email]
+verify_jwt = false
+
+[functions.send-password-reset-email]
+verify_jwt = false
+
+[functions.get-invitation-details]
 verify_jwt = false

@@ -2,27 +2,48 @@
 export interface CustomQuestion {
   id: string;
   text: string;
-  type: 'text'; 
-  creator_id: string;
-  archived: boolean;
+  type: 'text' | 'multiple_choice';
   options?: string[] | null;
-  created_at?: string;
+  created_at: string;
+  archived: boolean;
+  creator_id: string;
+  organization_id?: string | null;
 }
 
-// Helper function to convert database questions to our CustomQuestion type
-export function convertToCustomQuestion(dbQuestion: any): CustomQuestion {
+export interface CustomQuestionResponse {
+  id: string;
+  question_id: string;
+  response_id: string;
+  answer: string;
+  created_at: string;
+}
+
+// Database types that might come from Supabase
+export interface DbCustomQuestion {
+  id: string;
+  text: string;
+  type: string;
+  options?: string[] | null;
+  created_at: string;
+  archived?: boolean;
+  creator_id: string;
+  organization_id?: string | null;
+}
+
+// Utility functions to convert database types to our frontend types
+export const convertToCustomQuestion = (dbQuestion: DbCustomQuestion): CustomQuestion => {
   return {
     id: dbQuestion.id,
     text: dbQuestion.text,
-    type: 'text', // Force as 'text' type to match our interface
+    type: dbQuestion.type === 'multiple_choice' ? 'multiple_choice' : 'text',
+    options: dbQuestion.options,
+    created_at: dbQuestion.created_at,
+    archived: dbQuestion.archived ?? false,
     creator_id: dbQuestion.creator_id,
-    archived: !!dbQuestion.archived,
-    options: dbQuestion.options || [],
-    created_at: dbQuestion.created_at
+    organization_id: dbQuestion.organization_id
   };
-}
+};
 
-export function convertToCustomQuestions(dbQuestions: any[]): CustomQuestion[] {
-  if (!Array.isArray(dbQuestions)) return [];
+export const convertToCustomQuestions = (dbQuestions: DbCustomQuestion[]): CustomQuestion[] => {
   return dbQuestions.map(convertToCustomQuestion);
-}
+};

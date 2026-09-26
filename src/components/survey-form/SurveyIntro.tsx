@@ -1,18 +1,27 @@
 
 import React from 'react';
-import PageTitle from '../ui/PageTitle';
-import { SurveyTemplate } from '../../utils/surveyUtils';
+import { SurveyTemplate } from '../../utils/types/survey';
 
 interface SurveyIntroProps {
-  surveyTemplate: SurveyTemplate | null;
+  surveyTemplate?: SurveyTemplate | null;
+  name?: string;
 }
 
-const SurveyIntro: React.FC<SurveyIntroProps> = ({ surveyTemplate }) => {
+const SurveyIntro: React.FC<SurveyIntroProps> = ({ surveyTemplate, name }) => {
+  // Use surveyTemplate name if available, otherwise use the direct name prop
+  const displayName = surveyTemplate?.name || name || '';
+  
   return (
     <>
-      <PageTitle 
-        title={surveyTemplate?.name ? surveyTemplate.name : "Complete the National Staff Wellbeing Survey"}
-      />
+      <div className="mb-8 text-center">
+        <img 
+          src="/human-kind-logo.png" 
+          alt="Our Human Kind Logo" 
+          className="mx-auto max-h-20 mb-4"
+        />
+        <h1 className="text-2xl font-bold text-brandPurple-600 mb-2">Staff Wellbeing Survey</h1>
+        <h2 className="text-lg text-gray-600">{displayName}</h2>
+      </div>
       
       <div className="mb-8 text-left">
         <p className="text-gray-700">

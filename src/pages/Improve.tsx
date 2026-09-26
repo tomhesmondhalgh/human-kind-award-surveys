@@ -1,11 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
 import MainLayout from '../components/layout/MainLayout';
+import PageContainer from '../components/layout/PageContainer';
 import PageTitle from '../components/ui/PageTitle';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Download, Save, ArrowRight } from 'lucide-react';
+import { Download, Save, ArrowRight, Plus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useOrganization } from '../contexts/OrganizationContext';
 import { toast } from 'sonner';
 import { initializeActionPlan, getSectionProgressSummary, generatePDF } from '../utils/actionPlanUtils';
 import { ACTION_PLAN_SECTIONS } from '../types/actionPlan';
@@ -16,13 +18,23 @@ import ScreenOrientationOverlay from '../components/ui/ScreenOrientationOverlay'
 import { useOrientation } from '../hooks/useOrientation';
 import { useSubscription } from '../hooks/useSubscription';
 import { useNavigate } from 'react-router-dom';
+import BenefitsSection from '../components/upgrade/BenefitsSection';
+import IntroSection from '../components/upgrade/IntroSection';
+import PricingSection from '../components/pricing/PricingSection';
 
 const Improve = () => {
   const { user } = useAuth();
+  const { currentOrganization, isLoading: isOrgLoading, error: orgError, organizations } = useOrganization();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('summary');
   const [isLoading, setIsLoading] = useState(true);
-  const [hasInitialized, setHasInitialized] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(() => {
+    if (currentOrganization) {
+      const orgKey = `actionPlanInitialized_${currentOrganization.id}`;
+      return sessionStorage.getItem(orgKey) === 'true';
+    }
+    return false;
+  });
   const [summaryData, setSummaryData] = useState<any[]>([]);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [overlayDismissed, setOverlayDismissed] = useState(false);
@@ -31,14 +43,14 @@ const Improve = () => {
   const [hasFoundationPlan, setHasFoundationPlan] = useState<boolean | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
 
-  // Store the initialization state in sessionStorage to prevent re-initialization on tab changes
+  // Read initialization state when organization changes
   useEffect(() => {
-    const initState = sessionStorage.getItem('actionPlanInitialized');
-    if (initState === 'true') {
-      console.log('Action plan already initialized according to sessionStorage');
-      setHasInitialized(true);
+    if (currentOrganization) {
+      const orgKey = `actionPlanInitialized_${currentOrganization.id}`;
+      const wasInitialized = sessionStorage.getItem(orgKey) === 'true';
+      setHasInitialized(wasInitialized);
     }
-  }, []);
+  }, [currentOrganization?.id]);
 
   useEffect(() => {
     async function checkAccess() {
@@ -60,39 +72,54 @@ const Improve = () => {
   }, [hasAccess, isSubscriptionLoading]);
 
   useEffect(() => {
-    if (user && !hasInitialized && hasFoundationPlan === true) {
-      console.log('Initializing action plan for user:', user.id);
+    if (currentOrganization && !hasInitialized && hasFoundationPlan === true) {
+      console.log('Initializing action plan for organization:', currentOrganization.id);
       initializeActionPlanData();
-    } else if (hasInitialized && hasFoundationPlan === true) {
+    } else if (hasInitialized && hasFoundationPlan === true && currentOrganization) {
       console.log('Action plan already initialized, fetching summary data only');
       fetchSummaryData();
       setIsLoading(false);
     }
-  }, [user, hasInitialized, hasFoundationPlan]);
+  }, [currentOrganization, hasInitialized, hasFoundationPlan]);
 
   const initializeActionPlanData = async () => {
+    if (!currentOrganization) {
+      setInitError('No organization found. Please ensure you are a member of an organization.');
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setInitError(null);
     try {
-      if (user?.id) {
-        console.log('Starting action plan initialization...');
-        const result = await initializeActionPlan(user.id);
-        
-        if (result.success) {
-          console.log('Action plan initialized successfully');
-          await fetchSummaryData();
-          // Mark as initialized in both state and sessionStorage
-          setHasInitialized(true);
-          sessionStorage.setItem('actionPlanInitialized', 'true');
-        } else {
-          console.error("Failed to initialize action plan:", result.error);
-          setInitError(`Initialization failed: ${result.error}`);
-          toast.error("Failed to initialize action plan");
-        }
+      console.log('Starting action plan initialization...');
+      const result = await initializeActionPlan(currentOrganization.id);
+      
+      if (result.success) {
+        console.log('Action plan initialized successfully');
+        await fetchSummaryData();
+        // Mark as initialized in both state and sessionStorage with organization-specific key
+        setHasInitialized(true);
+        const orgKey = `actionPlanInitialized_${currentOrganization.id}`;
+        sessionStorage.setItem(orgKey, 'true');
+      } else {
+        console.error("Failed to initialize action plan:", result.error);
+        setInitError(`Initialization failed: ${result.error}`);
+        toast.error("Failed to initialize action plan");
       }
     } catch (error) {
       console.error("Error initializing action plan:", error);
-      setInitError(`Initialization error: ${error instanceof Error ? error.message : String(error)}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      // Check for specific RLS-related errors and provide helpful messages
+      if (errorMessage.includes('row-level security') || errorMessage.includes('RLS')) {
+        setInitError('Database access error. Please refresh the page and try again. If the issue persists, contact support.');
+      } else if (errorMessage.includes('organization')) {
+        setInitError('Organization access error. Please ensure you have proper access to this organization.');
+      } else {
+        setInitError(`Initialization error: ${errorMessage}`);
+      }
+      
       toast.error("Failed to initialize action plan");
     } finally {
       setIsLoading(false);
@@ -100,29 +127,36 @@ const Improve = () => {
   };
 
   const fetchSummaryData = async () => {
+    if (!currentOrganization) return;
+    
     try {
-      if (user?.id) {
-        console.log('Fetching summary data...');
-        const result = await getSectionProgressSummary(user.id);
-        if (result.success && result.data) {
-          console.log('Summary data fetched successfully', result.data);
-          setSummaryData(result.data);
-        } else {
-          console.error('Failed to fetch summary data:', result.error);
-          toast.error('Failed to load summary data');
-        }
+      console.log('Fetching summary data...');
+      const result = await getSectionProgressSummary(currentOrganization.id);
+      if (result.success && result.data) {
+        console.log('Summary data fetched successfully', result.data);
+        setSummaryData(result.data);
+      } else {
+        console.error('Failed to fetch summary data:', result.error);
+        toast.error('Failed to load summary data');
       }
     } catch (error) {
       console.error('Error fetching summary data:', error);
-      toast.error('Failed to load summary data');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      // Provide more specific error messages for common issues
+      if (errorMessage.includes('row-level security') || errorMessage.includes('RLS')) {
+        toast.error('Data access error. Please refresh the page and try again.');
+      } else {
+        toast.error('Failed to load summary data');
+      }
     }
   };
 
   const handleExportPDF = async () => {
-    if (!user) return;
+    if (!user || !currentOrganization) return;
     setIsGeneratingPDF(true);
     try {
-      const result = await generatePDF(user.id);
+      const result = await generatePDF(currentOrganization.id);
       if (result.success) {
         toast.success('PDF exported successfully');
       } else {
@@ -145,7 +179,7 @@ const Improve = () => {
   };
 
   const handleRetryInitialization = () => {
-    if (user) {
+    if (currentOrganization) {
       setInitError(null);
       initializeActionPlanData();
     }
@@ -154,20 +188,30 @@ const Improve = () => {
   const shouldShowOverlay = isMobile && orientation === 'portrait' && !overlayDismissed;
   const isSubscriptionChecking = isSubscriptionLoading || hasFoundationPlan === null;
 
+  // Enhanced organization state logging
+  console.log('Improve page - Organization state:', {
+    currentOrganization,
+    isOrgLoading,
+    orgError,
+    organizations,
+    user: user?.id,
+    hasInitialized,
+    hasFoundationPlan
+  });
+
   return (
     <MainLayout>
       {shouldShowOverlay && (
         <ScreenOrientationOverlay onDismiss={() => setOverlayDismissed(true)} />
       )}
-      <div className="container mx-auto px-4 py-8">
+      <PageContainer>
         <div className="flex justify-between items-center mb-6">
-          <PageTitle
-            title="Wellbeing Action Plan"
-            subtitle="Track and improve staff wellbeing using this action planning tool"
-            alignment="left"
-          />
-          
-          {hasFoundationPlan && (
+            <PageTitle
+              title="Wellbeing Action Plan"
+              subtitle="Track and improve staff wellbeing using this action planning tool"
+            />
+            
+            {hasFoundationPlan && currentOrganization && (
             <div className="flex space-x-2">
               <Button
                 variant="outline"
@@ -199,6 +243,41 @@ const Improve = () => {
               View Upgrade Options <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
+        ) : isOrgLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="text-center">
+              <div className="mb-4">Loading organisation...</div>
+              <div className="text-sm text-gray-500">Please wait while we set up your workspace</div>
+            </div>
+          </div>
+        ) : orgError ? (
+          <div className="mt-8 rounded-lg border border-red-200 bg-red-50 p-8 text-center">
+            <h2 className="text-xl font-semibold mb-4 text-red-700">Error Loading Organisation Data</h2>
+            <p className="text-gray-700 mb-6">{orgError}</p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button onClick={() => navigate('/team')} variant="outline">
+                <Plus className="h-4 w-4 mr-2" />
+                Manage Organisations
+              </Button>
+              <Button onClick={() => window.location.reload()} variant="default">
+                Retry Loading
+              </Button>
+            </div>
+          </div>
+        ) : !currentOrganization ? (
+          <div className="mt-8 rounded-lg border border-gray-200 bg-gray-50 p-8 text-center">
+            <h2 className="text-xl font-semibold mb-4">No Organisation Selected</h2>
+            <p className="text-gray-600 mb-6">
+              {organizations.length === 0 
+                ? "You need to be a member of an organisation to access the Action Plan. Create or join an organisation to get started."
+                : "Please select an organisation to access the Action Plan."
+              }
+            </p>
+            <Button onClick={() => navigate('/team')} className="px-8">
+              <Plus className="h-4 w-4 mr-2" />
+              {organizations.length === 0 ? "Create or Join Organisation" : "Select Organisation"}
+            </Button>
+          </div>
         ) : isLoading ? (
           <div className="flex justify-center items-center h-64">
             <div className="text-center">
@@ -210,9 +289,14 @@ const Improve = () => {
           <div className="mt-8 rounded-lg border border-red-200 bg-red-50 p-8 text-center">
             <h2 className="text-xl font-semibold mb-4 text-red-700">Error Loading Action Plan</h2>
             <p className="text-gray-700 mb-6">{initError}</p>
-            <Button onClick={handleRetryInitialization} variant="destructive">
-              Retry
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button onClick={handleRetryInitialization} variant="destructive">
+                Retry Initialization
+              </Button>
+              <Button onClick={() => navigate('/team')} variant="outline">
+                Check Organisation Access
+              </Button>
+            </div>
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
@@ -247,10 +331,10 @@ const Improve = () => {
             
             {ACTION_PLAN_SECTIONS.map(section => (
               <TabsContent key={section.key} value={section.key} className="mt-6 overflow-x-auto">
-                {user && (
+                {currentOrganization && (
                   <DescriptorTable
-                    userId={user.id}
-                    section={section.title}
+                    organizationId={currentOrganization.id}
+                    section={section.key}
                     onRefreshSummary={fetchSummaryData}
                   />
                 )}
@@ -263,7 +347,7 @@ const Improve = () => {
             />
           </Tabs>
         )}
-      </div>
+      </PageContainer>
     </MainLayout>
   );
 };

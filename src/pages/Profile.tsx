@@ -1,12 +1,13 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
+import PageContainer from '../components/layout/PageContainer';
 import PageTitle from '../components/ui/PageTitle';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
-import { Loader2, Search } from 'lucide-react';
+import { Loader2, Search, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { Textarea } from '../components/ui/textarea';
 import { Input } from '../components/ui/input';
 import { supabase } from '../lib/supabase';
@@ -328,10 +329,13 @@ const Profile = () => {
         lastName: data.lastName
       };
       
-      const { error, success } = await completeUserProfile(user.id, userData);
+      const { error, success } = await completeUserProfile(userData);
       
       if (success && emailUpdateSuccess) {
-        toast.success('Profile updated successfully!');
+        toast.success('Profile updated successfully', {
+          description: 'Your changes have been saved',
+          duration: 3000,
+        });
       } else if (error) {
         console.error('Error saving profile:', error);
         toast.error('Failed to update profile', {
@@ -391,7 +395,7 @@ const Profile = () => {
         lastName: profileData.lastName || user.user_metadata?.last_name || '',
       };
       
-      const { error, success } = await completeUserProfile(user.id, userData);
+      const { error, success } = await completeUserProfile(userData);
       
       if (success) {
         toast.success('Profile updated successfully!');
@@ -413,37 +417,87 @@ const Profile = () => {
   };
   
   if (isLoading) {
-    return (
-      <MainLayout>
+  return (
+    <MainLayout>
+      <PageContainer>
         <div className="flex justify-center items-center h-64">
           <Loader2 size={40} className="animate-spin text-brandPurple-500" />
         </div>
-      </MainLayout>
-    );
+      </PageContainer>
+    </MainLayout>
+  );
   }
   
   return (
     <MainLayout>
-      <div className="page-container">
+      <PageContainer>
         <PageTitle 
           title="Your Profile" 
           subtitle="Manage your personal and school information"
-          alignment="center"
         />
         
-        <div className="max-w-2xl mx-auto glass-card rounded-2xl p-8 animate-slide-up space-y-8">
+        <div className="space-y-8">
           {/* Personal Information Form */}
           <div>
             <h2 className="text-xl font-semibold mb-4">Personal Information</h2>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onProfileFormSubmit)} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="max-w-2xl">
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onProfileFormSubmit)} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="firstName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>First name</FormLabel>
+                          <FormControl>
+                            <Input {...field} disabled={isSaving} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="lastName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Last name</FormLabel>
+                          <FormControl>
+                            <Input {...field} disabled={isSaving} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
                   <FormField
                     control={form.control}
-                    name="firstName"
+                    name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>First name</FormLabel>
+                        <FormLabel>Email address</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="email" disabled={isSaving || emailChangeInProgress} />
+                        </FormControl>
+                        <FormMessage />
+                        {field.value !== user?.email && (
+                          <p className="text-xs text-amber-600 mt-1">
+                            Changing your email will require verification of the new address.
+                          </p>
+                        )}
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="jobTitle"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Job title</FormLabel>
                         <FormControl>
                           <Input {...field} disabled={isSaving} />
                         </FormControl>
@@ -452,75 +506,35 @@ const Profile = () => {
                     )}
                   />
                   
-                  <FormField
-                    control={form.control}
-                    name="lastName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Last name</FormLabel>
-                        <FormControl>
-                          <Input {...field} disabled={isSaving} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                  <Button 
+                    type="submit" 
+                    className={cn(
+                      "w-full transition-all duration-200",
+                      isSaving && "scale-95"
                     )}
-                  />
-                </div>
-                
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email address</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="email" disabled={isSaving || emailChangeInProgress} />
-                      </FormControl>
-                      <FormMessage />
-                      {field.value !== user?.email && (
-                        <p className="text-xs text-amber-600 mt-1">
-                          Changing your email will require verification of the new address.
-                        </p>
-                      )}
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="jobTitle"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Job title</FormLabel>
-                      <FormControl>
-                        <Input {...field} disabled={isSaving} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <Button 
-                  type="submit" 
-                  className="w-full"
-                  disabled={isSaving || emailChangeInProgress}
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 size={18} className="mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    'Save Personal Information'
-                  )}
-                </Button>
-              </form>
-            </Form>
+                    disabled={isSaving || emailChangeInProgress}
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 size={18} className="mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="mr-2 h-4 w-4" />
+                        Save Personal Information
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </Form>
+            </div>
           </div>
           
           <div className="border-t border-gray-200 pt-6">
             <h2 className="text-xl font-semibold mb-4">School Information</h2>
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="max-w-2xl">
+              <form onSubmit={handleSubmit} className="space-y-6">
               {!useCustomSchool ? (
                 <>
                   <div className="space-y-4">
@@ -772,9 +786,10 @@ const Profile = () => {
                 </Button>
               </div>
             </form>
+            </div>
           </div>
         </div>
-      </div>
+      </PageContainer>
     </MainLayout>
   );
 };

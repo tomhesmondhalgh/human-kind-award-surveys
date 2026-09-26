@@ -11,13 +11,15 @@ interface StatusSelectorProps {
   deadline: string | null | undefined;
   onStatusChange: (status: DescriptorStatus) => void;
   onDateChange: (date: string) => void;
+  readOnly?: boolean;
 }
 
 const StatusSelector: React.FC<StatusSelectorProps> = ({
   status,
   deadline,
   onStatusChange,
-  onDateChange
+  onDateChange,
+  readOnly = false
 }) => {
   const getStatusColor = (status: DescriptorStatus) => {
     switch (status) {
@@ -29,6 +31,22 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+
+  if (readOnly) {
+    return (
+      <div className="flex flex-col space-y-2">
+        <div className={cn("h-8 text-xs px-3 py-2 rounded-md", getStatusColor(status))}>
+          {status}
+        </div>
+        {deadline && (
+          <div className="flex items-center text-xs text-gray-700">
+            <CalendarIcon className="h-3 w-3 mr-1 text-gray-500" />
+            <span>{new Date(deadline).toLocaleDateString('en-GB')}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col space-y-2">

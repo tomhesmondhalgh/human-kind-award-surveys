@@ -1,113 +1,142 @@
 
-import React, { createContext, useContext, useCallback } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuthState } from '../hooks/useAuthState';
-import { 
-  signInWithEmail, 
-  signUpWithEmail, 
-  signOutUser, 
-  completeUserProfile
-} from '../utils/auth';
-import { toast } from '../hooks/use-toast';
+import React, { createContext, useContext, ReactNode } from 'react';
+import { Session, User } from '@supabase/supabase-js';
+import { useAuthState } from '@/utils/auth/useAuthState';
+import { signInWithEmail } from '@/utils/auth/signIn';
+import { signUpWithEmail } from '@/utils/auth/signUp';
+import { signOutUser } from '@/utils/auth/signOut';
+import { completeUserProfile } from '@/utils/auth/profileManagement';
+import { useEnhancedSession } from '@/hooks/useEnhancedSession';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  authCheckComplete: boolean;  // Added this property
-  signIn: (email: string, password: string) => Promise<{
-    error: Error | null;
-    success: boolean;
-  }>;
-  signUp: (email: string, password: string, userData?: any) => Promise<{
-    error: Error | null;
-    success: boolean;
-    user?: User | null;
-  }>;
+  authCheckComplete: boolean;
+  authError: Error | null;
+  storageCapabilities: any;
+  // Enhanced session properties
+  isSessionHealthy: boolean;
+  sessionHealthIssues: string[];
+  lastSessionRefresh: Date | null;
+  // Methods
+  signIn: (email: string, password: string) => Promise<{ error: any; success: boolean }>;
+  signUp: (email: string, password: string, userData?: any, skipOrgCreation?: boolean, invitationToken?: string) => Promise<{ error: any; success: boolean; user?: User }>;
   signOut: () => Promise<void>;
-  completeUserProfile: (userId: string, userData: any) => Promise<{
-    error: Error | null;
-    success: boolean;
-  }>;
+  completeUserProfile: (userData: any) => Promise<{ error: any; success: boolean }>;
+  // Enhanced session methods
+  refreshSession: () => Promise<void>;
+  validateSession: () => Promise<boolean>;
+  forceLogout: () => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  session: null,
+  isLoading: true,
+  isAuthenticated: false,
+  authCheckComplete: false,
+  authError: null,
+  storageCapabilities: null,
+  isSessionHealthy: true,
+  sessionHealthIssues: [],
+  lastSessionRefresh: null,
+  signIn: async () => ({ error: null, success: false }),
+  signUp: async () => ({ error: null, success: false }),
+  signOut: async () => {},
+  completeUserProfile: async () => ({ error: null, success: false }),
+  refreshSession: async () => {},
+  validateSession: async () => false,
+  forceLogout: () => {},
+});
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { user, session, isLoading, isAuthenticated, authCheckComplete } = useAuthState();
+export const useAuth = () => useContext(AuthContext);
 
-  console.log('AuthProvider rendering with auth state:', 
-    isAuthenticated ? 'authenticated' : 'not authenticated',
-    'loading:', isLoading,
-    'check complete:', authCheckComplete);
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // Use the original auth state hook for backwards compatibility
+  const { user, session, isLoading, isAuthenticated, authCheckComplete, authError, storageCapabilities } = useAuthState();
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    console.log('Attempting to sign in user:', email);
+  // Use enhanced session management for additional capabilities
+  const {
+    isHealthy: isSessionHealthy,
+    healthIssues: sessionHealthIssues,
+    lastRefresh: lastSessionRefresh,
+    refreshSession,
+    validateSession,
+    forceLogout
+  } = useEnhancedSession();
+
+  // Enhanced sign in handler with session monitoring integration
+  const signIn = async (email: string, password: string) => {
     try {
       const result = await signInWithEmail(email, password);
       
+      // If sign in fails due to storage issues, provide helpful guidance
+      if (!result.success && authError?.message.includes('storage')) {
+        return {
+          ...result,
+          error: {
+            ...result.error,
+            message: result.error.message + ' Try adjusting your browser privacy settings to allow storage for this site.'
+          }
+        };
+      }
+      
+      // After successful sign in, validate the session
       if (result.success) {
-        console.log('Sign in successful');
-      } else {
-        console.error('Sign in failed:', result.error);
+        setTimeout(() => {
+          validateSession();
+        }, 100);
       }
       
       return result;
     } catch (error) {
-      console.error('Exception during sign in:', error);
-      toast({
-        title: 'Error',
-        description: 'An unexpected error occurred during sign in',
-        variant: 'destructive',
-      });
+      console.error('Enhanced sign in error:', error);
       return { error: error as Error, success: false };
     }
-  }, []);
+  };
 
-  const signUp = useCallback(async (email: string, password: string, userData?: any) => {
-    console.log('Attempting to sign up user:', email);
-    return signUpWithEmail(email, password, userData);
-  }, []);
-
-  const signOut = useCallback(async () => {
-    console.log('Signing out user');
+  // Enhanced sign up handler
+  const signUp = async (email: string, password: string, userData?: any, skipOrgCreation?: boolean, invitationToken?: string) => {
     try {
-      const result = await signOutUser();
-      if (result.success) {
-        console.log('Sign out successful, redirecting to login');
-        navigate('/login');
-      } else {
-        console.error('Sign out failed:', result.error);
-        // Attempt to redirect anyway
-        navigate('/login');
-      }
-    } catch (error) {
-      console.error('Exception during sign out:', error);
-      // Attempt to redirect anyway
-      navigate('/login');
-    }
-  }, [navigate]);
-
-  const handleCompleteUserProfile = useCallback(async (userId: string, userData: any) => {
-    return completeUserProfile(userId, userData);
-  }, []);
-
-  // If we're on a protected route and not loading, check authentication
-  React.useEffect(() => {
-    if (!isLoading && authCheckComplete && !isAuthenticated) {
-      const isProtectedRoute = !['/login', '/signup', '/reset-password', '/email-confirmation', '/'].includes(location.pathname);
+      const response = await signUpWithEmail(email, password, userData, skipOrgCreation, invitationToken);
       
-      if (isProtectedRoute) {
-        console.log('User not authenticated on protected route, redirecting to login');
-        const returnTo = encodeURIComponent(location.pathname + location.search);
-        navigate(`/login?returnTo=${returnTo}`);
+      // Provide storage-aware guidance
+      if (storageCapabilities && !storageCapabilities.localStorage) {
+        console.warn('⚠️ localStorage not available - session may not persist');
       }
+      
+      return response;
+    } catch (error) {
+      console.error('Enhanced sign up error:', error);
+      return { error: error as Error, success: false };
     }
-  }, [isLoading, isAuthenticated, authCheckComplete, location.pathname, location.search, navigate]);
+  };
+
+  // Enhanced sign out handler with session cleanup
+  const signOut = async () => {
+    try {
+      // Force logout through session monitor for cross-tab coordination
+      forceLogout();
+      
+      // Also perform traditional sign out
+      await signOutUser();
+    } catch (error) {
+      console.error('Enhanced sign out error:', error);
+      // Even if sign out fails, ensure cleanup via forceLogout
+      forceLogout();
+    }
+  };
+
+  // Profile completion handler
+  const handleCompleteUserProfile = async (userData: any) => {
+    if (!user) {
+      return { error: new Error('User not authenticated'), success: false };
+    }
+    
+    return completeUserProfile(user.id, userData);
+  };
 
   return (
     <AuthContext.Provider
@@ -116,11 +145,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         session,
         isLoading,
         isAuthenticated,
-        authCheckComplete, // Added this property to the context value
+        authCheckComplete,
+        authError,
+        storageCapabilities,
+        isSessionHealthy,
+        sessionHealthIssues,
+        lastSessionRefresh,
         signIn,
         signUp,
         signOut,
         completeUserProfile: handleCompleteUserProfile,
+        refreshSession,
+        validateSession,
+        forceLogout,
       }}
     >
       {children}
@@ -128,10 +165,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+export default AuthContext;

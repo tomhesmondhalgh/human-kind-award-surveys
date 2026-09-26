@@ -1,6 +1,5 @@
 
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../integrations/supabase/client';
 
 // Type definitions
 export interface SurveyOption {
@@ -20,6 +19,18 @@ export interface TextResponse {
   created_at: string;
 }
 
+export interface CustomQuestionResponse {
+  question: string;
+  responses: string[];
+}
+
+// Add explicit type for database survey response
+interface DatabaseSurvey {
+  id: string;
+  name: string;
+  date: string;
+}
+
 // Function to get survey options
 export const getSurveyOptions = async (userId?: string): Promise<SurveyOption[]> => {
   try {
@@ -31,12 +42,31 @@ export const getSurveyOptions = async (userId?: string): Promise<SurveyOption[]>
     
     console.log(`Fetching surveys for user ID: ${userId}`);
     
-    // Try to get data from Supabase with user filter
+    // Get user's organizations first
+    const { data: memberships, error: membershipError } = await supabase
+      .from('organization_memberships')
+      .select('organization_id')
+      .eq('user_id', userId);
+    
+    if (membershipError) {
+      console.error('Error fetching user organizations:', membershipError);
+      throw membershipError;
+    }
+    
+    if (!memberships || memberships.length === 0) {
+      console.log('User has no organization memberships');
+      return [];
+    }
+    
+    const orgIds = memberships.map(m => m.organization_id);
+    
+    // Get surveys from user's organizations with explicit typing
     const { data, error } = await supabase
       .from('survey_templates')
       .select('id, name, date')
-      .eq('creator_id', userId)
-      .order('date', { ascending: false });
+      .in('organization_id', orgIds)
+      .order('date', { ascending: false })
+      .returns<DatabaseSurvey[]>();
     
     if (error) {
       console.error('Error fetching surveys:', error);
@@ -45,12 +75,14 @@ export const getSurveyOptions = async (userId?: string): Promise<SurveyOption[]>
     
     console.log('Survey data from database:', data);
     
-    // Return the actual data, even if empty
-    return data?.map(survey => ({
+    // Return with explicit type mapping
+    const surveyOptions: SurveyOption[] = data?.map((survey: DatabaseSurvey) => ({
       id: survey.id,
       name: survey.name,
       date: new Date(survey.date).toLocaleDateString(),
     })) || [];
+    
+    return surveyOptions;
     
   } catch (error) {
     console.error('Error in getSurveyOptions:', error);
@@ -390,5 +422,131 @@ export const getTextResponses = async (
       doingWell: [],
       improvements: []
     };
+  }
+};
+
+// Function to get custom question responses
+export const getCustomQuestionResponses = async (
+  surveyId: string,
+  startDate?: string,
+  endDate?: string
+): Promise<CustomQuestionResponse[]> => {
+  try {
+    console.log('Fetching custom question responses for survey:', surveyId);
+    
+    // First, get the question IDs linked to this survey
+    const { data: linkData, error: linkError } = await supabase
+      .from('survey_questions')
+      .select('question_id')
+      .eq('survey_id', surveyId);
+    
+    if (linkError) {
+      console.error('Error fetching question links:', linkError);
+      throw new Error(`Failed to fetch question links: ${linkError.message}`);
+    }
+    
+    if (!linkData || linkData.length === 0) {
+      console.log('No custom questions found for survey ID:', surveyId);
+      return [];
+    }
+    
+    // Extract question IDs
+    const questionIds = linkData.map(link => link.question_id);
+    
+    // Fetch the question texts
+    const { data: questionsData, error: questionsError } = await supabase
+      .from('custom_questions')
+      .select('id, text')
+      .in('id', questionIds);
+    
+    if (questionsError) {
+      console.error('Error fetching questions:', questionsError);
+      throw new Error(`Failed to fetch questions: ${questionsError.message}`);
+    }
+    
+    if (!questionsData || questionsData.length === 0) {
+      return [];
+    }
+    
+    // Build a map of question IDs to their text
+    const questionsMap = questionsData.reduce((map, q) => {
+      map[q.id] = q.text;
+      return map;
+    }, {} as Record<string, string>);
+    
+    // Get all responses for this survey
+    const query = supabase
+      .from('survey_responses')
+      .select('id, created_at')
+      .eq('survey_template_id', surveyId);
+    
+    // Apply date filters if provided
+    if (startDate) {
+      query.gte('created_at', startDate);
+    }
+    if (endDate) {
+      query.lte('created_at', endDate);
+    }
+    
+    const { data: responseData, error: responseError } = await query;
+    
+    if (responseError) {
+      console.error('Error fetching survey responses:', responseError);
+      throw new Error(`Failed to fetch survey responses: ${responseError.message}`);
+    }
+    
+    if (!responseData || responseData.length === 0) {
+      return [];
+    }
+    
+    // Get response IDs
+    const responseIds = responseData.map(r => r.id);
+    
+    // Get custom question responses
+    const { data: customResponsesData, error: customResponsesError } = await supabase
+      .from('custom_question_responses')
+      .select('question_id, answer')
+      .in('response_id', responseIds);
+    
+    if (customResponsesError) {
+      console.error('Error fetching custom question responses:', customResponsesError);
+      throw new Error(`Failed to fetch custom question responses: ${customResponsesError.message}`);
+    }
+    
+    if (!customResponsesData || customResponsesData.length === 0) {
+      return [];
+    }
+    
+    // Group responses by question
+    const groupedResponses: Record<string, string[]> = {};
+    
+    customResponsesData.forEach(response => {
+      if (!groupedResponses[response.question_id]) {
+        groupedResponses[response.question_id] = [];
+      }
+      if (response.answer) {
+        groupedResponses[response.question_id].push(response.answer);
+      }
+    });
+    
+    // Format the result
+    const result: CustomQuestionResponse[] = [];
+    
+    Object.keys(groupedResponses).forEach(questionId => {
+      const questionText = questionsMap[questionId];
+      if (questionText) {
+        result.push({
+          question: questionText,
+          responses: groupedResponses[questionId]
+        });
+      }
+    });
+    
+    console.log('Fetched custom question responses:', result);
+    return result;
+    
+  } catch (error) {
+    console.error('Error getting custom question responses:', error);
+    return [];
   }
 };

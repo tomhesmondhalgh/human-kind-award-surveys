@@ -1,19 +1,18 @@
 
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { User, ShieldCheck, LogOut, Users, CreditCard } from 'lucide-react';
-import { NavLinks } from './NavLinks';
-import OrganizationSwitcher from '../organization/OrganizationSwitcher';
+import React, { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { useAdminRole } from '../../hooks/useAdminRole';
+import { useSubscription } from '../../hooks/useSubscription';
+import { ChevronDown, ChevronRight, User, Users, CreditCard, ShieldCheck, LogOut } from 'lucide-react';
 
 interface MobileMenuProps {
   isOpen: boolean;
   isAuthenticated: boolean;
   hideAuthButtons: boolean;
   isAdmin: boolean;
-  canManageTeam: boolean;
   handleSignOut: () => Promise<void>;
-  setIsMenuOpen: (isOpen: boolean) => void;
+  setIsMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const MobileMenu: React.FC<MobileMenuProps> = ({
@@ -21,110 +20,170 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
   isAuthenticated,
   hideAuthButtons,
   isAdmin,
-  canManageTeam,
   handleSignOut,
   setIsMenuOpen,
 }) => {
-  if (!isOpen) return null;
+  const location = useLocation();
+  const { user } = useAuth();
+  const { isAdmin: userIsAdmin } = useAdminRole();
+  const { isPremium } = useSubscription();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // Get access to the current admin status from our optimized hook
-  const { isAdmin: isAdminFromHook } = useAdminRole();
-  
-  // Use either the admin status passed as prop or from the hook
-  const showAdminLink = isAdmin || isAdminFromHook;
+  const isActive = (path: string) => {
+    if (path === '/dashboard') {
+      return location.pathname === '/' || location.pathname === '/dashboard';
+    }
+    return location.pathname.startsWith(path);
+  };
+
+  const mobileLinkClass = "block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-brandPurple-600 hover:bg-brandPurple-50 focus:outline-none";
+  const activeMobileLinkClass = "text-purple-700 bg-brandPurple-50";
+
+  const handleLinkClick = () => {
+    setIsMenuOpen(false);
+  };
+
+  const handleSettingsToggle = () => {
+    setIsSettingsOpen(!isSettingsOpen);
+  };
 
   return (
-    <div className="md:hidden bg-white shadow-lg animate-slide-down">
-      {/* Organization Switcher for mobile */}
-      {isAuthenticated && (
-        <div className="px-4 pt-3">
-          <OrganizationSwitcher />
-        </div>
-      )}
-      
+    <div className={`md:hidden ${isOpen ? 'block' : 'hidden'} bg-white w-full border-t`}>
       <div className="px-2 pt-2 pb-3 space-y-1">
-        {isAuthenticated ? (
+        {isAuthenticated && user ? (
           <>
-            <div className="flex flex-col space-y-1">
-              <NavLinks setIsMenuOpen={setIsMenuOpen} />
-            </div>
-            
-            {/* Settings Section Header */}
-            <div className="px-4 pt-2 pb-1 text-base font-semibold text-gray-500">
-              Settings
-            </div>
-            
-            {/* Settings Items */}
-            <Link 
-              to="/profile" 
-              className="block px-4 py-2 rounded-md font-medium text-base hover:bg-brandPurple-50"
-              onClick={() => setIsMenuOpen(false)}
+            <Link
+              to="/dashboard"
+              onClick={handleLinkClick}
+              className={`${mobileLinkClass} ${isActive('/dashboard') ? activeMobileLinkClass : ""}`}
             >
-              <span className="flex items-center">
-                <User size={16} className="mr-2" />
-                Profile
-              </span>
+              Dashboard
+            </Link>
+            
+            <Link
+              to="/surveys"
+              onClick={handleLinkClick}
+              className={`${mobileLinkClass} ${isActive('/surveys') ? activeMobileLinkClass : ""}`}
+            >
+              Survey
+            </Link>
+            
+            <Link
+              to="/analysis"
+              onClick={handleLinkClick}
+              className={`${mobileLinkClass} ${isActive('/analysis') ? activeMobileLinkClass : ""}`}
+            >
+              Analyse
+            </Link>
+            
+            <Link
+              to="/improve"
+              onClick={handleLinkClick}
+              className={`${mobileLinkClass} ${isActive('/improve') ? activeMobileLinkClass : ""}`}
+            >
+              Improve
+            </Link>
+            
+            <Link
+              to="/accredit"
+              onClick={handleLinkClick}
+              className={`${mobileLinkClass} ${isActive('/accredit') ? activeMobileLinkClass : ""}`}
+            >
+              Accredit
             </Link>
 
-            <Link 
-              to="/purchases" 
-              className="block px-4 py-2 rounded-md font-medium text-base hover:bg-brandPurple-50"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <span className="flex items-center">
-                <CreditCard size={16} className="mr-2" />
-                My Purchases
-              </span>
-            </Link>
-            
-            <Link 
-              to="/team" 
-              className="block px-4 py-2 rounded-md font-medium text-base hover:bg-brandPurple-50"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <span className="flex items-center">
-                <Users size={16} className="mr-2" />
-                Team
-              </span>
-            </Link>
-            
-            {/* Show Admin link if user has admin access */}
-            {showAdminLink && (
-              <Link 
-                to="/admin" 
-                className="block px-4 py-2 rounded-md font-medium text-base hover:bg-brandPurple-50"
-                onClick={() => setIsMenuOpen(false)}
+            {!isPremium && (
+              <Link
+                to="/upgrade"
+                onClick={handleLinkClick}
+                className={`${mobileLinkClass} ${isActive('/upgrade') ? activeMobileLinkClass : ""}`}
               >
-                <span className="flex items-center">
-                  <ShieldCheck size={16} className="mr-2" />
-                  Admin
-                </span>
+                Upgrade
               </Link>
             )}
-            
-            <button 
-              className="flex items-center w-full text-left px-4 py-2 rounded-md font-medium text-base hover:bg-brandPurple-50"
-              onClick={handleSignOut}
+
+            {/* Settings Dropdown */}
+            <div>
+              <button
+                onClick={handleSettingsToggle}
+                className={`${mobileLinkClass} w-full text-left flex items-center justify-between`}
+              >
+                Settings
+                {isSettingsOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+              </button>
+              
+              {isSettingsOpen && (
+                <div className="ml-4 mt-1 space-y-1">
+                  <Link
+                    to="/profile"
+                    onClick={handleLinkClick}
+                    className={`${mobileLinkClass} flex items-center`}
+                  >
+                    <User size={16} className="mr-2" />
+                    Profile
+                  </Link>
+                  
+                  <Link
+                    to="/team"
+                    onClick={handleLinkClick}
+                    className={`${mobileLinkClass} flex items-center`}
+                  >
+                    <Users size={16} className="mr-2" />
+                    Team
+                  </Link>
+                  
+                  <Link
+                    to="/purchases"
+                    onClick={handleLinkClick}
+                    className={`${mobileLinkClass} flex items-center`}
+                  >
+                    <CreditCard size={16} className="mr-2" />
+                    My Purchases
+                  </Link>
+                  
+                  {userIsAdmin && (
+                    <Link
+                      to="/admin"
+                      onClick={handleLinkClick}
+                      className={`${mobileLinkClass} flex items-center`}
+                    >
+                      <ShieldCheck size={16} className="mr-2" />
+                      Admin
+                    </Link>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-gray-200 my-2"></div>
+
+            {/* Sign Out Button */}
+            <button
+              onClick={() => {
+                handleSignOut();
+                handleLinkClick();
+              }}
+              className={`${mobileLinkClass} w-full text-left text-red-600 hover:text-red-700 hover:bg-red-50 flex items-center`}
             >
               <LogOut size={16} className="mr-2" />
               Sign Out
             </button>
           </>
         ) : (
-          // Only show login/signup options if not on survey response or complete pages
           !hideAuthButtons && (
             <>
-              <Link 
-                to="/login" 
-                className="block px-4 py-2 rounded-md font-medium text-base hover:bg-brandPurple-50"
-                onClick={() => setIsMenuOpen(false)}
+              <Link
+                to="/login"
+                onClick={handleLinkClick}
+                className={mobileLinkClass}
               >
                 Log in
               </Link>
-              <Link 
-                to="/signup" 
-                className="block px-4 py-2 rounded-md font-medium text-base text-brandPurple-600 hover:bg-brandPurple-50"
-                onClick={() => setIsMenuOpen(false)}
+              <Link
+                to="/signup"
+                onClick={handleLinkClick}
+                className={mobileLinkClass}
               >
                 Sign up
               </Link>

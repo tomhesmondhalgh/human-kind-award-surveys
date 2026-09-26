@@ -1,7 +1,8 @@
 
 import React from 'react';
-import DescriptorRow from './DescriptorRow';
 import { ActionPlanDescriptor, DescriptorStatus } from '@/types/actionPlan';
+import TableHeader from './table/TableHeader';
+import DescriptorRow from './DescriptorRow';
 
 interface DescriptorsTableProps {
   descriptors: ActionPlanDescriptor[];
@@ -31,16 +32,7 @@ const DescriptorsTable: React.FC<DescriptorsTableProps> = ({
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="p-2 text-left font-medium text-gray-600 border border-gray-200 w-16">Index</th>
-            <th className="p-2 text-left font-medium text-gray-600 border border-gray-200 w-1/4">Descriptor</th>
-            <th className="p-2 text-left font-medium text-gray-600 border border-gray-200 w-44">Status & Deadline</th>
-            <th className="p-2 text-left font-medium text-gray-600 border border-gray-200 w-32">Assigned To</th>
-            <th className="p-2 text-left font-medium text-gray-600 border border-gray-200">Key Actions</th>
-            <th className="p-2 text-left font-medium text-gray-600 border border-gray-200 w-28">Notes</th>
-          </tr>
-        </thead>
+        <TableHeader />
         <tbody>
           {descriptors.map((descriptor) => (
             <DescriptorRow

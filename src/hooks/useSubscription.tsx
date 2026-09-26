@@ -34,20 +34,21 @@ export function useSubscription() {
     fetchSubscription();
   }, [fetchSubscription]);
 
-  // If in testing mode, use the testing plan regardless of admin status
-  const effectiveSubscription = (isTestingMode && testingPlan) ? {
+  // Only apply testing mode if user is actually an admin (security check)
+  const effectiveSubscription = (isTestingMode && testingPlan && isAdmin) ? {
     plan: testingPlan,
     isActive: true
   } : subscription;
 
   const hasAccess = useCallback(async (requiredPlan: PlanType): Promise<boolean> => {
     if (!user) return false;
-    if (isTestingMode && testingPlan) {
-      const planLevels = { free: 0, foundation: 1, progress: 2, premium: 3 };
+    // Only allow testing mode access if user is admin
+    if (isTestingMode && testingPlan && isAdmin) {
+      const planLevels = { free: 0, foundation: 1, legacy: 1, progress: 2, premium: 3 };
       return planLevels[testingPlan] >= planLevels[requiredPlan];
     }
     return checkPlanAccess(user.id, requiredPlan);
-  }, [user, isTestingMode, testingPlan]);
+  }, [user, isTestingMode, testingPlan, isAdmin]);
 
   // Force refresh subscription data
   const refreshSubscription = useCallback(async () => {
@@ -71,6 +72,7 @@ export function useSubscription() {
     isPremium: effectiveSubscription?.plan === 'premium' && effectiveSubscription?.isActive,
     isProgress: effectiveSubscription?.plan === 'progress' && effectiveSubscription?.isActive,
     isFoundation: effectiveSubscription?.plan === 'foundation' && effectiveSubscription?.isActive,
+    isLegacy: effectiveSubscription?.plan === 'legacy' && effectiveSubscription?.isActive,
     isFree: effectiveSubscription?.plan === 'free' || !effectiveSubscription?.isActive,
   };
 }

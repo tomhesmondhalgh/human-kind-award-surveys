@@ -5,9 +5,12 @@ import { Send, Copy, Edit } from 'lucide-react';
 import { toast } from "sonner";
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { usePermissions } from '../../hooks/usePermissions';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { useMediaQuery } from '@/hooks/use-media-query';
+import { format } from 'date-fns';
+import { OrganizationRole } from '@/types/organizations';
+import { canEditContent } from '@/utils/organizationPermissions';
 
 interface Survey {
   id: string;
@@ -25,52 +28,117 @@ interface Survey {
 interface SurveyListProps {
   surveys: Survey[];
   onSendReminder: (id: string) => void;
+  refreshList?: () => void;
+  userRole?: OrganizationRole;
 }
 
-const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder }) => {
+const getStatusBadgeVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
+  switch (status) {
+    case 'Sent':
+      return 'default'; // Blue
+    case 'Completed':
+      return 'secondary'; // Grey
+    case 'Archived':
+      return 'outline'; // Outlined grey
+    case 'Scheduled':
+      return 'default'; // Blue
+    case 'Saved':
+      return 'outline'; // Outlined
+    default:
+      return 'secondary';
+  }
+};
+
+const getCloseDateDisplay = (closeDate?: string | null) => {
+  if (!closeDate) return { text: 'No close date', className: 'text-muted-foreground' };
+  
+  const date = new Date(closeDate);
+  const now = new Date();
+  const daysUntilClose = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (daysUntilClose < 0) {
+    return { 
+      text: `Closed ${format(date, 'dd/MM/yyyy')}`, 
+      className: 'text-muted-foreground' 
+    };
+  } else if (daysUntilClose === 0) {
+    return { 
+      text: 'Closes today', 
+      className: 'text-red-600 font-medium' 
+    };
+  } else if (daysUntilClose <= 3) {
+    return { 
+      text: `Closes ${format(date, 'dd/MM/yyyy')} (${daysUntilClose} days)`, 
+      className: 'text-orange-600 font-medium' 
+    };
+  } else if (daysUntilClose <= 7) {
+    return { 
+      text: `Closes ${format(date, 'dd/MM/yyyy')}`, 
+      className: 'text-yellow-700 font-medium' 
+    };
+  } else {
+    return { 
+      text: `Closes ${format(date, 'dd/MM/yyyy')}`, 
+      className: 'text-foreground' 
+    };
+  }
+};
+
+const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder, refreshList, userRole }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sendingReminder, setSendingReminder] = useState<string | null>(null);
-  const [canEditSurveys, setCanEditSurveys] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
-  const permissions = usePermissions();
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  useEffect(() => {
-    const checkEditPermission = async () => {
-      if (permissions && !permissions.isLoading) {
-        const canEdit = await permissions.canEdit();
-        setCanEditSurveys(canEdit);
-      }
-    };
-    
-    checkEditPermission();
-  }, [permissions]);
+  const canEdit = canEditContent(userRole);
 
-  const copyToClipboard = (id: string, text: string) => {
-    navigator.clipboard.writeText(text)
-      .then(() => {
-        setCopiedId(id);
-        toast.success("Survey link copied to clipboard");
-        setTimeout(() => setCopiedId(null), 2000);
-      })
-      .catch(() => {
-        toast.error("Failed to copy link");
-      });
+  const copyToClipboard = async (id: string, text: string, currentStatus: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      toast.success("Survey link copied to clipboard");
+      
+      // Only update status if it's not already 'Sent' or 'Completed'
+      if (currentStatus !== 'Sent' && currentStatus !== 'Completed') {
+        console.log(`Updating survey ${id} status to Sent after copying link`);
+        
+        const { error } = await supabase
+          .from('survey_templates')
+          .update({ status: 'Sent' })
+          .eq('id', id);
+          
+        if (error) {
+          console.error('Error updating survey status:', error);
+          // Don't show error to user, but log it
+        } else {
+          console.log('Successfully updated survey status to Sent');
+          // Call refreshList to update the UI instead of reloading the page
+          if (refreshList) {
+            refreshList();
+          }
+        }
+      }
+      
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      toast.error("Failed to copy link");
+    }
   };
 
   const handleEditClick = (id: string) => {
-    if (!canEditSurveys) {
+    if (!canEdit) {
       toast.error("You don't have permission to edit surveys");
       return;
     }
     
     console.log(`Navigating to edit survey: ${id}`);
-    navigate(`/surveys/${id}/edit`);
+    navigate(`/survey-editor/${id}`);
   };
   
   const handleSendReminder = async (survey: Survey) => {
-    if (!canEditSurveys) {
+    if (!canEdit) {
       toast.error("You don't have permission to send reminders");
       return;
     }
@@ -133,18 +201,16 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder }) => {
 
   if (surveys.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-100 text-center py-12">
-        <p className="text-gray-500 mb-4">No surveys found</p>
-        {canEditSurveys && (
-          <Link to="/new-survey" className="bg-brandPurple-500 hover:bg-brandPurple-600 text-white font-medium py-2 px-6 rounded-md transition-all duration-200 inline-block">
-            Create Your First Survey
-          </Link>
-        )}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-12 text-center">
+        <h2 className="text-xl font-semibold mb-2">No surveys found</h2>
+        <p className="text-gray-500 mb-6">You haven't created any surveys yet or no responses have been collected.</p>
+        <Link to="/survey-editor" className="bg-brandPurple-500 hover:bg-brandPurple-600 text-white font-medium py-2 px-6 rounded-md transition-all duration-200 inline-block">
+          Create Your First Survey
+        </Link>
       </div>
     );
   }
 
-  // Desktop view with table
   if (!isMobile) {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">      
@@ -162,7 +228,7 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder }) => {
               <div className="col-span-3">
                 <div>
                   <h3 className="text-gray-900 font-medium">
-                    {canEditSurveys ? (
+                    {canEdit ? (
                       <button 
                         onClick={() => handleEditClick(survey.id)}
                         className="hover:text-brandPurple-600 transition-colors text-left"
@@ -173,33 +239,29 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder }) => {
                       <span>{survey.name}</span>
                     )}
                   </h3>
-                  {survey.closeDisplayDate && (
-                    <p className="text-xs text-gray-500 mt-1">{survey.closeDisplayDate}</p>
-                  )}
-                </div>
-              </div>
-              
-              <div className="col-span-2 text-gray-700">
-                {survey.formattedDate}
-              </div>
-              
-              <div className="col-span-2">
-                <span className={`
-                  inline-flex px-2.5 py-1 rounded-full text-xs font-medium
-                  ${survey.status === 'Scheduled' ? 'bg-yellow-100 text-yellow-800' : 
-                    survey.status === 'Sent' ? 'bg-blue-100 text-blue-800' : 
-                    'bg-purple-100 text-purple-800'}
-                `}>
-                  {survey.status}
-                </span>
-              </div>
+            {(() => {
+              const { text, className } = getCloseDateDisplay(survey.closeDate);
+              return <p className={`text-xs mt-1 ${className}`}>{text}</p>;
+            })()}
+          </div>
+        </div>
+        
+        <div className="col-span-2 text-gray-700">
+          {survey.formattedDate}
+        </div>
+        
+        <div className="col-span-2">
+          <Badge variant={getStatusBadgeVariant(survey.status)}>
+            {survey.status}
+          </Badge>
+        </div>
               
               <div className="col-span-1 text-gray-700">
                 {survey.responseCount}
               </div>
               
               <div className="col-span-4 flex justify-end space-x-4">
-                {survey.status === 'Sent' && canEditSurveys && survey.emails && survey.emails.trim() !== '' && (
+                {survey.status === 'Sent' && canEdit && survey.emails && survey.emails.trim() !== '' && (
                   <button 
                     onClick={() => handleSendReminder(survey)}
                     className="flex items-center text-sm text-gray-500 hover:text-brandPurple-600 transition-colors whitespace-nowrap"
@@ -215,7 +277,7 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder }) => {
                 
                 {survey.url && (
                   <button 
-                    onClick={() => copyToClipboard(survey.id, survey.url!)}
+                    onClick={() => copyToClipboard(survey.id, survey.url!, survey.status)}
                     className="flex items-center text-sm text-gray-500 hover:text-brandPurple-600 transition-colors whitespace-nowrap"
                     title="Copy survey link to clipboard"
                   >
@@ -224,7 +286,7 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder }) => {
                   </button>
                 )}
                 
-                {canEditSurveys && (
+                {canEdit && (
                   <button 
                     onClick={() => handleEditClick(survey.id)}
                     className="flex items-center text-sm text-gray-500 hover:text-brandPurple-600 transition-colors whitespace-nowrap"
@@ -242,14 +304,13 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder }) => {
     );
   }
 
-  // Mobile view with cards
   return (
     <div className="space-y-4">
       {surveys.map((survey) => (
         <div key={survey.id} className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
           <div className="flex justify-between items-start mb-2">
             <h3 className="text-gray-900 font-medium">
-              {canEditSurveys ? (
+              {canEdit ? (
                 <button 
                   onClick={() => handleEditClick(survey.id)}
                   className="hover:text-brandPurple-600 transition-colors text-left"
@@ -260,37 +321,37 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder }) => {
                 <span>{survey.name}</span>
               )}
             </h3>
-            <span className={`
-              inline-flex px-2.5 py-1 rounded-full text-xs font-medium
-              ${survey.status === 'Scheduled' ? 'bg-yellow-100 text-yellow-800' : 
-                survey.status === 'Sent' ? 'bg-blue-100 text-blue-800' : 
-                'bg-purple-100 text-purple-800'}
-            `}>
-              {survey.status}
-            </span>
+          <Badge variant={getStatusBadgeVariant(survey.status)}>
+            {survey.status}
+          </Badge>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+          <div>
+            <span className="text-gray-500">Date:</span>
+            <div className="text-gray-700">{survey.formattedDate}</div>
           </div>
           
-          <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-            <div>
-              <span className="text-gray-500">Date:</span>
-              <div className="text-gray-700">{survey.formattedDate}</div>
-            </div>
-            
-            <div>
-              <span className="text-gray-500">Responses:</span>
-              <div className="text-gray-700">{survey.responseCount}</div>
-            </div>
-            
-            {survey.closeDisplayDate && (
-              <div className="col-span-2">
-                <span className="text-gray-500">Closes:</span>
-                <div className="text-gray-700">{survey.closeDisplayDate.replace('Closes: ', '')}</div>
-              </div>
-            )}
+          <div>
+            <span className="text-gray-500">Responses:</span>
+            <div className="text-gray-700">{survey.responseCount}</div>
           </div>
+          
+          <div className="col-span-2">
+            {(() => {
+              const { text, className } = getCloseDateDisplay(survey.closeDate);
+              return (
+                <>
+                  <span className="text-gray-500">Closes:</span>
+                  <div className={`${className}`}>{text}</div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
           
           <div className="border-t border-gray-100 pt-3 flex flex-wrap gap-3">
-            {survey.status === 'Sent' && canEditSurveys && survey.emails && survey.emails.trim() !== '' && (
+            {survey.status === 'Sent' && canEdit && survey.emails && survey.emails.trim() !== '' && (
               <button 
                 onClick={() => handleSendReminder(survey)}
                 className="flex items-center text-sm text-gray-500 hover:text-brandPurple-600 transition-colors"
@@ -305,7 +366,7 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder }) => {
             
             {survey.url && (
               <button 
-                onClick={() => copyToClipboard(survey.id, survey.url!)}
+                onClick={() => copyToClipboard(survey.id, survey.url!, survey.status)}
                 className="flex items-center text-sm text-gray-500 hover:text-brandPurple-600 transition-colors"
               >
                 <Copy size={16} className="mr-1" />
@@ -313,7 +374,7 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder }) => {
               </button>
             )}
             
-            {canEditSurveys && (
+            {canEdit && (
               <button 
                 onClick={() => handleEditClick(survey.id)}
                 className="flex items-center text-sm text-gray-500 hover:text-brandPurple-600 transition-colors"

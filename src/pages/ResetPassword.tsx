@@ -1,48 +1,86 @@
-
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2, Lock } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '../services/toastService';
 import MainLayout from '../components/layout/MainLayout';
 import PageTitle from '../components/ui/PageTitle';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/lib/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 
 const ResetPassword = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isValidToken, setIsValidToken] = useState(true);
 
-  // Check if the password reset token is valid
   useEffect(() => {
-    const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
+    const verifyRecoveryToken = async () => {
+      const token = searchParams.get('token');
+      const type = searchParams.get('type');
       
-      // If no session or the access token doesn't exist, the reset link is invalid
-      if (!data.session) {
+      if (!token || type !== 'recovery') {
+        console.log('❌ No valid token found in URL');
         setIsValidToken(false);
-        toast.error('Invalid or expired password reset link', {
+        toast.error({
+          title: 'Invalid password reset link',
           description: 'Please request a new password reset link'
         });
+        setIsCheckingSession(false);
+        return;
+      }
+      
+      try {
+        console.log('🔑 Verifying recovery token...');
+        const { data, error } = await supabase.auth.verifyOtp({
+          token_hash: token,
+          type: 'recovery'
+        });
+        
+        if (error) {
+          console.error('❌ Token verification failed:', error);
+          setIsValidToken(false);
+          toast.error({
+            title: 'Invalid or expired password reset link',
+            description: 'Please request a new password reset link'
+          });
+        } else if (data.session) {
+          console.log('✅ Token verified successfully, session created');
+          setIsValidToken(true);
+        }
+      } catch (error) {
+        console.error('❌ Token verification exception:', error);
+        setIsValidToken(false);
+        toast.error({
+          title: 'Failed to verify reset link',
+          description: 'Please try again or request a new link'
+        });
+      } finally {
+        setIsCheckingSession(false);
       }
     };
     
-    checkSession();
-  }, []);
+    verifyRecoveryToken();
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (password !== confirmPassword) {
-      toast.error('Passwords do not match');
+      toast.error({
+        title: 'Passwords do not match'
+      });
       return;
     }
     
     if (password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+      toast.error({
+        title: 'Invalid password',
+        description: 'Password must be at least 6 characters'
+      });
       return;
     }
     
@@ -55,20 +93,37 @@ const ResetPassword = () => {
         throw error;
       }
       
-      toast.success('Password updated successfully');
+      toast.success({
+        title: 'Password updated successfully'
+      });
       
-      // Sign out the user and redirect to login
       await supabase.auth.signOut();
       navigate('/login?password_reset=true');
     } catch (error: any) {
       console.error('Password update error:', error);
-      toast.error('Failed to update password', {
+      toast.error({
+        title: 'Failed to update password',
         description: error.message || 'Please try again later'
       });
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (isCheckingSession) {
+    return (
+      <MainLayout>
+        <div className="page-container">
+          <div className="max-w-md mx-auto glass-card rounded-2xl p-8">
+            <div className="flex flex-col items-center justify-center space-y-4">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-center">Verifying your reset link...</p>
+            </div>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   if (!isValidToken) {
     return (

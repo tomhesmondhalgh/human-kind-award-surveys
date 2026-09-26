@@ -12,10 +12,10 @@ export const roleOptions = [
 ];
 
 export const agreementOptions = [
-  'Strongly Agree',
-  'Agree',
+  'Strongly disagree',
   'Disagree',
-  'Strongly Disagree'
+  'Agree',
+  'Strongly agree'
 ];
 
 export const frequencyOptions = [

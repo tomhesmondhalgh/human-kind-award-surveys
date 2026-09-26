@@ -1,5 +1,5 @@
 
-import { supabase } from "../../lib/supabase";
+import { supabase } from "../../integrations/supabase/client";
 
 /**
  * Counts the number of responses for a given survey

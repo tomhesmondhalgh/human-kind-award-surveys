@@ -1,33 +1,32 @@
-
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "../ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { Badge } from "../ui/badge";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from "../ui/card";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
-import { CreditCard, FileText, AlertCircle } from "lucide-react";
+import { CreditCard, FileText, AlertCircle, ListTodo, Gift, TrendingUp } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { formatCurrency } from '../../lib/utils';
 import PageTitle from '../ui/PageTitle';
+import { useSubscription } from '../../hooks/useSubscription';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 
 export type Purchase = {
   id: string;
   subscription_id: string;
-  payment_method: 'stripe' | 'invoice' | 'manual';
+  payment_method: 'stripe' | 'invoice' | 'manual' | 'redemption_code';
   amount: number;
   currency: string;
   payment_status: 'pending' | 'invoice_raised' | 'payment_made' | 'cancelled' | 'refunded';
@@ -55,30 +54,31 @@ const MyPurchases = () => {
   const [activeSubscription, setActiveSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [cancellingSubscription, setCancellingSubscription] = useState(false);
-  const { user } = useAuth();
+  const {
+    user
+  } = useAuth();
+  const {
+    subscription,
+    isLoading: isSubscriptionLoading,
+    isPremium
+  } = useSubscription();
 
   const fetchPurchases = async () => {
     if (!user) return;
-
     setLoading(true);
     try {
-      // Get the user's subscription IDs
-      const { data: subscriptions, error: subError } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', user.id);
-
+      const {
+        data: subscriptions,
+        error: subError
+      } = await supabase.from('subscriptions').select('*').eq('user_id', user.id);
       if (subError) {
         throw subError;
       }
-
-      // Find active subscription
       const active = subscriptions?.find(sub => 
         sub.status === 'active' && 
-        sub.purchase_type === 'subscription' &&
+        sub.purchase_type === 'subscription' && 
         (sub.end_date === null || new Date(sub.end_date) > new Date())
       );
-      
       if (active) {
         setActiveSubscription({
           id: active.id,
@@ -89,41 +89,30 @@ const MyPurchases = () => {
           purchase_type: active.purchase_type
         });
       }
-
       if (!subscriptions || subscriptions.length === 0) {
         setPurchases([]);
         setLoading(false);
         return;
       }
-
-      // Get subscription IDs
       const subscriptionIds = subscriptions.map(sub => sub.id);
-
-      // Get payment history for those subscriptions
-      const { data: payments, error: paymentError } = await supabase
-        .from('payment_history')
-        .select(`
-          *,
-          subscription:subscriptions (
-            id,
-            plan_type,
-            purchase_type
-          )
-        `)
-        .in('subscription_id', subscriptionIds)
-        .order('created_at', { ascending: false });
-
+      // Use the secure view that redacts sensitive billing PII
+      const {
+        data: payments,
+        error: paymentError
+      } = await supabase.from('user_payment_summary').select('*').in('subscription_id', subscriptionIds).order('created_at', {
+        ascending: false
+      });
       if (paymentError) {
         throw paymentError;
       }
-
-      // Format the data
-      const formattedPurchases = payments.map(item => ({
+      
+      // The view already filters and includes plan_type/purchase_type
+      // No need to filter again as RLS ensures only user's data is returned
+      const formattedPurchases = (payments || []).map(item => ({
         ...item,
-        plan_type: item.subscription?.plan_type || 'unknown',
-        purchase_type: item.subscription?.purchase_type || 'unknown'
+        // Map redacted field to the expected field name for display
+        billing_school_name: item.billing_school_name_redacted || '***'
       }));
-
       setPurchases(formattedPurchases);
     } catch (error) {
       console.error('Error fetching purchases:', error);
@@ -141,23 +130,21 @@ const MyPurchases = () => {
 
   const handleCancelSubscription = async () => {
     if (!user || !activeSubscription) return;
-    
     setCancellingSubscription(true);
     try {
-      // Call the edge function to cancel the subscription
-      const { data, error } = await supabase.functions.invoke('cancel-subscription', {
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('cancel-subscription', {
         body: {
           subscriptionId: activeSubscription.id,
           userId: user.id
         }
       });
-
       if (error) {
         throw error;
       }
-
       toast.success('Your subscription has been scheduled to cancel at the end of the current billing period');
-      // Refresh the data
       fetchPurchases();
     } catch (error) {
       console.error('Error cancelling subscription:', error);
@@ -190,6 +177,8 @@ const MyPurchases = () => {
         return <CreditCard className="h-4 w-4 mr-1" />;
       case 'invoice':
         return <FileText className="h-4 w-4 mr-1" />;
+      case 'redemption_code':
+        return <Gift className="h-4 w-4 mr-1" />;
       default:
         return null;
     }
@@ -199,17 +188,25 @@ const MyPurchases = () => {
     return new Date(dateString).toLocaleDateString('en-GB');
   };
 
+  const formatPlanName = (planType: string | undefined) => {
+    if (!planType) return 'Free';
+    return planType.charAt(0).toUpperCase() + planType.slice(1);
+  };
+
+  const formatRoleName = (role: string | null) => {
+    if (!role) return 'No Role';
+    return role.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  };
+
   return (
-    <div className="container py-8">
+    <>
       <PageTitle title="My Purchases" subtitle="View your purchases including credit card payments and invoices" />
       
       {activeSubscription && (
-        <Card className="mb-8">
+        <Card className="mb-8 mt-6">
           <CardHeader>
             <CardTitle>Active Subscription</CardTitle>
-            <CardDescription>
-              Your current subscription details
-            </CardDescription>
+            <CardDescription>Your current subscription details</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -230,26 +227,56 @@ const MyPurchases = () => {
                 </div>
               </div>
               
-              <div className="flex justify-end">
-                <Button 
-                  variant="destructive" 
-                  onClick={handleCancelSubscription}
-                  disabled={cancellingSubscription}
-                >
-                  {cancellingSubscription ? 'Cancelling...' : 'Cancel at Next Renewal'}
-                </Button>
+              <div className="mt-4 pt-4 border-t">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  {!isPremium && (
+                    <Button asChild variant="default" className="w-full sm:w-auto">
+                      <Link to="/upgrade">
+                        Upgrade Plan
+                      </Link>
+                    </Button>
+                  )}
+                  
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button 
+                        variant="destructive" 
+                        disabled={cancellingSubscription}
+                        className="w-full sm:w-auto"
+                      >
+                        {cancellingSubscription ? 'Cancelling...' : 'Cancel Subscription'}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Cancel Subscription?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Your subscription will be cancelled at the end of the current billing period. 
+                          You'll retain access until {activeSubscription.end_date ? formatDate(activeSubscription.end_date) : 'the end of your billing cycle'}.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleCancelSubscription}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Yes, Cancel Subscription
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      <Card>
+      <Card className="mb-12">
         <CardHeader>
           <CardTitle>Purchase History</CardTitle>
-          <CardDescription>
-            All your purchases including credit card payments and invoices
-          </CardDescription>
+          <CardDescription>All your purchases including credit card payments and invoices</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -275,46 +302,38 @@ const MyPurchases = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {purchases.map((purchase) => (
+                    {purchases.map(purchase => (
                       <TableRow key={purchase.id}>
-                        <TableCell>
-                          {formatDate(purchase.created_at)}
-                        </TableCell>
+                        <TableCell>{formatDate(purchase.created_at)}</TableCell>
                         <TableCell>
                           <div className="font-medium">{purchase.billing_school_name || 'N/A'}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {purchase.billing_contact_name}
-                          </div>
+                          <div className="text-sm text-muted-foreground">{purchase.billing_contact_name}</div>
                         </TableCell>
                         <TableCell>
                           <div className="capitalize font-medium">{purchase.plan_type}</div>
-                          <div className="text-xs text-muted-foreground capitalize">
-                            {purchase.purchase_type}
-                          </div>
+                          <div className="text-xs text-muted-foreground capitalize">{purchase.purchase_type}</div>
                         </TableCell>
                         <TableCell>{formatCurrency(purchase.amount, purchase.currency)}</TableCell>
                         <TableCell>
                           <div className="flex items-center">
                             {getPaymentMethodIcon(purchase.payment_method)}
-                            <span className="capitalize">{purchase.payment_method}</span>
+                            <span className="capitalize">
+                              {purchase.payment_method === 'redemption_code' ? 'Redemption Code' : purchase.payment_method}
+                            </span>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          {purchase.invoice_number || '—'}
-                        </TableCell>
-                        <TableCell>
-                          {getStatusBadge(purchase.payment_status)}
-                        </TableCell>
+                        <TableCell>{purchase.invoice_number || '—'}</TableCell>
+                        <TableCell>{getStatusBadge(purchase.payment_status)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              )}
-            </div>
-          )}
-        </CardContent>
+            )}
+          </div>
+        )}
+      </CardContent>
       </Card>
-    </div>
+    </>
   );
 };
 

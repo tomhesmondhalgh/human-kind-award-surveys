@@ -1,16 +1,19 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
-import { Organization } from '../lib/supabase/client';
+import { Organization, OrganizationWithRole } from '../types/organizations';
+import { toast } from 'sonner';
 
 export interface OrganizationContextType {
-  currentOrganization: Organization | null;
-  setCurrentOrganization: (org: Organization | null) => void;
+  currentOrganization: OrganizationWithRole | null;
+  setCurrentOrganization: (org: OrganizationWithRole | null) => void;
   isLoading: boolean;
   switchOrganization: (orgId: string) => Promise<boolean>;
-  organizations: Organization[];
+  organizations: OrganizationWithRole[];
   refreshOrganizations: () => Promise<void>;
+  createOrganization: (name: string, address?: string, urn?: string) => Promise<OrganizationWithRole | null>;
+  error: string | null;
 }
 
 const OrganizationContext = createContext<OrganizationContextType>({
@@ -19,151 +22,271 @@ const OrganizationContext = createContext<OrganizationContextType>({
   isLoading: true,
   switchOrganization: async () => false,
   organizations: [],
-  refreshOrganizations: async () => {}
+  refreshOrganizations: async () => {},
+  createOrganization: async () => null,
+  error: null
 });
 
 export const useOrganization = () => useContext(OrganizationContext);
 
 export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentOrganization, setCurrentOrganization] = useState<Organization | null>(null);
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [currentOrganization, setCurrentOrganization] = useState<OrganizationWithRole | null>(null);
+  const [organizations, setOrganizations] = useState<OrganizationWithRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { user } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+  const { user, isAuthenticated } = useAuth();
 
   const fetchOrganizations = async () => {
-    if (!user) return [];
+    if (!user || !isAuthenticated) {
+      console.log('OrganizationContext: No authenticated user, returning empty organizations');
+      return [];
+    }
+    
+    console.log('OrganizationContext: Fetching organizations for user:', user.id);
+    
     try {
-      const { data: orgMembers, error: orgError } = await supabase
-        .from('organization_members')
-        .select('organization_id, role')
-        .eq('user_id', user.id);
-        
+      // First verify session is valid
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        console.error('OrganizationContext: Invalid session:', sessionError);
+        throw new Error('Authentication session invalid');
+      }
+
+      // Use the security definer function to get user organizations
+      console.log('OrganizationContext: Calling get_user_organizations function...');
+      const { data: organizationsData, error: orgError } = await supabase
+        .rpc('get_user_organizations', { user_uuid: user.id });
+
       if (orgError) {
-        console.error('Error fetching organization members:', orgError);
+        console.error('OrganizationContext: Error calling get_user_organizations:', orgError);
+        console.error('OrganizationContext: Error details:', {
+          code: orgError.code,
+          message: orgError.message,
+          details: orgError.details,
+          hint: orgError.hint
+        });
+        
+        // Check for specific RLS recursion errors
+        if (orgError.message?.includes('infinite recursion') || orgError.message?.includes('recursion')) {
+          throw new Error('Database configuration issue detected - please contact support');
+        }
+        
+        throw new Error(`Failed to fetch organizations: ${orgError.message}`);
+      }
+
+      console.log('OrganizationContext: Raw organizations data:', organizationsData);
+
+      if (!organizationsData || organizationsData.length === 0) {
+        console.log('OrganizationContext: No organizations found for user');
         return [];
       }
+
+      // Transform the data to match OrganizationWithRole interface
+      const organizations = organizationsData.map(org => ({
+        id: org.id,
+        name: org.name,
+        address: org.address,
+        urn: org.urn,
+        created_at: org.created_at,
+        updated_at: org.updated_at,
+        role: org.role
+      })) as OrganizationWithRole[];
       
-      const orgs: Organization[] = [];
-      
-      for (const org of orgMembers || []) {
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, school_name, created_at, updated_at')
-          .eq('id', org.organization_id)
-          .single();
-          
-        if (profileError) {
-          console.error('Error fetching org profile:', profileError);
-          continue;
-        }
-        
-        if (profile) {
-          orgs.push({
-            id: profile.id,
-            name: profile.school_name,
-            created_at: profile.created_at || new Date().toISOString(),
-            updated_at: profile.updated_at || new Date().toISOString()
-          });
-        }
-      }
-      
-      return orgs;
+      console.log('OrganizationContext: Processed organizations successfully:', organizations.length, 'organizations');
+      return organizations;
     } catch (error) {
-      console.error('Error fetching organizations:', error);
-      return [];
+      console.error('OrganizationContext: Error in fetchOrganizations:', error);
+      throw error;
     }
   };
 
   const refreshOrganizations = async () => {
-    if (!user) return;
-    const orgs = await fetchOrganizations();
-    setOrganizations(orgs);
+    if (!user || !isAuthenticated) {
+      console.log('OrganizationContext: No authenticated user for refresh, skipping');
+      return;
+    }
+    
+    try {
+      setError(null);
+      console.log('OrganizationContext: Refreshing organizations...');
+      const orgs = await fetchOrganizations();
+      setOrganizations(orgs);
+      console.log('OrganizationContext: Organizations refreshed successfully, count:', orgs.length);
+    } catch (error) {
+      console.error('OrganizationContext: Error in refreshOrganizations:', error);
+      
+      let errorMessage = 'Failed to load organisations';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
+      setOrganizations([]);
+      
+      // Only show toast for non-auth errors to avoid spam
+      if (!errorMessage.includes('Authentication')) {
+        toast.error(errorMessage);
+      }
+    }
+  };
+
+  const createOrganization = async (name: string, address?: string, urn?: string): Promise<OrganizationWithRole | null> => {
+    if (!user || !isAuthenticated) {
+      console.error('OrganizationContext: No authenticated user for organization creation');
+      return null;
+    }
+    
+    setIsLoading(true);
+    try {
+      console.log('OrganizationContext: Creating organization:', { name, address, urn });
+      
+      // Verify session before creating
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Authentication session invalid');
+      }
+      
+      // Create the organization
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .insert({
+          name,
+          address: address || null,
+          urn: urn || null,
+        })
+        .select('*')
+        .single();
+        
+      if (orgError) {
+        console.error('OrganizationContext: Error creating organization:', orgError);
+        throw orgError;
+      }
+      
+      console.log('OrganizationContext: Organization created:', orgData);
+      
+      // Add user as admin of the new organization
+      const { error: membershipError } = await supabase
+        .from('organization_memberships')
+        .insert({
+          user_id: user.id,
+          organization_id: orgData.id,
+          role: 'admin',
+          is_primary: true
+        });
+        
+      if (membershipError) {
+        console.error('OrganizationContext: Error creating membership:', membershipError);
+        throw membershipError;
+      }
+      
+      console.log('OrganizationContext: Membership created successfully');
+      
+      // Create the OrganizationWithRole object
+      const newOrg: OrganizationWithRole = {
+        ...orgData,
+        role: 'admin'
+      };
+      
+      // Refresh organizations list
+      await refreshOrganizations();
+      
+      // Set as current organization
+      setCurrentOrganization(newOrg);
+      
+      console.log('OrganizationContext: Organization creation completed successfully');
+      return newOrg;
+    } catch (error) {
+      console.error('OrganizationContext: Error in createOrganization:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create organisation';
+      toast.error(`Failed to create organisation: ${errorMessage}`);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
-    const fetchOrganization = async () => {
+    const fetchCurrentOrganization = async () => {
+      console.log('OrganizationContext: Starting fetchCurrentOrganization, user:', user?.id, 'authenticated:', isAuthenticated);
       setIsLoading(true);
+      setError(null);
+      
+      // Clear any cached state
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem('actionPlanInitialized');
+      }
+      
       try {
-        if (user) {
-          const { data: orgMembers, error: orgError } = await supabase
-            .from('organization_members')
-            .select('organization_id')
-            .eq('user_id', user.id)
-            .limit(1)
-            .single();
-
-          if (orgError) {
-            console.error('Error fetching organization:', orgError);
-            setIsLoading(false);
-            return;
-          }
-
-          if (orgMembers) {
-            const { data: organization, error: profileError } = await supabase
-              .from('profiles')
-              .select('id, school_name, created_at, updated_at')
-              .eq('id', orgMembers.organization_id)
-              .single();
-
-            if (profileError) {
-              console.error('Error fetching organization profile:', profileError);
-              setIsLoading(false);
-              return;
-            }
-
-            if (organization) {
-              setCurrentOrganization({
-                id: organization.id,
-                name: organization.school_name,
-                created_at: organization.created_at || new Date().toISOString(),
-                updated_at: organization.updated_at || new Date().toISOString()
-              });
-            }
-          }
-          
-          // Fetch all organizations for the user
+        if (user && isAuthenticated) {
+          console.log('OrganizationContext: User authenticated, fetching organizations');
           const orgs = await fetchOrganizations();
           setOrganizations(orgs);
+          
+          if (orgs.length === 0) {
+            console.log('OrganizationContext: No organizations found for user');
+            setCurrentOrganization(null);
+          } else {
+            // Set primary organization as current, or first available
+            const primaryOrg = orgs.find(org => 
+              org.role === 'admin' // Prefer admin role
+            ) || orgs[0];
+            
+            console.log('OrganizationContext: Setting current organization:', primaryOrg);
+            setCurrentOrganization(primaryOrg);
+          }
+        } else {
+          console.log('OrganizationContext: No authenticated user, clearing organizations');
+          setOrganizations([]);
+          setCurrentOrganization(null);
+        }
+      } catch (error) {
+        console.error('OrganizationContext: Error in fetchCurrentOrganization:', error);
+        
+        let errorMessage = 'Failed to load organisation data';
+        
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        }
+        
+        setError(errorMessage);
+        setOrganizations([]);
+        setCurrentOrganization(null);
+        
+        // Only show toast for non-auth errors
+        if (!errorMessage.includes('Authentication')) {
+          toast.error(errorMessage);
         }
       } finally {
+        console.log('OrganizationContext: Finished loading, setting isLoading to false');
         setIsLoading(false);
       }
     };
 
-    fetchOrganization();
-  }, [user]);
+    // Only fetch if we have a definitive auth state (not still loading)
+    if (user !== undefined) {
+      fetchCurrentOrganization();
+    }
+  }, [user, isAuthenticated]);
 
   const switchOrganization = async (orgId: string): Promise<boolean> => {
+    console.log('OrganizationContext: Switching to organization:', orgId);
     setIsLoading(true);
     try {
-      // Fetch organization details
-      const { data: organization, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, school_name, created_at, updated_at')
-        .eq('id', orgId)
-        .single();
-
-      if (profileError) {
-        console.error('Error fetching organization profile:', profileError);
-        setIsLoading(false);
-        return false;
+      const targetOrg = organizations.find(org => org.id === orgId);
+      if (targetOrg) {
+        console.log('OrganizationContext: Found target organization:', targetOrg);
+        setCurrentOrganization(targetOrg);
+        // Clear action plan cache when switching organizations
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.removeItem('actionPlanInitialized');
+        }
+        return true;
       }
-
-      if (!organization) {
-        console.error('Organization not found');
-        setIsLoading(false);
-        return false;
-      }
-
-      setCurrentOrganization({
-        id: organization.id,
-        name: organization.school_name,
-        created_at: organization.created_at || new Date().toISOString(),
-        updated_at: organization.updated_at || new Date().toISOString()
-      });
-      return true;
+      console.warn('OrganizationContext: Target organization not found in user organizations');
+      return false;
     } catch (error) {
-      console.error('Error switching organization:', error);
+      console.error('OrganizationContext: Error switching organization:', error);
       return false;
     } finally {
       setIsLoading(false);
@@ -177,7 +300,9 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       isLoading, 
       switchOrganization,
       organizations,
-      refreshOrganizations
+      refreshOrganizations,
+      createOrganization,
+      error
     }}>
       {children}
     </OrganizationContext.Provider>

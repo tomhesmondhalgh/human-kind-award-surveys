@@ -1,3 +1,4 @@
+
 export type DescriptorStatus = 'Not Started' | 'In Progress' | 'Completed' | 'Blocked' | 'Not Applicable';
 
 export interface ActionPlanTemplate {
@@ -11,6 +12,7 @@ export interface ActionPlanTemplate {
 export interface ActionPlanDescriptor {
   id: string;
   user_id: string;
+  organization_id?: string;
   section: string;
   reference: string;
   index_number: string;

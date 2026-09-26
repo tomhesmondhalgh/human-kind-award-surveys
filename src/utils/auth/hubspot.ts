@@ -17,7 +17,7 @@ export async function sendUserToHubspot(userData: any, listId: string = '5417', 
           schoolAddress: userData.schoolAddress || '',
           knownHubspotId: knownHubspotId
         },
-        listId: listId // Use the passed listId parameter 
+        listId: listId
       }
     });
 

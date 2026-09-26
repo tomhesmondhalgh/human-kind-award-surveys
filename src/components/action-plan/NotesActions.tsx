@@ -7,12 +7,14 @@ interface NotesActionsProps {
   notesCount: number | null | undefined;
   onViewNotes: () => void;
   onAddNote: () => void;
+  readOnly?: boolean;
 }
 
 const NotesActions: React.FC<NotesActionsProps> = ({
   notesCount,
   onViewNotes,
-  onAddNote
+  onAddNote,
+  readOnly = false
 }) => {
   // Format note count safely
   const formatNoteCount = (count: number | null | undefined) => {
@@ -38,15 +40,17 @@ const NotesActions: React.FC<NotesActionsProps> = ({
         <FileText className="h-3 w-3 mr-1" />
         {formattedCount}
       </Button>
-      <Button 
-        size="sm" 
-        variant="outline" 
-        onClick={onAddNote}
-        className="h-7 px-2 text-xs w-full justify-start"
-      >
-        <Plus className="h-3 w-3 mr-1" />
-        Add
-      </Button>
+      {!readOnly && (
+        <Button 
+          size="sm" 
+          variant="outline" 
+          onClick={onAddNote}
+          className="h-7 px-2 text-xs w-full justify-start"
+        >
+          <Plus className="h-3 w-3 mr-1" />
+          Add
+        </Button>
+      )}
     </div>
   );
 };

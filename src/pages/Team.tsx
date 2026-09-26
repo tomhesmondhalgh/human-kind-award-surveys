@@ -1,287 +1,450 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import MainLayout from '../components/layout/MainLayout';
+import PageContainer from '../components/layout/PageContainer';
 import PageTitle from '../components/ui/PageTitle';
-import { usePermissions } from '../hooks/usePermissions';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import MembersAndInvitationsList from '../components/team/MembersAndInvitationsList';
 import { useOrganization } from '../contexts/OrganizationContext';
-import OrganizationsList from '../components/team/OrganizationsList';
-import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
-import { AlertCircle, Info, User, RefreshCw, ArrowRight } from 'lucide-react';
-import { useTestingMode } from '../contexts/TestingModeContext';
-import { Button } from '../components/ui/button';
-import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
-import { useSubscription } from '../hooks/useSubscription';
-import { useNavigate } from 'react-router-dom';
-import { Card, CardContent } from '../components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
+import { Users, UserPlus, Mail, Crown, Edit3, Eye, Trash2, Building, AlertCircle, RefreshCw, Info } from 'lucide-react';
+import RoleInfoTooltip from '../components/team/RoleInfoTooltip';
+import { useTeamMembers } from '../components/team/hooks/useTeamMembers';
+import { useTeamInvitations } from '../components/team/hooks/useTeamInvitations';
+import { Skeleton } from '../components/ui/skeleton';
+import TeamInviteModal from '../components/team/TeamInviteModal';
+import ConfirmDeleteModal from '../components/team/ConfirmDeleteModal';
+import OrganizationsList from '../components/team/OrganizationsList';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { validateAndRefreshSession } from '../utils/auth/sessionUtils';
 
 const Team = () => {
-  const { userRole, error: permissionsError, isLoading: permissionsLoading } = usePermissions();
-  const { currentOrganization } = useOrganization();
-  const { user } = useAuth();
-  const { isTestingMode, testingRole, testingPlan, setTestingRole } = useTestingMode();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { user, isAuthenticated, authCheckComplete } = useAuth();
+  const { currentOrganization, isLoading: orgLoading, error: orgError } = useOrganization();
+  const [memberToDelete, setMemberToDelete] = React.useState<string | null>(null);
+  const [activeTab, setActiveTab] = React.useState('members');
+  const location = useLocation();
   const navigate = useNavigate();
-  const { isLoading: isSubscriptionLoading, isPremium, isProgress } = useSubscription();
-  const [hasProgressPlan, setHasProgressPlan] = useState<boolean | null>(null);
-  
-  // Check if user has Progress plan based on subscription or testing mode
+
+  // Parse organization ID from URL if present
   useEffect(() => {
-    const checkProgressPlan = () => {
-      if (isTestingMode) {
-        console.log('Testing mode plan check: current plan =', testingPlan);
-        // In testing mode, check the testingPlan
-        const hasProgress = testingPlan === 'progress' || testingPlan === 'premium';
-        console.log('Has progress plan in testing mode:', hasProgress);
-        setHasProgressPlan(hasProgress);
-      } else {
-        // Normal subscription check
-        console.log('Normal subscription check:', isProgress, isPremium);
-        setHasProgressPlan(isProgress || isPremium);
-      }
-    };
+    const params = new URLSearchParams(location.search);
+    const orgId = params.get('organization');
     
-    if (!isSubscriptionLoading) {
-      checkProgressPlan();
+    if (orgId && currentOrganization?.id !== orgId) {
+      // If URL has an org ID that doesn't match current, switch to it
+      // This will be handled by OrganizationContext
     }
-  }, [isSubscriptionLoading, isProgress, isPremium, isTestingMode, testingPlan]);
-  
-  // Determine if the user can see the Organisations tab
-  // Only group_admin and administrator roles can see the Organisations tab
-  const canSeeOrganizationsTab = 
-    userRole === 'group_admin' || 
-    userRole === 'administrator' ||
-    (isTestingMode && (testingRole === 'group_admin' || testingRole === 'administrator'));
-
-  // Helper function to enable admin testing mode
-  const enableAdminTestMode = () => {
-    setTestingRole('organization_admin');
-    toast.success('Admin testing mode enabled. You now have organisation_admin permissions.');
-  };
-  
-  // Helper function to force reload the page
-  const refreshPage = () => {
-    window.location.reload();
-  };
-
-  useEffect(() => {
-    // For debugging purposes
-    console.log('Team page - Current user role:', userRole);
-    console.log('Current organisation:', currentOrganization?.name);
-    console.log('Testing mode active:', isTestingMode, 'Testing plan:', testingPlan);
     
-    // Simplified role check
-    const checkAdmin = () => {
-      if (userRole === 'administrator' || 
-          userRole === 'group_admin' || 
-          userRole === 'organization_admin' ||
-          (isTestingMode && ['administrator', 'group_admin', 'organization_admin'].includes(testingRole || ''))) {
-        console.log('User has admin access to team page');
-        setIsAdmin(true);
-      } else {
-        console.log('User does NOT have admin access to team page, role:', userRole);
-        setIsAdmin(false);
-      }
-    };
-    
-    checkAdmin();
-  }, [userRole, isTestingMode, testingRole, testingPlan, currentOrganization]);
+    // Always set to members tab since organizations tab is hidden
+    setActiveTab('members');
+  }, [location, currentOrganization, orgLoading]);
 
-  // If permissions are still loading, show a loading indicator
-  if (permissionsLoading || isSubscriptionLoading || hasProgressPlan === null) {
+  const {
+    members,
+    isLoading: membersLoading,
+    isError: membersError,
+    error: membersErrorDetails,
+    refetch: refetchMembers,
+    isInviteModalOpen,
+    setIsInviteModalOpen,
+    sendInvitation,
+    removeMember,
+    resendInvitation
+  } = useTeamMembers(currentOrganization?.id);
+
+  const {
+    invitations,
+    invitationsLoading
+  } = useTeamInvitations(currentOrganization?.id);
+
+  // Function to handle sending invitations that returns void
+  const handleSendInvitation = async (data: { email: string; role: string }) => {
+    await sendInvitation.mutateAsync(data);
+    return;
+  };
+
+  // Function to handle resending invitations that returns void
+  const handleResendInvitation = async (invitationId: string) => {
+    try {
+      await resendInvitation.mutateAsync(invitationId);
+    } catch (error) {
+      console.error('Failed to resend invitation:', error);
+    }
+  };
+
+  if (orgLoading || !authCheckComplete) {
     return (
       <MainLayout>
-        <div className="page-container">
-          <PageTitle 
-            title="Team Management" 
-            subtitle="Manage members and permissions for your organisation"
-            className="mb-8"
-          />
-          <div className="flex justify-center py-8">
-            <div className="animate-spin h-8 w-8 border-4 border-brandPurple-500 border-t-transparent rounded-full"></div>
+        <div className="container mx-auto px-4 py-8">
+          <div className="space-y-6">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-48 w-full" />
           </div>
         </div>
       </MainLayout>
     );
   }
 
-  // Check if user has Progress plan
-  if (!hasProgressPlan) {
-    console.log('User does not have Progress plan, showing upgrade message');
+  // Show authentication error if not authenticated
+  if (!isAuthenticated) {
     return (
       <MainLayout>
-        <div className="page-container">
-          <PageTitle 
-            title="Team Management" 
-            subtitle="Manage members and permissions for your organisation"
-            className="mb-8"
-          />
-          
-          <Card className="bg-white border border-gray-200 rounded-lg">
-            <CardContent className="p-8 text-center">
-              <h2 className="text-2xl font-bold mb-4">Upgrade to Access Team Management</h2>
-              <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-                Team Management is available with Progress and Premium plans. 
-                Upgrade today to add additional users and collaborate on your wellbeing action plan.
-              </p>
-              
-              <Button onClick={() => navigate('/upgrade')} size="lg" className="bg-brandPurple-500 hover:bg-brandPurple-600">
-                View Upgrade Options <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </MainLayout>
-    );
-  }
-
-  // Handle the case of personal organisations differently
-  // If user ID matches organisation ID, they are automatically an admin of their own profile/organisation
-  const isPersonalOrg = currentOrganization?.id === user?.id;
-  if (isPersonalOrg && !isAdmin) {
-    console.log('User is accessing their personal organisation, granting implicit admin access');
-    setIsAdmin(true);
-  }
-
-  // If user doesn't have admin permissions, show a message
-  if (!isAdmin) {
-    return (
-      <MainLayout>
-        <div className="page-container">
-          <PageTitle 
-            title="Team Management" 
-            subtitle="Manage members and permissions for your organisation"
-            className="mb-8"
-          />
-          
-          <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4 mr-2" />
-            <AlertDescription>
-              <p>You need administrator permissions to access this page.</p>
-              <p className="mt-2 text-sm">Current role: {userRole || 'none'}</p>
-              <p className="mt-2 text-sm">Current organisation: {currentOrganization?.name || 'none'}</p>
-              {isTestingMode && (
-                <p className="mt-2 text-sm">Current testing role: {testingRole || 'none'}</p>
-              )}
-              {permissionsError && (
-                <p className="mt-2 text-sm text-red-500">Error: {permissionsError}</p>
-              )}
-            </AlertDescription>
-          </Alert>
-          
-          <div className="grid md:grid-cols-2 gap-6 mt-6">
-            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="flex items-start mb-2">
-                <Info size={18} className="text-blue-500 mr-2 mt-0.5" />
-                <h3 className="font-medium">Testing Mode Available</h3>
-              </div>
-              <p className="text-sm mb-3">
-                Use testing mode to simulate administrative permissions while development is ongoing.
-              </p>
-              <Button 
-                onClick={enableAdminTestMode}
-                variant="outline" 
-                className="bg-white border-blue-300 hover:bg-blue-100 text-blue-700"
-              >
-                Enable Admin Testing Mode
-              </Button>
-            </div>
-            
-            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="flex items-start mb-2">
-                <User size={18} className="text-gray-500 mr-2 mt-0.5" />
-                <h3 className="font-medium">Organisation Owner?</h3>
-              </div>
-              <p className="text-sm mb-3">
-                If you are the organisation owner, try refreshing the page or contact support if the issue persists.
-              </p>
-              <Button 
-                onClick={refreshPage}
-                variant="outline" 
-                className="flex items-center"
-              >
-                <RefreshCw size={16} className="mr-2" />
-                Refresh Page
-              </Button>
-            </div>
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center py-12">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-4">Authentication Required</h2>
+            <p className="text-gray-600 mb-6">Please log in to access team management.</p>
+            <Button onClick={() => navigate('/login')} className="bg-brandPurple-500 hover:bg-brandPurple-600">
+              Log In
+            </Button>
           </div>
         </div>
       </MainLayout>
     );
   }
 
-  // Check if an organisation is selected
-  if (!currentOrganization) {
-    return (
-      <MainLayout>
-        <div className="page-container">
-          <PageTitle 
-            title="Team Management" 
-            subtitle="Manage members and permissions for your organisation"
-            className="mb-8"
-          />
-          
-          <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4 mr-2" />
-            <AlertDescription>
-              Please select an organisation to manage team members.
-            </AlertDescription>
-          </Alert>
-        </div>
-      </MainLayout>
-    );
-  }
+  const currentUserMembership = members?.find(m => m.user_id === user?.id);
+  const canManageTeam = currentUserMembership?.role === 'admin';
+
+  // Debug logging for team management permissions
+  console.log('Team management debug:', {
+    currentUserMembership,
+    canManageTeam,
+    membersCount: members?.length || 0,
+    hasCurrentOrganization: !!currentOrganization,
+    membersError,
+    membersErrorDetails: membersErrorDetails?.message
+  });
+
+  const getRoleBadgeVariant = (role: string) => {
+    switch (role) {
+      case 'admin': return 'default';
+      case 'editor': return 'secondary';
+      case 'viewer': return 'outline';
+      default: return 'outline';
+    }
+  };
+
+  const getRoleIcon = (role: string) => {
+    switch (role) {
+      case 'admin': return <Crown size={12} />;
+      case 'editor': return <Edit3 size={12} />;
+      case 'viewer': return <Eye size={12} />;
+      default: return null;
+    }
+  };
+
+  const handleDeleteMember = async (memberId: string) => {
+    try {
+      await removeMember.mutateAsync(memberId);
+      setMemberToDelete(null);
+    } catch (error) {
+      console.error('Failed to remove member:', error);
+    }
+  };
+
+  const handleRetryLoadingMembers = () => {
+    refetchMembers();
+  };
 
   return (
     <MainLayout>
-      <div className="page-container">
-        <PageTitle 
-          title="Team Management" 
-          subtitle="Manage members and permissions for your organisation"
-          className="mb-8"
-        />
-        
-        {isTestingMode && (
-          <Alert variant="default" className="mb-6 bg-blue-50 border-blue-200">
-            <AlertCircle className="h-4 w-4 mr-2 text-blue-500" />
-            <AlertDescription>
-              <p>Testing Mode is enabled with role: <strong>{testingRole || 'none'}</strong> and plan: <strong>{testingPlan || 'none'}</strong></p>
-              <p className="text-sm mt-1">This is simulating permissions for that role level and subscription plan.</p>
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        {isPersonalOrg && (
-          <Alert variant="default" className="mb-6 bg-green-50 border-green-200">
-            <Info className="h-4 w-4 mr-2 text-green-500" />
-            <AlertTitle>Personal Organisation</AlertTitle>
-            <AlertDescription>
-              This is your personal organisation. You are automatically the admin.
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        <div className="bg-white rounded-lg shadow-sm">
-          <Tabs defaultValue="members" className="w-full">
-            <TabsList className="w-full justify-start border-b rounded-none px-6">
-              <TabsTrigger value="members">Members</TabsTrigger>
-              {canSeeOrganizationsTab && <TabsTrigger value="organizations">Organisations</TabsTrigger>}
-            </TabsList>
-            
-            <TabsContent value="members" className="p-6">
-              <MembersAndInvitationsList />
-            </TabsContent>
-            
-            {canSeeOrganizationsTab && (
-              <TabsContent value="organizations" className="p-6">
-                <OrganizationsList />
-              </TabsContent>
+      <PageContainer>
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <PageTitle 
+              title="Team Management"
+              subtitle={currentOrganization 
+                ? `Manage members and permissions for ${currentOrganization.name}`
+                : 'No organisation selected - please contact support to set up your organisation'}
+              className="mb-0"
+            />
+
+            {currentOrganization && canManageTeam && (
+              <Button 
+                onClick={() => setIsInviteModalOpen(true)} 
+                className="flex items-center gap-2"
+              >
+                <UserPlus size={16} />
+                Invite Member
+              </Button>
             )}
-          </Tabs>
+          </div>
+
+          {/* Show current organization info */}
+          {currentOrganization && (
+            <Card className="mb-6">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Building className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium">{currentOrganization.name}</p>
+                    <p className="text-sm text-gray-500">Current Organisation</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {currentOrganization ? (
+            <>
+              {/* Show error state for members loading with retry option */}
+              {membersError && (
+                <Card className="mb-6 border-red-200 bg-red-50">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 text-red-700">
+                      <AlertCircle size={16} />
+                      <span className="font-medium">Failed to load team members</span>
+                    </div>
+                    <p className="text-sm text-red-600 mt-1">
+                      {membersErrorDetails?.message || 'There was an error loading the team members. Please try again.'}
+                    </p>
+                    <div className="flex gap-2 mt-3">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="text-red-700 border-red-300 hover:bg-red-100"
+                        onClick={handleRetryLoadingMembers}
+                        disabled={membersLoading}
+                      >
+                        {membersLoading ? (
+                          <>
+                            <RefreshCw size={12} className="mr-1 animate-spin" />
+                            Retrying...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw size={12} className="mr-1" />
+                            Retry
+                          </>
+                        )}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="text-red-700 border-red-300 hover:bg-red-100"
+                        onClick={() => window.location.reload()}
+                      >
+                        Refresh Page
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <Users className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Total Members</p>
+                        <p className="text-xl font-semibold">{members?.length || 0}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <Crown className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Administrators</p>
+                        <p className="text-xl font-semibold">
+                          {members?.filter(m => m.role === 'admin').length || 0}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-orange-100 rounded-lg">
+                        <Mail className="h-5 w-5 text-orange-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Pending Invitations</p>
+                        <p className="text-xl font-semibold">{invitations?.length || 0}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Team Members */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Team Members</CardTitle>
+                  <CardDescription>
+                    Current members of your organisation and their roles
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {membersLoading ? (
+                    <div className="space-y-4">
+                      <Skeleton className="h-16 w-full" />
+                      <Skeleton className="h-16 w-full" />
+                      <Skeleton className="h-16 w-full" />
+                    </div>
+                  ) : members?.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-500 mb-2">No team members found</p>
+                      <p className="text-sm text-gray-400">
+                        {canManageTeam ? 'Click "Invite Member" to add your first team member.' : 'Contact an administrator to invite team members.'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {members?.map((member) => (
+                        <div key={member.id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                              <span className="text-sm font-medium text-gray-600">
+                                {member.profile?.first_name?.[0]?.toUpperCase() || 
+                                member.profile?.last_name?.[0]?.toUpperCase() || '?'}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="font-medium">
+                                {member.profile?.first_name} {member.profile?.last_name}
+                              </p>
+                              <p className="text-sm text-gray-500">{member.profile?.job_title}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-1">
+                              <Badge variant={getRoleBadgeVariant(member.role)} className="flex items-center gap-1">
+                                {getRoleIcon(member.role)}
+                                {member.role}
+                              </Badge>
+                              <RoleInfoTooltip role={member.role} />
+                            </div>
+                            {canManageTeam && member.user_id !== user?.id && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setMemberToDelete(member.id)}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 size={16} />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Pending Invitations */}
+              {invitations && invitations.length > 0 && (
+                <Card className="mt-6">
+                  <CardHeader>
+                    <CardTitle>Pending Invitations</CardTitle>
+                    <CardDescription>
+                      Invitations that haven't been accepted yet
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {invitations.map((invitation) => {
+                        const expiresAt = new Date(invitation.expires_at);
+                        const isExpiringSoon = expiresAt.getTime() - Date.now() < 24 * 60 * 60 * 1000; // Less than 24 hours
+                        const isExpired = expiresAt < new Date();
+                        
+                        return (
+                          <div key={invitation.id} className={`flex items-center justify-between p-4 border rounded-lg ${isExpired ? 'bg-red-50' : 'bg-yellow-50'}`}>
+                            <div className="flex items-center gap-3 flex-1">
+                              <div className={`w-10 h-10 ${isExpired ? 'bg-red-100' : 'bg-yellow-100'} rounded-full flex items-center justify-center`}>
+                                <Mail className={`h-5 w-5 ${isExpired ? 'text-red-600' : 'text-yellow-600'}`} />
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-medium">{invitation.email}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <p className="text-sm text-gray-500">
+                                    Sent {new Date(invitation.created_at).toLocaleDateString()}
+                                  </p>
+                                  {isExpired ? (
+                                    <Badge variant="destructive" className="text-xs">
+                                      Expired
+                                    </Badge>
+                                  ) : isExpiringSoon ? (
+                                    <Badge variant="outline" className="text-xs text-orange-600 border-orange-300">
+                                      Expires {expiresAt.toLocaleDateString()}
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-xs text-gray-400">
+                                      Expires {expiresAt.toLocaleDateString()}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <Badge variant={getRoleBadgeVariant(invitation.role)} className="flex items-center gap-1">
+                                {getRoleIcon(invitation.role)}
+                                {invitation.role}
+                              </Badge>
+                              {canManageTeam && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleResendInvitation(invitation.id)}
+                                  disabled={resendInvitation.isPending}
+                                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                >
+                                  {resendInvitation.isPending ? 'Sending...' : 'Resend'}
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-12 bg-gray-50 rounded-lg">
+              <Building className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500 mb-2">No organisation found</p>
+              <p className="text-sm text-gray-400">Please contact support to set up your organisation.</p>
+            </div>
+          )}
         </div>
-      </div>
+
+        {/* Modals */}
+        <TeamInviteModal
+          isOpen={isInviteModalOpen}
+          onClose={() => setIsInviteModalOpen(false)}
+          onSendInvitation={handleSendInvitation}
+          isLoading={sendInvitation.isPending}
+          organizationId={currentOrganization?.id}
+        />
+
+        <ConfirmDeleteModal
+          isOpen={!!memberToDelete}
+          onClose={() => setMemberToDelete(null)}
+          onConfirm={() => memberToDelete && handleDeleteMember(memberToDelete)}
+          isLoading={removeMember.isPending}
+          memberName={members?.find(m => m.id === memberToDelete)?.profile?.first_name || 'this member'}
+        />
+      </PageContainer>
     </MainLayout>
   );
 };

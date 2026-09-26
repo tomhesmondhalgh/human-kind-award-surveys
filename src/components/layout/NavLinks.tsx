@@ -1,97 +1,83 @@
 
 import React from 'react';
-import { NavLink as RouterNavLink, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import { useSubscription } from '../../hooks/useSubscription';
+import SettingsDropdown from './SettingsDropdown';
+import { signOutUser } from '../../utils/auth';
 
-interface NavLinksProps {
-  closeMobileMenu?: () => void;
-  canManageTeam?: boolean;
-  setIsMenuOpen?: (isOpen: boolean) => void;
-}
-
-interface NavLinkProps {
-  to: string;
-  active: boolean;
-  onClick?: () => void;
-  children: React.ReactNode;
-}
-
-const NavLink: React.FC<NavLinkProps> = ({ to, active, onClick, children }) => {
-  return (
-    <RouterNavLink
-      to={to}
-      className={`block py-2 px-4 text-base font-medium text-gray-600 hover:text-brandPurple-600 md:p-0 ${
-        active ? 'text-purple-700' : ''
-      }`}
-      onClick={onClick}
-    >
-      {children}
-    </RouterNavLink>
-  );
-};
-
-export const NavLinks: React.FC<NavLinksProps> = ({ 
-  closeMobileMenu,
-  setIsMenuOpen
-}) => {
+const NavLinks: React.FC = () => {
   const location = useLocation();
-  
-  // Helper to check if a route is active
+  const { user } = useAuth();
+  const { isPremium } = useSubscription();
+
+  const navLinkClass = "text-base font-medium text-gray-600 hover:text-brandPurple-600 transition-colors";
+  const activeNavLinkClass = "text-purple-700";
+
   const isActive = (path: string) => {
-    return location.pathname === path;
-  };
-  
-  // Helper to close mobile menu when a link is clicked
-  const handleLinkClick = () => {
-    if (closeMobileMenu) {
-      closeMobileMenu();
+    if (path === '/dashboard') {
+      return location.pathname === '/' || location.pathname === '/dashboard';
     }
-    if (setIsMenuOpen) {
-      setIsMenuOpen(false);
-    }
+    return location.pathname.startsWith(path);
   };
-  
-  // Only include main navigation items (Dashboard, Survey, Analyse, Improve, Upgrade)
+
+  const handleSignOut = async () => {
+    await signOutUser();
+  };
+
+  if (!user) {
+    return null;
+  }
+
   return (
-    <div className="flex flex-col gap-6 md:flex-row md:items-center">
-      <NavLink 
+    <>
+      <Link 
         to="/dashboard" 
-        active={isActive('/dashboard')} 
-        onClick={handleLinkClick}
+        className={`${navLinkClass} ${isActive('/dashboard') ? activeNavLinkClass : ""}`}
       >
         Dashboard
-      </NavLink>
+      </Link>
       
-      <NavLink 
+      <Link 
         to="/surveys" 
-        active={isActive('/surveys')} 
-        onClick={handleLinkClick}
+        className={`${navLinkClass} ${isActive('/surveys') ? activeNavLinkClass : ""}`}
       >
         Survey
-      </NavLink>
+      </Link>
       
-      <NavLink 
+      <Link 
         to="/analysis" 
-        active={isActive('/analysis')} 
-        onClick={handleLinkClick}
+        className={`${navLinkClass} ${isActive('/analysis') ? activeNavLinkClass : ""}`}
       >
         Analyse
-      </NavLink>
+      </Link>
       
-      <NavLink 
+      <Link 
         to="/improve" 
-        active={isActive('/improve')} 
-        onClick={handleLinkClick}
+        className={`${navLinkClass} ${isActive('/improve') ? activeNavLinkClass : ""}`}
       >
         Improve
-      </NavLink>
+      </Link>
       
-      <NavLink 
-        to="/upgrade" 
-        active={isActive('/upgrade')} 
-        onClick={handleLinkClick}
+      <Link 
+        to="/accredit" 
+        className={`${navLinkClass} ${isActive('/accredit') ? activeNavLinkClass : ""}`}
       >
-        Upgrade
-      </NavLink>
-    </div>
+        Accredit
+      </Link>
+      
+      {!isPremium && (
+        <Link 
+          to="/upgrade" 
+          className={`${navLinkClass} ${isActive('/upgrade') ? activeNavLinkClass : ""}`}
+        >
+          Upgrade
+        </Link>
+      )}
+      
+      <SettingsDropdown handleSignOut={handleSignOut} />
+    </>
   );
 };
+
+export default NavLinks;
