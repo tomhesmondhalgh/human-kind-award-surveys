@@ -59,7 +59,8 @@ export async function initializeActionPlan(organizationId: string): Promise<{ su
     console.log(`Cleared ${descriptorKeys.length + summaryKeys.length} cache entries for organization`);
     
     // Create initial descriptors for the organization
-    const descriptorsToInsert = INITIAL_DESCRIPTORS.map(descriptor => ({
+    // progress_notes_count is computed when reading, not a column.
+    const descriptorsToInsert = INITIAL_DESCRIPTORS.map(({ progress_notes_count, ...descriptor }) => ({
       ...descriptor,
       organization_id: organizationId,
       user_id: user.id

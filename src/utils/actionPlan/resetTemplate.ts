@@ -32,7 +32,8 @@ export const resetSectionToTemplate = async (
     const sectionDescriptors = INITIAL_DESCRIPTORS.filter(d => d.section === section);
     
     // Create descriptors for the organization
-    const descriptorsToInsert = sectionDescriptors.map(descriptor => ({
+    // progress_notes_count is computed when reading, not a column.
+    const descriptorsToInsert = sectionDescriptors.map(({ progress_notes_count, ...descriptor }) => ({
       ...descriptor,
       organization_id: organizationId,
       user_id: user.id

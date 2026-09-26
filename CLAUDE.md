@@ -11,7 +11,7 @@ Background docs: `AppDescription.md` (features), `TestPlan.md` (manual test scri
 - `npm run dev`: dev server on http://localhost:8080
 - `npm run build`: production build
 - `npm run lint`: ESLint
-- `npm test`: Vitest (unit + integration tests in `tests/`); `npm run test:e2e`: Playwright. The test setup is currently broken: `@testing-library/dom` is missing, and Vitest picks up the Playwright specs in `tests/e2e`.
+- `npm test`: Vitest (unit + integration tests in `tests/`); `npm run test:e2e`: Playwright. Several older tests are skipped as out of date (marked in the files) and should be rewritten alongside REMEDIATION_PLAN.md item 31. Keep the rest green.
 
 `.npmrc` sets `legacy-peer-deps=true`; installs fail without it.
 
