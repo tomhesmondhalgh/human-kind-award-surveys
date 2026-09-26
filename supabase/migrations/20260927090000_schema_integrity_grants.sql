@@ -141,6 +141,14 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.is_survey_open(uuid) TO anon;
 GRANT EXECUTE ON FUNCTION public.can_respond_to_custom_question(uuid, uuid) TO anon;
+-- The respondent survey form loads surveys through get_public_survey
+-- (20260927080000_public_survey_access, PR #54).
+DO $$
+BEGIN
+  IF to_regprocedure('public.get_public_survey(uuid)') IS NOT NULL THEN
+    GRANT EXECUTE ON FUNCTION public.get_public_survey(uuid) TO anon;
+  END IF;
+END $$;
 
 -- New functions: stop granting anon EXECUTE in public (the baseline set this
 -- default), and stop the built-in PUBLIC grant for functions postgres creates.
