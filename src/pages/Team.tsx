@@ -17,7 +17,6 @@ import ConfirmDeleteModal from '../components/team/ConfirmDeleteModal';
 import OrganizationsList from '../components/team/OrganizationsList';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { validateAndRefreshSession } from '../utils/auth/sessionUtils';
 
 const Team = () => {
   const { user, isAuthenticated, authCheckComplete } = useAuth();

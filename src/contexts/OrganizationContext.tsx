@@ -45,13 +45,6 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     console.log('OrganizationContext: Fetching organizations for user:', user.id);
     
     try {
-      // First verify session is valid
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session) {
-        console.error('OrganizationContext: Invalid session:', sessionError);
-        throw new Error('Authentication session invalid');
-      }
-
       // Use the security definer function to get user organizations
       console.log('OrganizationContext: Calling get_user_organizations function...');
       const { data: organizationsData, error: orgError } = await supabase
@@ -140,12 +133,6 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setIsLoading(true);
     try {
       console.log('OrganizationContext: Creating organization:', { name, address, urn });
-      
-      // Verify session before creating
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Authentication session invalid');
-      }
       
       // Create the organization
       const { data: orgData, error: orgError } = await supabase

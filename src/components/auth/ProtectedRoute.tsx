@@ -1,5 +1,5 @@
 
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -13,6 +13,10 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [redirectAttempted, setRedirectAttempted] = useState(false);
+  // Signing out (here or in another tab) also sends the user to the login
+  // page, but that isn't an error worth a toast.
+  const wasAuthenticated = useRef(false);
+  if (isAuthenticated) wasAuthenticated.current = true;
 
   useEffect(() => {
     console.log('ProtectedRoute: Auth state check', {
@@ -32,9 +36,11 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       console.log('User not authenticated, redirecting to login with returnTo:', returnTo);
       setRedirectAttempted(true);
       
-      toast.error('Authentication Required', {
-        description: 'Please log in to access this page'
-      });
+      if (!wasAuthenticated.current) {
+        toast.error('Authentication Required', {
+          description: 'Please log in to access this page'
+        });
+      }
       
       navigate(`/login?returnTo=${returnTo}`);
     }

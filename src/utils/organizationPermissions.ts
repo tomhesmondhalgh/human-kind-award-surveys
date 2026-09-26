@@ -1,5 +1,4 @@
 import { supabase } from '@/integrations/supabase/client';
-import { ensureValidSession } from '@/utils/auth/sessionValidator';
 import { OrganizationRole } from '@/types/organizations';
 
 interface PermissionCheckResult {
@@ -32,11 +31,6 @@ export class OrganizationPermissionValidator {
     console.log('🔍 Checking permission for:', { userId: userId.slice(0, 8), orgId: orgId.slice(0, 8) });
 
     try {
-      // Layer 1: Ensure valid session
-      console.log('🔍 Layer 1: Session validation');
-      await ensureValidSession();
-      console.log('✅ Session valid');
-
       // Layer 2: Direct membership query (fallback)
       console.log('🔍 Layer 2: Direct membership check');
       const { data: membership, error: membershipError } = await supabase
@@ -130,9 +124,6 @@ export class OrganizationPermissionValidator {
     console.log('🔍 Checking role:', { userId: userId.slice(0, 8), orgId: orgId.slice(0, 8), requiredRole });
 
     try {
-      // Ensure valid session
-      await ensureValidSession();
-
       // Direct membership query
       const { data: membership, error: membershipError } = await supabase
         .from('organization_memberships')
