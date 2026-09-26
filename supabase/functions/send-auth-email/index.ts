@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 import { createEmailTemplate } from "../_shared/emailTemplate.ts";
+import { verifyAuthHook } from "../_shared/authHook.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -30,7 +31,13 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     console.log("🔔 Auth email function called");
-    const payload: AuthEmailPayload = await req.json();
+    const payload = await verifyAuthHook<AuthEmailPayload>(req);
+    if (!payload) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     console.log("📧 Email action type:", payload.email_data.email_action_type);
     console.log("👤 Recipient:", payload.user.email);
 
@@ -44,7 +51,7 @@ const handler = async (req: Request): Promise<Response> => {
       case "signup":
       case "email_change": {
         // Construct email confirmation URL with token in query parameters
-        const confirmUrl = `https://surveys.humankindaward.com/login?token=${token_hash}&type=signup`;
+        const confirmUrl = `https://surveys.humankindaward.com/login?token=${encodeURIComponent(token_hash)}&type=signup`;
         
         emailContent = createEmailTemplate({
           title: "Confirm Your Email Address",
@@ -64,7 +71,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       case "recovery": {
         // Construct password reset URL with token in query parameters
-        const resetUrl = `https://surveys.humankindaward.com/reset-password?token=${token_hash}&type=recovery`;
+        const resetUrl = `https://surveys.humankindaward.com/reset-password?token=${encodeURIComponent(token_hash)}&type=recovery`;
         
         emailContent = createEmailTemplate({
           title: "Reset Your Password",
@@ -84,7 +91,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       case "magiclink": {
         // Construct magic link URL
-        const magicLinkUrl = `https://surveys.humankindaward.com/login?token=${token_hash}&type=magiclink`;
+        const magicLinkUrl = `https://surveys.humankindaward.com/login?token=${encodeURIComponent(token_hash)}&type=magiclink`;
         
         emailContent = createEmailTemplate({
           title: "Your Magic Link",

@@ -1,4 +1,8 @@
 
+import { escapeHtml } from './html.ts';
+
+// Every option except `content` is plain text and is escaped here. `content` is
+// HTML: callers must escape anything they interpolate into it.
 export interface EmailTemplateOptions {
   title: string;
   preheader?: string;
@@ -10,15 +14,14 @@ export interface EmailTemplateOptions {
 }
 
 export function createEmailTemplate(options: EmailTemplateOptions): string {
-  const {
-    title,
-    preheader = '',
-    recipientName = '',
-    content,
-    buttonText,
-    buttonUrl,
-    footerText = 'Human Kind Award - Supporting wellbeing in education'
-  } = options;
+  const { content } = options;
+
+  const title = escapeHtml(options.title);
+  const preheader = escapeHtml(options.preheader ?? '');
+  const recipientName = escapeHtml(options.recipientName ?? '');
+  const buttonText = options.buttonText ? escapeHtml(options.buttonText) : '';
+  const buttonUrl = options.buttonUrl ? escapeHtml(options.buttonUrl) : '';
+  const footerText = escapeHtml(options.footerText ?? 'Human Kind Award - Supporting wellbeing in education');
 
   return `
     <!DOCTYPE html>

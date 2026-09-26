@@ -22,17 +22,11 @@ const EmailConfirmation = () => {
         console.log('Attempting to send admin notification with user data:', userData);
         
         try {
+          // The function reads the user's details from the database itself.
           const { error: notifyError } = await supabase.functions.invoke('send-admin-notification', {
-            body: {
-              email: userData.email,
-              firstName: userData.firstName,
-              lastName: userData.lastName,
-              jobTitle: userData.jobTitle || "",
-              schoolName: userData.schoolName || "",
-              schoolAddress: userData.schoolAddress || ""
-            }
+            body: { userId: location.state?.userId }
           });
-
+          
           if (notifyError) {
             console.error('Failed to send admin notification:', notifyError);
             throw notifyError;

@@ -149,6 +149,7 @@ const SignUp = () => {
       navigate('/email-confirmation', { 
         state: { 
           email: data.email,
+          userId: newUser?.id,
           userData,
           hasInvitation: !!invitation
         } 
