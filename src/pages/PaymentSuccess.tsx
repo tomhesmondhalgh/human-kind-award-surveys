@@ -4,69 +4,58 @@ import MainLayout from '../components/layout/MainLayout';
 import { Button } from '../components/ui/button';
 import { toast } from '../services/toastService';
 import { useEffect, useState } from 'react';
-import { getUserSubscription, checkAndCreateSubscription } from '../lib/supabase/subscription';
+import { refreshUserSubscription } from '../services/subscriptionService';
 import { supabase } from '@/integrations/supabase/client';
 
+// How long to wait for the Stripe webhook to activate the plan.
+const POLL_INTERVAL_MS = 2000;
+const POLL_TIMEOUT_MS = 60000;
+
+type Status = 'verifying' | 'active' | 'pending';
+
+// Stripe sends the customer here after checkout. The subscription itself is
+// created by the stripe-webhook edge function, usually within a few seconds, so
+// this page polls until the purchased plan is active rather than assuming it.
 const PaymentSuccess = () => {
   const navigate = useNavigate();
-  const [isVerifying, setIsVerifying] = useState(true);
-  
+  const [status, setStatus] = useState<Status>('verifying');
+
   useEffect(() => {
-    // Show success toast on page load
-    toast.success({
-      title: 'Payment Successful!',
-      description: 'Thank you for your purchase. Your subscription has been activated.'
-    });
-    
-    // Check subscription status and update if needed
-    const checkSubscriptionStatus = async () => {
-      setIsVerifying(true);
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          setIsVerifying(false);
+    let cancelled = false;
+    const expectedPlan = new URLSearchParams(window.location.search).get('plan')?.toLowerCase();
+
+    const waitForActivation = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setStatus('pending');
+        return;
+      }
+
+      const deadline = Date.now() + POLL_TIMEOUT_MS;
+      while (!cancelled && Date.now() < deadline) {
+        // refreshUserSubscription bypasses the 5-minute subscription cache.
+        const subscription = await refreshUserSubscription(user.id);
+        const activated = subscription?.isActive
+          && (expectedPlan ? subscription.plan === expectedPlan : subscription.plan !== 'free');
+        if (activated) {
+          setStatus('active');
+          toast.success({
+            title: 'Payment Successful!',
+            description: 'Thank you for your purchase. Your plan is now active.'
+          });
           return;
         }
-        
-        // Check for URL params that might contain payment info
-        const urlParams = new URLSearchParams(window.location.search);
-        const stripePaymentId = urlParams.get('payment_id');
-        
-        // Refresh subscription data
-        let subscription = await getUserSubscription(user.id);
-        console.log('Initial subscription status:', subscription);
-        
-        // If we have a payment ID but no active subscription, try to create one
-        if (stripePaymentId && (!subscription?.isActive)) {
-          console.log('Attempting to create subscription for payment:', stripePaymentId);
-          const success = await checkAndCreateSubscription(
-            user.id, 
-            'foundation', 
-            stripePaymentId, 
-            'subscription'
-          );
-          
-          if (success) {
-            console.log('Successfully created subscription from payment ID');
-            // Re-fetch the subscription
-            subscription = await getUserSubscription(user.id);
-          }
-        }
-        
-        if (!subscription?.isActive) {
-          toast.info({
-            title: 'Subscription Activation Pending',
-            description: "We're processing your payment. Your subscription will be activated shortly."
-          });
-        }
-      } catch (error) {
-        console.error('Error checking subscription:', error);
-      } finally {
-        setIsVerifying(false);
+        await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
       }
+      if (!cancelled) setStatus('pending');
     };
-    
-    checkSubscriptionStatus();
+
+    waitForActivation().catch(() => {
+      if (!cancelled) setStatus('pending');
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -92,21 +81,32 @@ const PaymentSuccess = () => {
             </div>
           </div>
 
-          <h1 className="text-2xl font-bold mb-4">Payment Successful!</h1>
-          
-          <p className="text-gray-600 mb-6">
-            Thank you for your purchase. Your subscription has been activated and you now have access to all the features of your plan.
-          </p>
-          
+          <h1 className="text-2xl font-bold mb-4">
+            {status === 'active' ? 'Payment Successful!' : 'Thank you for your payment'}
+          </h1>
+
+          {status === 'verifying' && (
+            <p className="text-blue-600 mb-6">
+              Confirming your payment and activating your plan...
+            </p>
+          )}
+
+          {status === 'active' && (
+            <p className="text-gray-600 mb-6">
+              Your plan has been activated and you now have access to all of its features.
+            </p>
+          )}
+
+          {status === 'pending' && (
+            <p className="text-gray-600 mb-6">
+              We've received your payment and are still activating your plan. This can take a few minutes;
+              please refresh this page shortly. If your plan isn't active within the hour, contact us and we'll sort it out.
+            </p>
+          )}
+
           <p className="text-gray-600 mb-8">
             You will receive a confirmation email shortly with details of your purchase.
           </p>
-
-          {isVerifying && (
-            <p className="text-blue-600 mb-4">
-              Verifying your subscription status...
-            </p>
-          )}
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button onClick={() => navigate("/dashboard")} variant="default">

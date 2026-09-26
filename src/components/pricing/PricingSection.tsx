@@ -180,7 +180,8 @@ const PricingSection: React.FC<PricingSectionProps> = ({
       const { data, error } = await supabase.functions.invoke('create-payment-session', {
         body: {
           planId: planId,
-          successUrl: `${window.location.origin}/dashboard?payment=success`,
+          // The success page waits for the Stripe webhook to activate this plan.
+          successUrl: `${window.location.origin}/payment-success?plan=${encodeURIComponent(String(planType ?? '').toLowerCase())}`,
           cancelUrl: cancelUrl || defaultCancelUrl,
           billingDetails: {
             schoolName: userProfile?.schoolName || '',
