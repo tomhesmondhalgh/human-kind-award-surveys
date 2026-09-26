@@ -4,6 +4,8 @@ Staff wellbeing survey platform for schools. Originally built in Lovable; now de
 
 Background docs: `AppDescription.md` (features), `TestPlan.md` (manual test script), `SECURITY_FIXES.md` (past RLS/security work), `work-in-progress.md`.
 
+**Active work:** `REMEDIATION_PLAN.md` — phased fix plan from the 2026-09-26 full code review (critical RLS/edge-function security first). Follow it in order; tick off items as PRs merge.
+
 ## Commands
 
 - `npm run dev`: dev server on http://localhost:8080
