@@ -4,20 +4,23 @@ import { HttpError, json, serveJson, siteUrl } from "../_shared/http.ts";
 import { serviceClient } from "../_shared/auth.ts";
 import { escapeHtml } from "../_shared/html.ts";
 
-// Hourly job (see supabase/scripts/schedule_closure_notifications.sql): emails
+// Hourly pg_cron job (see the closure_notifications migration): emails
 // each closed survey's organisation admins once, then records it in
 // survey_templates.closure_notified_at. Only the scheduler can call this: it
-// sends the CLOSURE_CRON_SECRET header.
+// sends the secret the migration generated.
 
 const BATCH_SIZE = 50;
 
 serveJson(async (req) => {
-  const secret = Deno.env.get("CLOSURE_CRON_SECRET");
-  if (!secret || req.headers.get("x-cron-secret") !== secret) {
-    throw new HttpError(401, "Not authorised");
-  }
-
+  // The job's secret lives in Vault (see the closure_notifications migration).
   const db = serviceClient();
+  const candidate = req.headers.get("x-cron-secret");
+  const { data: valid, error: secretError } = candidate
+    ? await db.rpc("is_valid_closure_cron_secret", { candidate })
+    : { data: false, error: null };
+  if (secretError) throw new Error(`Secret check failed: ${secretError.message}`);
+  if (valid !== true) throw new HttpError(401, "Not authorised");
+
   const { data: surveys, error } = await db
     .from("survey_templates")
     .select("id, name, organization_id")
