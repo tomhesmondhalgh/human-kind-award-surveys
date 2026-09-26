@@ -89,7 +89,7 @@ export const sendReportByEmail = async (
   recommendationScore: { score: number; nationalAverage: number },
   leavingData: { name: string; value: number }[],
   detailedResponses: DetailedQuestionResponse[],
-  textResponses: { doingWell: TextResponse[]; improvements: TextResponse[] }
+  _textResponses: { doingWell: TextResponse[]; improvements: TextResponse[] }
 ): Promise<void> => {
   try {
     // The edge function builds the email from this data and escapes it.

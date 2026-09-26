@@ -29,7 +29,7 @@ export function usePurchaseFilters(
         (purchase.invoice_number || '').toLowerCase().includes(query) ||
         purchase.plan_type.toLowerCase().includes(query) ||
         purchase.payment_method.toLowerCase().includes(query) ||
-        purchase.payment_status.toLowerCase().includes(query)
+        (purchase.payment_status || '').toLowerCase().includes(query)
       );
     });
   }, [purchases, searchQuery]);

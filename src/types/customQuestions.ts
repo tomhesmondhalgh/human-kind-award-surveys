@@ -4,7 +4,7 @@ export interface CustomQuestion {
   text: string;
   type: 'text' | 'multiple_choice';
   options?: string[] | null;
-  created_at: string;
+  created_at: string | null;
   archived: boolean;
   creator_id: string;
   organization_id?: string | null;
@@ -24,8 +24,8 @@ export interface DbCustomQuestion {
   text: string;
   type: string;
   options?: string[] | null;
-  created_at: string;
-  archived?: boolean;
+  created_at: string | null;
+  archived?: boolean | null;
   creator_id: string;
   organization_id?: string | null;
 }

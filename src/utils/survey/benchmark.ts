@@ -1,6 +1,5 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { PlanType } from "../../lib/supabase/subscription";
 
 /**
  * Calculates the benchmark score based on recommendation scores

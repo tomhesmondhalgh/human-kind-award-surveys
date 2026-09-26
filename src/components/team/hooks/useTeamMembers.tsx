@@ -124,17 +124,6 @@ export function useTeamMembers(organizationId?: string) {
         throw new Error(`Failed to fetch invitation: ${error.message}`);
       }
 
-      // Get inviter profile separately
-      const { data: inviterProfile } = await supabase
-        .from('profiles')
-        .select('first_name, last_name')
-        .eq('id', invitation.invited_by)
-        .single();
-
-      const inviterName = inviterProfile 
-        ? `${inviterProfile.first_name || ''} ${inviterProfile.last_name || ''}`.trim() || 'A colleague'
-        : 'A colleague';
-
       // Send the invitation using v2 function with resend flag
       const { error: emailError } = await supabase.functions.invoke('send-team-invitation-v2', {
         body: {

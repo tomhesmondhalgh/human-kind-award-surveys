@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
-import { Loader2, Search, AlertCircle, CheckCircle, Users } from "lucide-react";
+import { Loader2, Search, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Input } from "../ui/input";
 import { toast } from "sonner";
@@ -33,7 +33,6 @@ const UsersManagement = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
   const [processingUsers, setProcessingUsers] = useState<Record<string, boolean>>({});
   
   const usersPerPage = 10;
@@ -67,7 +66,6 @@ const UsersManagement = () => {
       }
 
       setUsers(data.users);
-      setTotalCount(data.count || 0);
       setTotalPages(data.totalPages || Math.ceil((data.count || 0) / usersPerPage));
       
     } catch (err) {

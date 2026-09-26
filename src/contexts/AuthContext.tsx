@@ -5,6 +5,7 @@ import { signInWithEmail } from '@/utils/auth/signIn';
 import { signUpWithEmail } from '@/utils/auth/signUp';
 import { signOutUser } from '@/utils/auth/signOut';
 import { completeUserProfile } from '@/utils/auth/profileManagement';
+import type { AuthResult, UserProfileData } from '@/types/auth';
 
 interface AuthContextType {
   user: User | null;
@@ -12,10 +13,10 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   authCheckComplete: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any; success: boolean }>;
-  signUp: (email: string, password: string, userData?: any, skipOrgCreation?: boolean, invitationToken?: string) => Promise<{ error: any; success: boolean; user?: User }>;
+  signIn: (email: string, password: string) => Promise<AuthResult>;
+  signUp: (email: string, password: string, userData?: UserProfileData, skipOrgCreation?: boolean, invitationToken?: string) => Promise<AuthResult & { user?: User }>;
   signOut: () => Promise<void>;
-  completeUserProfile: (userData: any) => Promise<{ error: any; success: boolean }>;
+  completeUserProfile: (userData: UserProfileData) => Promise<AuthResult>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -35,7 +36,7 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user, session, isLoading, isAuthenticated, authCheckComplete } = useAuthState();
 
-  const handleCompleteUserProfile = async (userData: any) => {
+  const handleCompleteUserProfile = async (userData: UserProfileData): Promise<AuthResult> => {
     if (!user) {
       return { error: new Error('User not authenticated'), success: false };
     }

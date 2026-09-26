@@ -16,7 +16,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { CalendarIcon } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { isValidEmail, validateEmails } from '@/utils/survey/sendReminder';
+import { validateEmails } from '@/utils/survey/sendReminder';
 
 interface SurveyFormInputsProps {
   form: UseFormReturn<any>;

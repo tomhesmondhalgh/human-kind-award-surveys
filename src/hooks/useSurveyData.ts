@@ -5,10 +5,8 @@ import { isSurveyClosed } from '../utils/survey/status';
 import { SurveyTemplate } from '../utils/types/survey';
 import { CustomQuestionType } from '../types/surveyForm';
 import { toast } from 'sonner';
-import { createTracingClient } from '../utils/debugging/queryTracer';
 
 // Create a traced client for debugging
-const tracedSupabase = createTracingClient(supabase);
 
 export function useSurveyData(surveyId: string | null, isPreview: boolean) {
   const [isLoading, setIsLoading] = useState(true);
@@ -67,45 +65,10 @@ export function useSurveyData(surveyId: string | null, isPreview: boolean) {
         setSurveyName(surveyTemplate.name);
         setSurveyData(surveyTemplate);
         
-        // ==== ENHANCED DEBUGGING FOR TARGET SURVEY ====
-        const isTargetSurvey = surveyId === 'c316b756-5b93-451f-b14e-2cc1df916def';
-        const dbClient = isTargetSurvey ? tracedSupabase : supabase;
-        
-        if (isTargetSurvey) {
-          console.log('USING TRACED CLIENT FOR TARGET SURVEY');
-          console.log('DEBUGGING TARGET SURVEY DATA FETCHING');
-          
-          // First, explicitly check if custom_questions table has data
-          console.log('Checking if custom_questions table has data');
-          const { data: allQuestions, error: allQuestionsError } = await dbClient
-            .from('custom_questions')
-            .select('id, text, type, options')
-            .limit(5);
-            
-          if (allQuestionsError) {
-            console.error('Error checking custom_questions:', allQuestionsError);
-          } else {
-            console.log('Sample of custom_questions data:', allQuestions);
-          }
-          
-          // Now check if survey_questions has any links for this survey
-          console.log('Checking if survey_questions has links for this survey');
-          const { data: linkCheck, error: linkCheckError } = await dbClient
-            .from('survey_questions')
-            .select('id, question_id, survey_id')
-            .eq('survey_id', surveyId);
-            
-          if (linkCheckError) {
-            console.error('Error checking survey_questions links:', linkCheckError);
-          } else {
-            console.log('Link check results:', linkCheck);
-          }
-        }
-        
         console.log('Fetching custom questions for survey ID:', surveyId);
         
         // Query both tables directly with a join to ensure we get all data in one request
-        const { data: joinedData, error: joinError } = await dbClient
+        const { data: joinedData, error: joinError } = await supabase
           .from('survey_questions')
           .select(`
             id,
@@ -122,17 +85,9 @@ export function useSurveyData(surveyId: string | null, isPreview: boolean) {
         
         if (joinError) {
           console.error('Error fetching linked questions with join:', joinError);
-          if (isTargetSurvey) {
-            console.error('Join query error details:', joinError.message, joinError.details);
-          }
-          
           // Try a direct query approach instead
           console.log('Trying direct manual queries as fallback');
-          return await fetchQuestionsDirectly(surveyId, isTargetSurvey, dbClient);
-        }
-        
-        if (isTargetSurvey) {
-          console.log('JOIN QUERY RESULTS:', joinedData);
+          return await fetchQuestionsDirectly(surveyId);
         }
         
         if (!joinedData || joinedData.length === 0) {
@@ -173,10 +128,6 @@ export function useSurveyData(surveyId: string | null, isPreview: boolean) {
             };
           });
         
-        if (isTargetSurvey) {
-          console.log('Formatted questions from join:', questionsFromJoin);
-        }
-        
         setCustomQuestions(questionsFromJoin);
         setIsLoading(false);
         return { isClosed: false };
@@ -190,13 +141,13 @@ export function useSurveyData(surveyId: string | null, isPreview: boolean) {
       }
     };
     
-    const fetchQuestionsDirectly = async (surveyId: string, isTargetSurvey: boolean, dbClient: typeof supabase) => {
+    const fetchQuestionsDirectly = async (surveyId: string) => {
       try {
         console.log('ATTEMPTING DIRECT QUERY APPROACH');
         
         // STEP 1: Get all question IDs linked to this survey
         console.log('STEP 1: Get all question IDs linked to this survey');
-        const { data: linkData, error: linkError } = await dbClient
+        const { data: linkData, error: linkError } = await supabase
           .from('survey_questions')
           .select('question_id')
           .eq('survey_id', surveyId);
@@ -213,7 +164,7 @@ export function useSurveyData(surveyId: string | null, isPreview: boolean) {
         
         // STEP 2: Get the actual question data for these IDs
         console.log('STEP 2: Get the actual question data for these IDs');
-        const { data: questionsData, error: questionsError } = await dbClient
+        const { data: questionsData, error: questionsError } = await supabase
           .from('custom_questions')
           .select('*')
           .in('id', questionIds);

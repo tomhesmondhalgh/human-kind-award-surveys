@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { useTestingMode } from '../contexts/TestingModeContext';
@@ -22,9 +22,10 @@ export function useSubscription() {
   });
 
   // Only apply testing mode if user is actually an admin (security check)
-  const effectiveSubscription: SubscriptionAccess | null = (isTestingMode && testingPlan && isAdmin)
-    ? { plan: testingPlan, isActive: true }
-    : subscription;
+  const effectiveSubscription: SubscriptionAccess | null = useMemo(
+    () => (isTestingMode && testingPlan && isAdmin) ? { plan: testingPlan, isActive: true } : subscription,
+    [isTestingMode, testingPlan, isAdmin, subscription]
+  );
 
   const hasAccess = useCallback(async (requiredPlan: PlanType): Promise<boolean> => {
     if (!user) return false;

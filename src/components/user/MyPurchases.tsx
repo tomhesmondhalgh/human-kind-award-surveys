@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
-import { CreditCard, FileText, AlertCircle, ListTodo, Gift, TrendingUp } from "lucide-react";
+import { CreditCard, FileText, AlertCircle, Gift } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,12 +29,12 @@ export type Purchase = {
   payment_method: 'stripe' | 'invoice' | 'manual' | 'redemption_code';
   amount: number;
   currency: string;
-  payment_status: 'pending' | 'invoice_raised' | 'payment_made' | 'cancelled' | 'refunded';
-  invoice_number?: string;
-  billing_school_name?: string;
-  billing_contact_name?: string;
-  billing_contact_email?: string;
-  billing_address?: string;
+  payment_status: 'pending' | 'invoice_raised' | 'payment_made' | 'cancelled' | 'refunded' | null;
+  invoice_number?: string | null;
+  billing_school_name?: string | null;
+  billing_contact_name?: string | null;
+  billing_contact_email?: string | null;
+  billing_address?: string | null;
   created_at: string;
   plan_type: string;
   purchase_type: string;
@@ -57,11 +57,7 @@ const MyPurchases = () => {
   const {
     user
   } = useAuth();
-  const {
-    subscription,
-    isLoading: isSubscriptionLoading,
-    isPremium
-  } = useSubscription();
+  const { isPremium } = useSubscription();
 
   const fetchPurchases = async () => {
     if (!user) return;
@@ -108,8 +104,20 @@ const MyPurchases = () => {
       
       // The view already filters and includes plan_type/purchase_type
       // No need to filter again as RLS ensures only user's data is returned
-      const formattedPurchases = (payments || []).map(item => ({
-        ...item,
+      const formattedPurchases: Purchase[] = (payments || []).map(item => ({
+        id: item.id ?? '',
+        subscription_id: item.subscription_id ?? '',
+        payment_method: item.payment_method ?? 'manual',
+        amount: item.amount ?? 0,
+        currency: item.currency ?? 'GBP',
+        payment_status: item.payment_status,
+        invoice_number: item.invoice_number,
+        billing_contact_name: item.billing_contact_name,
+        billing_contact_email: item.billing_contact_email,
+        billing_address: item.billing_address,
+        created_at: item.created_at ?? '',
+        plan_type: item.plan_type ?? '',
+        purchase_type: item.purchase_type ?? '',
         // Map redacted field to the expected field name for display
         billing_school_name: item.billing_school_name_redacted || '***'
       }));
@@ -133,7 +141,6 @@ const MyPurchases = () => {
     setCancellingSubscription(true);
     try {
       const {
-        data,
         error
       } = await supabase.functions.invoke('cancel-subscription', {
         body: {
@@ -154,7 +161,7 @@ const MyPurchases = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string | null) => {
     switch (status) {
       case 'payment_made':
         return <Badge className="bg-green-500">Payment Made</Badge>;
@@ -186,16 +193,6 @@ const MyPurchases = () => {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-GB');
-  };
-
-  const formatPlanName = (planType: string | undefined) => {
-    if (!planType) return 'Free';
-    return planType.charAt(0).toUpperCase() + planType.slice(1);
-  };
-
-  const formatRoleName = (role: string | null) => {
-    if (!role) return 'No Role';
-    return role.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
 
   return (

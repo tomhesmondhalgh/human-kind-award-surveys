@@ -10,10 +10,9 @@ import { Separator } from '../../components/ui/separator';
 import { Textarea } from '../../components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { AdminPlan, getPlans } from '../../lib/supabase/subscription';
+import { AdminPlan } from '../../lib/supabase/subscription';
 import { supabase } from '@/integrations/supabase/client';
-import { Pencil, Trash, Plus, Save, X } from 'lucide-react';
-import { fixPlanTypes } from '../../utils/typeConversions';
+import { Pencil, Plus, Save } from 'lucide-react';
 
 const PlansManagement: React.FC = () => {
   const [plans, setPlans] = useState<AdminPlan[]>([]);
@@ -313,9 +312,8 @@ const PlansManagement: React.FC = () => {
                   value={editingPlan ? editingPlan.sort_order : newPlan.sort_order}
                   onChange={(e) => {
                     const value = parseInt(e.target.value);
-                    editingPlan 
-                      ? setEditingPlan({...editingPlan, sort_order: value})
-                      : setNewPlan({...newPlan, sort_order: value})
+                    if (editingPlan) setEditingPlan({...editingPlan, sort_order: value});
+                    else setNewPlan({...newPlan, sort_order: value});
                   }}
                 />
               </div>
@@ -340,9 +338,8 @@ const PlansManagement: React.FC = () => {
                   value={editingPlan ? editingPlan.price : newPlan.price}
                   onChange={(e) => {
                     const value = parseInt(e.target.value);
-                    editingPlan 
-                      ? setEditingPlan({...editingPlan, price: value})
-                      : setNewPlan({...newPlan, price: value})
+                    if (editingPlan) setEditingPlan({...editingPlan, price: value});
+                    else setNewPlan({...newPlan, price: value});
                   }}
                 />
               </div>
@@ -362,7 +359,7 @@ const PlansManagement: React.FC = () => {
               <div>
                 <Label htmlFor="purchase_type">Purchase Type</Label>
                 <Select 
-                  value={editingPlan ? editingPlan.purchase_type : newPlan.purchase_type}
+                  value={(editingPlan ? editingPlan.purchase_type : newPlan.purchase_type) ?? undefined}
                   onValueChange={(value) => editingPlan 
                     ? setEditingPlan({...editingPlan, purchase_type: value as 'subscription' | 'one-time'})
                     : setNewPlan({...newPlan, purchase_type: value as 'subscription' | 'one-time'})
@@ -383,12 +380,11 @@ const PlansManagement: React.FC = () => {
                 <Input 
                   id="duration_months" 
                   type="number"
-                  value={editingPlan ? editingPlan.duration_months : newPlan.duration_months}
+                  value={(editingPlan ? editingPlan.duration_months : newPlan.duration_months) ?? ''}
                   onChange={(e) => {
                     const value = parseInt(e.target.value);
-                    editingPlan 
-                      ? setEditingPlan({...editingPlan, duration_months: value})
-                      : setNewPlan({...newPlan, duration_months: value})
+                    if (editingPlan) setEditingPlan({...editingPlan, duration_months: value});
+                    else setNewPlan({...newPlan, duration_months: value});
                   }}
                 />
               </div>
@@ -397,7 +393,7 @@ const PlansManagement: React.FC = () => {
                 <Label htmlFor="stripe_price_id">Stripe Price ID</Label>
                 <Input 
                   id="stripe_price_id" 
-                  value={editingPlan ? editingPlan.stripe_price_id : newPlan.stripe_price_id}
+                  value={(editingPlan ? editingPlan.stripe_price_id : newPlan.stripe_price_id) ?? ''}
                   onChange={(e) => editingPlan 
                     ? setEditingPlan({...editingPlan, stripe_price_id: e.target.value})
                     : setNewPlan({...newPlan, stripe_price_id: e.target.value})

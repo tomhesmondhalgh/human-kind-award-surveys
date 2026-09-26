@@ -16,7 +16,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
-import { useNavigate } from 'react-router-dom';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -167,7 +166,6 @@ const OrganizationsList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const { user } = useAuth();
-  const navigate = useNavigate();
   const { organizations, refreshOrganizations, isLoading, error } = useOrganization();
 
   // Filter organizations based on search term
@@ -192,13 +190,13 @@ const OrganizationsList = () => {
   };
 
   const handleRemoveOrganization = async (orgId: string) => {
-    if (!confirm("Are you sure you want to leave this organization?")) return;
+    if (!user || !confirm("Are you sure you want to leave this organization?")) return;
     
     try {
       const { error } = await supabase
         .from('organization_memberships')
         .delete()
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .eq('organization_id', orgId);
         
       if (error) {

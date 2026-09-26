@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
 import PageTitle from '../components/ui/PageTitle';
 import SurveyForm, { SurveyFormData } from '../components/surveys/SurveyForm';
@@ -24,7 +24,6 @@ import { OrganizationPermissionValidator } from '@/utils/organizationPermissions
 const SurveyEditor = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useAuth();
   const { currentOrganization } = useOrganization();
   const [surveyData, setSurveyData] = useState<SurveyFormData | null>(null);
@@ -183,7 +182,7 @@ const SurveyEditor = () => {
       const closeDate = data.closeDate ? new Date(data.closeDate) : null;
       
       // Determine the emails value based on the distribution method
-      const emailsValue = data.distributionMethod === 'email' ? data.recipients : '';
+      const emailsValue = data.distributionMethod === 'email' ? (data.recipients ?? '') : '';
       
       // Set status based on action
       let statusToSave = data.status || 'Saved';
@@ -543,7 +542,6 @@ const SurveyEditor = () => {
           onSubmit={handlePreviewSurvey}
           onPreviewSurvey={handlePreviewSurvey}
           onSendSurvey={handleSendSurvey}
-          submitButtonText="Save & Preview"
           isEdit={isEditMode}
           surveyId={savedSurveyId}
           isSubmitting={isSubmitting}

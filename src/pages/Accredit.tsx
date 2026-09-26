@@ -17,10 +17,10 @@ interface AccreditationSubmission {
   id: string;
   status: 'not_submitted' | 'submitted' | 'under_review' | 'approved' | 'rejected';
   submitted_at: string;
-  reviewed_at?: string;
-  approved_at?: string;
-  next_submission_due?: string;
-  reviewer_notes?: string;
+  reviewed_at?: string | null;
+  approved_at?: string | null;
+  next_submission_due?: string | null;
+  reviewer_notes?: string | null;
 }
 const Accredit = () => {
   const {

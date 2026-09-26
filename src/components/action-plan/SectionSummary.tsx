@@ -14,7 +14,6 @@ interface SectionSummaryProps {
 
 const SectionSummary: React.FC<SectionSummaryProps> = ({
   title,
-  totalCount,
   completedCount,
   inProgressCount,
   notStartedCount,

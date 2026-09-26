@@ -8,7 +8,6 @@ import { Button } from '../components/ui/button';
 import { Loader2, Search, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { Textarea } from '../components/ui/textarea';
 import { Input } from '../components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import Pagination from '../components/surveys/Pagination';
@@ -160,8 +159,8 @@ const Profile = () => {
       } else if (data && data.length > 0) {
         const formattedResults = data.map(school => ({
           URN: school.URN,
-          EstablishmentName: school.EstablishmentName,
-          Postcode: school.Postcode,
+          EstablishmentName: school.EstablishmentName || '',
+          Postcode: school.Postcode || '',
           Street: school.Street || '',
           Town: school.Town || '',
           County: school["County (name)"] || '',
@@ -241,7 +240,7 @@ const Profile = () => {
   };
   
   const handleUpdateEmail = async (newEmail: string) => {
-    if (!user || !newEmail || newEmail === user.email) return;
+    if (!user || !newEmail || newEmail === user.email) return true;
     
     setEmailChangeInProgress(true);
     

@@ -74,7 +74,7 @@ const RedemptionCodesManagement: React.FC = () => {
     setFormValues({
       code: code.code,
       plan_type: code.plan_type as PlanType,
-      max_uses: code.max_uses,
+      max_uses: code.max_uses ?? 1,
       expires_at: code.expires_at ? new Date(code.expires_at).toISOString().split('T')[0] : '',
       is_active: code.is_active
     });

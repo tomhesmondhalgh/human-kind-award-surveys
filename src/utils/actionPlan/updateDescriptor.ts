@@ -2,14 +2,16 @@
 import { supabase } from '@/integrations/supabase/client';
 import { DescriptorStatus } from '../../types/actionPlan';
 
+export type DescriptorUpdates = {
+  key_actions?: string;
+  assigned_to?: string;
+  deadline?: string | null;
+  status?: DescriptorStatus;
+};
+
 export async function updateDescriptor(
   id: string,
-  updates: {
-    key_actions?: string;
-    assigned_to?: string;
-    deadline?: string;
-    status?: DescriptorStatus;
-  }
+  updates: DescriptorUpdates
 ): Promise<{ success: boolean; error?: any }> {
   try {
     console.log(`[${new Date().toISOString()}] === UPDATE DESCRIPTOR START ===`);

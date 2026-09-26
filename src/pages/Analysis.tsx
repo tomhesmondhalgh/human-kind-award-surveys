@@ -10,7 +10,8 @@ import {
   getLeavingContemplation, 
   getDetailedWellbeingResponses, 
   getTextResponses, 
-  getCustomQuestionResponses 
+  getCustomQuestionResponses,
+  type TextResponse
 } from '../utils/analysisUtils';
 import { getSurveySummary } from '../utils/summaryUtils';
 import { generatePDF, sendReportByEmail } from '../utils/reportUtils';
@@ -43,7 +44,7 @@ const Analysis = () => {
   });
   const [leavingContemplation, setLeavingContemplation] = useState<Record<string, number>>({});
   const [detailedResponses, setDetailedResponses] = useState<any[]>([]);
-  const [textResponses, setTextResponses] = useState({
+  const [textResponses, setTextResponses] = useState<{ doingWell: TextResponse[]; improvements: TextResponse[] }>({
     doingWell: [],
     improvements: []
   });

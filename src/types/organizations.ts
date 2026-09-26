@@ -2,8 +2,8 @@
 export interface Organization {
   id: string;
   name: string;
-  address?: string;
-  urn?: string;
+  address?: string | null;
+  urn?: string | null;
   created_at: string;
   updated_at?: string;
 }

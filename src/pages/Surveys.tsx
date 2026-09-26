@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
 import PageContainer from '../components/layout/PageContainer';
 import PageTitle from '../components/ui/PageTitle';
@@ -77,20 +77,15 @@ const SurveyListSkeleton = () => {
 const Surveys = () => {
   const { user } = useAuth();
   const { currentOrganization, isLoading: orgLoading, error: orgError } = useOrganization();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [surveys, setSurveys] = useState<any[]>([]);
   const [totalSurveys, setTotalSurveys] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [canCreateSurveys, setCanCreateSurveys] = useState(true);
   const [refreshFlag, setRefreshFlag] = useState(0);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const isMobile = useIsMobile();
 
-  useEffect(() => {
-    setCanCreateSurveys(!!user && !!currentOrganization);
-  }, [user, currentOrganization]);
 
   useEffect(() => {
     const fetchSurveys = async () => {

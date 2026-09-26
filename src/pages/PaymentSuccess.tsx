@@ -56,7 +56,7 @@ const PaymentSuccess = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [queryClient]);
 
   return (
     <MainLayout>

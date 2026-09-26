@@ -2,12 +2,13 @@
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { sendUserToHubspot } from './hubspot';
+import type { UserProfileData } from '@/types/auth';
 
 type SignUpResult = 
   | { error: null; success: true; user: User }
   | { error: Error; success: false; user?: undefined };
 
-export async function signUpWithEmail(email: string, password: string, userData?: any, skipOrgCreation: boolean = false, invitationToken?: string): Promise<SignUpResult> {
+export async function signUpWithEmail(email: string, password: string, userData?: UserProfileData, skipOrgCreation: boolean = false, invitationToken?: string): Promise<SignUpResult> {
   try {
     console.log('Starting signUpWithEmail process for:', email);
     
@@ -91,7 +92,7 @@ export async function signUpWithEmail(email: string, password: string, userData?
         await sendUserToHubspot(data.user.id);
         hubspotSuccess = true;
         console.log('Successfully added user to HubSpot');
-      } catch (hubspotError: any) {
+      } catch (hubspotError) {
         console.error(`HubSpot integration attempt ${retryCount + 1} failed:`, hubspotError);
         retryCount++;
         
@@ -107,7 +108,7 @@ export async function signUpWithEmail(email: string, password: string, userData?
     }
     
     return { error: null, success: true, user: data.user };
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error signing up:', error);
     return { error: error as Error, success: false };
   }

@@ -1,14 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
+  DialogTitle
 } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -35,7 +33,6 @@ const TeamInviteModal: React.FC<TeamInviteModalProps> = ({
   onClose,
   onSendInvitation,
   isLoading = false,
-  organizationId
 }) => {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('viewer');

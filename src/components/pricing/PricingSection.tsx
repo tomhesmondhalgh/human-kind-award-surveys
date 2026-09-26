@@ -106,7 +106,7 @@ const PricingSection: React.FC<PricingSectionProps> = ({
       cleanupDialogState();
       navigate(location.pathname, { replace: true });
     }
-  }, [location.search, toast, navigate, location.pathname]);
+  }, [location.search, navigate, location.pathname]);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -225,7 +225,7 @@ const PricingSection: React.FC<PricingSectionProps> = ({
     setIsProcessing(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('update-invoice-status', {
+      const { error } = await supabase.functions.invoke('update-invoice-status', {
         body: {
           planType: currentPlan.type,
           purchaseType: currentPlan.purchaseType,

@@ -5,7 +5,7 @@ import PageContainer from '../components/layout/PageContainer';
 import PageTitle from '../components/ui/PageTitle';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Download, Save, ArrowRight, Plus } from 'lucide-react';
+import { Download, ArrowRight, Plus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { toast } from 'sonner';
@@ -18,9 +18,6 @@ import ScreenOrientationOverlay from '../components/ui/ScreenOrientationOverlay'
 import { useOrientation } from '../hooks/useOrientation';
 import { useSubscription } from '../hooks/useSubscription';
 import { useNavigate } from 'react-router-dom';
-import BenefitsSection from '../components/upgrade/BenefitsSection';
-import IntroSection from '../components/upgrade/IntroSection';
-import PricingSection from '../components/pricing/PricingSection';
 
 const Improve = () => {
   const { user } = useAuth();

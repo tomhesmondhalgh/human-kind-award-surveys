@@ -25,3 +25,23 @@ export interface SchoolSearchResult {
   Town: string;
   County: string;
 }
+
+// Details collected at sign-up and on the profile page. All optional: each
+// caller sends the fields it has.
+export interface UserProfileData {
+  firstName?: string;
+  lastName?: string;
+  jobTitle?: string;
+  schoolName?: string;
+  schoolAddress?: string;
+  schoolURN?: string;
+  organizationName?: string;
+  email?: string;
+}
+
+export type AuthError = Error & { isEmailConfirmationError?: boolean };
+
+export interface AuthResult {
+  error: AuthError | null;
+  success: boolean;
+}
