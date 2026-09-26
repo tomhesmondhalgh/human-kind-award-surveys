@@ -95,6 +95,29 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // The invitation is for a specific email address: the account accepting it
+    // must be that address (AcceptInvitation.tsx already tells the user to switch
+    // accounts on a mismatch).
+    if (invitation.email.toLowerCase() !== (user.email ?? '').toLowerCase()) {
+      return new Response(
+        JSON.stringify({ error: 'This invitation was sent to a different email address', emailMismatch: true }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Matches accept_invitation_during_signup: an invitation is only valid while
+    // the person who sent it is still an admin of the organisation.
+    const { data: inviterIsAdmin } = await supabaseAdmin.rpc('user_can_manage_org_membership', {
+      user_uuid: invitation.invited_by,
+      org_id: invitation.organization_id,
+    });
+    if (!inviterIsAdmin) {
+      return new Response(
+        JSON.stringify({ error: 'This invitation is no longer valid' }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Check if user is already a member
     const { data: existingMember } = await supabaseAdmin
       .from('organization_memberships')

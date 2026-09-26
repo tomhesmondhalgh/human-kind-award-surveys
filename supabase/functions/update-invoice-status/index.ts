@@ -150,28 +150,25 @@ async function handleUpdatePaymentStatus(
   // Check if user is an admin - using the profiles table instead of user_roles
   try {
     console.log("Checking admin role for user:", user.id);
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', user.id)
-      .maybeSingle();
-      
-    if (profileError) {
-      console.error("Error checking admin status:", profileError);
+    // profiles has no is_admin column; platform admins live in user_roles.
+    const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', { _user_id: user.id });
+
+    if (adminError) {
+      console.error("Error checking admin status:", adminError);
       return new Response(
-        JSON.stringify({ error: 'Error checking admin status', details: profileError }),
+        JSON.stringify({ error: 'Error checking admin status' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-      
-    if (!profileData || !profileData.is_admin) {
+
+    if (isAdmin !== true) {
       console.error("Unauthorized: User is not an admin:", user.id);
       return new Response(
         JSON.stringify({ error: 'Unauthorized. Admin access required.' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    
+
     console.log("User is confirmed as admin");
   } catch (error) {
     console.error("Error in admin check:", error);

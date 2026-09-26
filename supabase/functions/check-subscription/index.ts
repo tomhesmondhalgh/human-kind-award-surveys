@@ -52,12 +52,8 @@ serve(async (req: Request) => {
       const userIdArray = userIds.split(',');
       
       // Only allow admins to make batch requests
-      const { data: adminCheck } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'administrator')
-        .maybeSingle();
+      // The role is 'admin', not 'administrator': use the shared check.
+      const { data: adminCheck } = await supabase.rpc('is_admin', { _user_id: user.id });
       
       if (!adminCheck) {
         return new Response(
@@ -104,7 +100,7 @@ serve(async (req: Request) => {
       .eq('user_id', user.id)
       .eq('status', 'active')
       .eq('payment_method', 'stripe')
-      .is('stripe_subscription_id', 'not.null')
+      .not('stripe_subscription_id', 'is', null)
       .order('created_at', { ascending: false })
       .limit(1);
 
