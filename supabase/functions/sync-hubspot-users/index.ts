@@ -110,17 +110,32 @@ serve(async (req: Request) => {
     let filteredProfiles = [...profiles];
     
     if (syncType === 'survey-creators') {
-      // Get all users who have created surveys
-      const { data: surveyTemplates, error: surveyError } = await supabase
+      // "Survey creators" = admins and editors of any organisation that has
+      // sent a survey. (Surveys have no creator column; the old query asked
+      // for a creator_id that doesn't exist, so this mode never worked.)
+      const { data: sentSurveys, error: surveyError } = await supabase
         .from('survey_templates')
-        .select('creator_id')
-        .not('creator_id', 'is', null);
-        
+        .select('organization_id')
+        .in('status', ['Sent', 'Completed']);
+
       if (surveyError) {
-        throw new Error(`Failed to fetch survey creators: ${surveyError.message}`);
+        throw new Error(`Failed to fetch surveys: ${surveyError.message}`);
       }
-      
-      if (!surveyTemplates || surveyTemplates.length === 0) {
+
+      const orgIds = [...new Set((sentSurveys ?? []).map(s => s.organization_id))];
+      const { data: members, error: membersError } = orgIds.length === 0
+        ? { data: [], error: null }
+        : await supabase
+            .from('organization_memberships')
+            .select('user_id')
+            .in('organization_id', orgIds)
+            .in('role', ['admin', 'editor']);
+
+      if (membersError) {
+        throw new Error(`Failed to fetch survey creators: ${membersError.message}`);
+      }
+
+      if (!members || members.length === 0) {
         return new Response(
           JSON.stringify({ 
             success: true, 
@@ -132,10 +147,9 @@ serve(async (req: Request) => {
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      
-      // Filter profiles to only include survey creators
-      const creatorIds = [...new Set(surveyTemplates.map(item => item.creator_id))];
-      filteredProfiles = profiles.filter(profile => creatorIds.includes(profile.id));
+
+      const creatorIds = new Set(members.map(m => m.user_id));
+      filteredProfiles = profiles.filter(profile => creatorIds.has(profile.id));
       
       console.log(`Found ${filteredProfiles.length} survey creators to sync`);
     } else {
