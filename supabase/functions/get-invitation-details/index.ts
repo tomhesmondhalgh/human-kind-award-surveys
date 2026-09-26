@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
         expires_at,
         accepted_at,
         created_at,
-        organizations!fk_organization_invitations_organization_id (
+        organizations!organization_invitations_organization_id_fkey (
           name
         )
       `)
