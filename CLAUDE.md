@@ -20,7 +20,7 @@ Background docs: `AppDescription.md` (features), `TestPlan.md` (manual test scri
 - **Supabase client:** `src/integrations/supabase/client.ts` (typed with `Database` from `types.ts`). `src/lib/supabase` re-exports it. The anon key in it is public by design. Never put the service-role key in frontend code.
 - **Auth:** Supabase Auth (email + password). Some auth emails go through custom edge functions (`send-auth-email`, `send-password-reset-email`).
 - **Edge functions:** `supabase/functions/*` (Deno), with shared code in `_shared/`. They handle Stripe (checkout, webhook, subscriptions), Resend emails, HubSpot sync, OpenAI summaries, team invitations, survey submission and redemption codes. `verify_jwt` per function is in `supabase/config.toml`. Secrets live in Supabase, not this repo: `RESEND_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `HUBSPOT_API_KEY`, `OPENAI_API_KEY`, `SITE_URL`, `FRONTEND_URL`.
-- **Hosting:** Netlify (`netlify.toml`). Edge functions are deployed separately to Supabase with `npx supabase functions deploy <name>` and are not part of the Netlify deploy.
+- **Hosting:** Vercel (`vercel.json`); production deploys from `main`. Edge functions are deployed separately to Supabase with `npx supabase functions deploy <name>` and are not part of the Vercel deploy.
 
 ## Database schema
 
@@ -31,6 +31,6 @@ Regenerate types after schema changes:
 
 ## Workflow
 
-- `development` is the working branch. Branch from it and open PRs into it.
-- `main` was last updated in March 2025 and is far behind `development`.
+- `main` is production: merging to it deploys the live site. Work on a branch and open a PR into `main`; Vercel builds a preview for each PR.
+- `development` is the old Lovable working branch.
 - Local dev hits the **live** database. Be careful with anything that writes data or sends email.

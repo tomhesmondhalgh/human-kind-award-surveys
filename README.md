@@ -10,7 +10,7 @@ See [AppDescription.md](AppDescription.md) for a fuller description of the featu
 - Tailwind CSS and shadcn/ui components
 - Supabase for the database, logins and server-side edge functions
 - Stripe for payments, Resend for email, HubSpot for CRM, OpenAI for survey summaries
-- Hosted on Netlify, deployed from GitHub
+- Hosted on Vercel, deployed from GitHub
 
 ## Running locally
 
@@ -27,7 +27,7 @@ Tests: `npm test` (Vitest) and `npm run test:e2e` (Playwright).
 
 ## Deploying
 
-The site is hosted on Netlify. Day-to-day work happens on the `development` branch, with feature branches merged into it through pull requests.
+The site is hosted on Vercel. Merging into `main` deploys to production, and every pull request gets a preview deployment.
 
 Supabase edge functions in `supabase/functions/` are deployed separately with the Supabase CLI:
 
