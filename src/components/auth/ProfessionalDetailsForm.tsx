@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { Input } from '../ui/input';
-import { Label } from '../ui/label';
 import SchoolSearch from '../onboarding/SchoolSearch';
 import CustomSchoolForm from '../onboarding/CustomSchoolForm';
 import { SignUpFormData, SchoolSearchResult } from '../../types/auth';

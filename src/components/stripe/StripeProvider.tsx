@@ -1,6 +1,6 @@
 
-import React, { ReactNode, useEffect, useState } from 'react';
-import { loadStripe, Stripe } from '@stripe/stripe-js';
+import React, { ReactNode, useEffect } from 'react';
+import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import { toast } from 'sonner';
 
@@ -16,7 +16,6 @@ interface StripeProviderProps {
 }
 
 const StripeProvider: React.FC<StripeProviderProps> = ({ children }) => {
-  const [stripeLoaded, setStripeLoaded] = useState(false);
 
   useEffect(() => {
     const checkStripeLoading = async () => {
@@ -24,7 +23,6 @@ const StripeProvider: React.FC<StripeProviderProps> = ({ children }) => {
         const stripe = await stripePromise;
         if (stripe) {
           console.log('Stripe loaded successfully');
-          setStripeLoaded(true);
         } else {
           console.error('Stripe failed to load, no error thrown');
           toast.error('Warning', { description: 'Payment system failed to initialize properly.' });
@@ -36,10 +34,10 @@ const StripeProvider: React.FC<StripeProviderProps> = ({ children }) => {
     };
 
     checkStripeLoading();
-  }, [toast]);
+  }, []);
 
   const stripeOptions = {
-    locale: 'en-GB' as 'en-GB', // Explicitly type as a literal
+    locale: 'en-GB' as const, // Explicitly type as a literal
   };
 
   return (

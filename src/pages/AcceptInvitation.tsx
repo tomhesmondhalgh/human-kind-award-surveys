@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
@@ -12,7 +12,6 @@ import { toast } from 'sonner';
 const AcceptInvitation = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const location = useLocation();
   const { user, isAuthenticated } = useAuth();
   const { refreshOrganizations } = useOrganization();
   const [status, setStatus] = useState<'loading' | 'found' | 'not-found' | 'expired' | 'error'>('loading');

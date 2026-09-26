@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 // Handle sign in with email and password
 export async function signInWithEmail(email: string, password: string) {
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });

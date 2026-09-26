@@ -10,7 +10,6 @@ import TestingMode from '../components/admin/TestingMode';
 import AccreditationManagement from '../components/admin/AccreditationManagement';
 import { useAdminRole } from '../hooks/useAdminRole';
 import { Navigate } from 'react-router-dom';
-import { useTestingMode } from '../contexts/TestingModeContext';
 import PurchasesManagement from '../components/purchases/PurchasesManagement';
 import HubspotIntegration from '../components/admin/HubspotIntegration';
 import UsersManagement from '../components/admin/UsersManagement';
@@ -19,7 +18,6 @@ import RedemptionCodesManagement from '../components/admin/RedemptionCodesManage
 
 const Admin = () => {
   const { isAdmin, isLoading } = useAdminRole();
-  const { isTestingMode } = useTestingMode();
   const [activeTab, setActiveTab] = useState('purchases');
   
   const hasAdminAccess = isAdmin;

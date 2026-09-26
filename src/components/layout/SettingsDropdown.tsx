@@ -10,7 +10,6 @@ import {
   DropdownMenuSeparator
 } from '../ui/dropdown-menu';
 import { Button } from '../ui/button';
-import { useAuth } from '../../contexts/AuthContext';
 import { useAdminRole } from '../../hooks/useAdminRole';
 import { useLocation } from 'react-router-dom';
 
@@ -19,7 +18,6 @@ interface SettingsDropdownProps {
 }
 
 const SettingsDropdown: React.FC<SettingsDropdownProps> = ({ handleSignOut }) => {
-  const { user } = useAuth();
   const location = useLocation();
   const { isAdmin } = useAdminRole();
 

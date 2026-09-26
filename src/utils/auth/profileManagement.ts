@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { AuthResult, UserProfileData } from '@/types/auth';
 
-export async function completeUserProfile(userId: string, userData: any): Promise<{ error: any; success: boolean }> {
+export async function completeUserProfile(userId: string, userData: UserProfileData): Promise<AuthResult> {
   try {
     console.log('Completing user profile for user ID:', userId, 'with data:', userData);
 
@@ -23,7 +24,7 @@ export async function completeUserProfile(userId: string, userData: any): Promis
 
     console.log('User profile completed successfully for user ID:', userId);
     return { error: null, success: true };
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error during profile completion:', error);
     return { error: error as Error, success: false };
   }

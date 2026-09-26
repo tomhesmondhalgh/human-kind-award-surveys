@@ -14,9 +14,6 @@ interface DesktopNavProps {
 const DesktopNav: React.FC<DesktopNavProps> = ({
   isAuthenticated,
   hideAuthButtons,
-  canManageTeam,
-  isAdmin,
-  handleSignOut,
 }) => {
   return (
     <nav className="hidden md:flex items-center space-x-8">

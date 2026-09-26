@@ -8,12 +8,12 @@ import { toast } from 'sonner';
 import { SignUpFormData } from '../types/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 
 const SignUp = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signUp, user } = useAuth();
+  const { signUp } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [invitationToken, setInvitationToken] = useState<string | null>(null);
   const [invitation, setInvitation] = useState<any>(null);

@@ -19,7 +19,6 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
   isOpen,
   isAuthenticated,
   hideAuthButtons,
-  isAdmin,
   handleSignOut,
   setIsMenuOpen,
 }) => {

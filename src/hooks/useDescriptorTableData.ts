@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { ActionPlanDescriptor, DescriptorStatus } from '@/types/actionPlan';
 import { updateDescriptor, getActionPlanDescriptors } from '@/utils/actionPlanUtils';
+import type { DescriptorUpdates } from '@/utils/actionPlan/updateDescriptor';
 import { useEditableCell } from '@/hooks/useEditableCell';
 
 // Errors from updateDescriptor that mean our copy of the table is out of date.
@@ -38,7 +39,7 @@ export function useDescriptorTableData(
   // Saves one change to a descriptor and updates the table without a refetch.
   const saveChange = async (
     id: string,
-    changes: Partial<ActionPlanDescriptor>,
+    changes: DescriptorUpdates,
     failureLabel: string
   ): Promise<boolean> => {
     try {
@@ -76,7 +77,8 @@ export function useDescriptorTableData(
   const handleEditSave = async () => {
     if (!editingCell) return;
     const { id, field } = editingCell;
-    if (await saveChange(id, { [field]: editValue }, 'save changes')) {
+    // Only key_actions and assigned_to are edited inline.
+    if (await saveChange(id, { [field]: editValue } as DescriptorUpdates, 'save changes')) {
       setEditingCell(null);
     }
   };

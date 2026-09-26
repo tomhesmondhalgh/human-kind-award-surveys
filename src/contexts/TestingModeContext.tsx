@@ -1,7 +1,6 @@
 
 import React, { createContext, useContext, useState } from 'react';
 import { PlanType } from '../lib/supabase/subscription';
-import { useAdminRole } from '../hooks/useAdminRole';
 
 interface TestingModeContextType {
   isTestingMode: boolean;

@@ -15,7 +15,7 @@ const Login = () => {
   console.log(`Rendering Login component (${LOGIN_VERSION})`);
   const navigate = useNavigate();
   const location = useLocation();
-  const { signIn, user, isAuthenticated, isLoading } = useAuth();
+  const { signIn, isAuthenticated, isLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isVerifyingToken, setIsVerifyingToken] = useState(false);
   const prefillEmail = location.state?.prefillEmail;

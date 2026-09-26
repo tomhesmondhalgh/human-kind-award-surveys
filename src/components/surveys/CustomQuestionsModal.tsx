@@ -8,7 +8,6 @@ import { useCustomQuestions } from '../../hooks/useCustomQuestions';
 import { CustomQuestion } from '../../types/customQuestions';
 import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import QuestionModal from '../custom-questions/QuestionModal';
 
@@ -29,7 +28,6 @@ const CustomQuestionsModal: React.FC<CustomQuestionsModalProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [isNewQuestionModalOpen, setIsNewQuestionModalOpen] = useState(false);
-  const navigate = useNavigate();
   
   // Filter questions based on search term only (removed type filter)
   const filteredQuestions = questions

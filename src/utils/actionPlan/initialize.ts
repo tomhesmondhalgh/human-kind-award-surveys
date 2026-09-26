@@ -60,7 +60,7 @@ export async function initializeActionPlan(organizationId: string): Promise<{ su
     
     // Create initial descriptors for the organization
     // progress_notes_count is computed when reading, not a column.
-    const descriptorsToInsert = INITIAL_DESCRIPTORS.map(({ progress_notes_count, ...descriptor }) => ({
+    const descriptorsToInsert = INITIAL_DESCRIPTORS.map(({ progress_notes_count: _progressNotesCount, ...descriptor }) => ({
       ...descriptor,
       organization_id: organizationId,
       user_id: user.id

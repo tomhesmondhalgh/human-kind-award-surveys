@@ -7,8 +7,9 @@ export type RedemptionCode = {
   plan_type: string;
   is_active: boolean;
   expires_at: string | null;
-  max_uses: number;
-  current_uses: number;
+  max_uses: number | null;
+  current_uses: number | null;
+  created_by?: string | null;
   created_at: string;
   updated_at: string;
 };

@@ -6,15 +6,6 @@ import { toast } from 'sonner';
 import { useOrganization } from '../contexts/OrganizationContext';
 
 // Helper function to create a DB question payload
-const createDbQuestionPayload = (question: Partial<CustomQuestion>, organizationId?: string) => {
-  return {
-    text: question.text || '',
-    type: question.type || 'text',
-    options: question.options || null,
-    organization_id: organizationId || null
-  };
-};
-
 export function useQuestionStore() {
   const [questions, setQuestions] = useState<CustomQuestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);

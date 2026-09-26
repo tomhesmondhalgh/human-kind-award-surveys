@@ -1,7 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import type { 
-  SurveyOption,
+import type {
   DetailedQuestionResponse,
   TextResponse
 } from './analysisUtils';

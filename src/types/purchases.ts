@@ -9,12 +9,12 @@ export type Purchase = {
   amount: number;
   currency: string;
   payment_method: PaymentMethod;
-  payment_status: PaymentStatus;
-  invoice_number?: string;
-  billing_school_name?: string;
-  billing_contact_name?: string;
-  billing_contact_email?: string;
-  billing_address?: string;
+  payment_status: PaymentStatus | null;
+  invoice_number?: string | null;
+  billing_school_name?: string | null;
+  billing_contact_name?: string | null;
+  billing_contact_email?: string | null;
+  billing_address?: string | null;
   created_at: string;
   plan_type: string;
   purchase_type: string;

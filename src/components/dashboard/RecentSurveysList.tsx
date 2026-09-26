@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { format } from 'date-fns';
 import { SurveyWithResponses } from '../../utils/surveyUtils';
 import { getSurveyStatus } from '../../utils/survey/status';
 import { useMediaQuery } from '@/hooks/use-media-query';

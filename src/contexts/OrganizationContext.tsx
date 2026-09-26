@@ -1,8 +1,8 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
-import { Organization, OrganizationWithRole } from '../types/organizations';
+import { OrganizationWithRole } from '../types/organizations';
 import { toast } from 'sonner';
 
 export interface OrganizationContextType {
@@ -36,7 +36,7 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [error, setError] = useState<string | null>(null);
   const { user, isAuthenticated } = useAuth();
 
-  const fetchOrganizations = async () => {
+  const fetchOrganizations = useCallback(async () => {
     if (!user || !isAuthenticated) {
       console.log('OrganizationContext: No authenticated user, returning empty organizations');
       return [];
@@ -91,7 +91,7 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       console.error('OrganizationContext: Error in fetchOrganizations:', error);
       throw error;
     }
-  };
+  }, [user, isAuthenticated]);
 
   const refreshOrganizations = async () => {
     if (!user || !isAuthenticated) {
@@ -254,7 +254,7 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (user !== undefined) {
       fetchCurrentOrganization();
     }
-  }, [user, isAuthenticated]);
+  }, [user, fetchOrganizations]);
 
   const switchOrganization = async (orgId: string): Promise<boolean> => {
     console.log('OrganizationContext: Switching to organization:', orgId);

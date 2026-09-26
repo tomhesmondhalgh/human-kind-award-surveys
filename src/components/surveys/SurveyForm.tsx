@@ -7,7 +7,7 @@ import { Button } from '../ui/button';
 import SurveyFormInputs from './SurveyFormInputs';
 import { Form } from '../ui/form';
 import SurveyLink from './SurveyLink';
-import { InfoIcon, Save, Play, Send } from 'lucide-react';
+import { Play, Send } from 'lucide-react';
 import { 
   Tooltip,
   TooltipContent,
@@ -15,8 +15,6 @@ import {
   TooltipTrigger,
 } from "../ui/tooltip";
 import CustomQuestionsSelect from './CustomQuestionsSelect';
-import { useNavigate } from 'react-router-dom';
-import { SurveyStatus } from '@/utils/types/survey';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 // Form schema
@@ -41,7 +39,6 @@ interface SurveyFormProps {
   onSubmit: (data: SurveyFormData, customQuestionIds: string[]) => void;
   onPreviewSurvey?: (data: SurveyFormData, customQuestionIds: string[]) => void;
   onSendSurvey?: (data: SurveyFormData, customQuestionIds: string[]) => void;
-  submitButtonText?: string;
   isEdit?: boolean;
   surveyId?: string | null;
   isSubmitting?: boolean;
@@ -51,7 +48,6 @@ interface SurveyFormProps {
 const SurveyForm: React.FC<SurveyFormProps> = ({ 
   initialData, 
   onSubmit, 
-  submitButtonText = 'Save Changes',
   isEdit = false,
   surveyId,
   isSubmitting = false,
@@ -62,7 +58,6 @@ const SurveyForm: React.FC<SurveyFormProps> = ({
   const [showSurveyLink, setShowSurveyLink] = useState<boolean>(false);
   const [surveyLink, setSurveyLink] = useState<string>('');
   const [selectedCustomQuestionIds, setSelectedCustomQuestionIds] = useState<string[]>(initialCustomQuestionIds);
-  const navigate = useNavigate();
   const isMobile = useIsMobile();
   
   React.useEffect(() => {

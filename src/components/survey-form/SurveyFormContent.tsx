@@ -32,7 +32,6 @@ const SurveyFormContent: React.FC<SurveyFormContentProps> = ({
   const { 
     questions, 
     responses, 
-    hasQuestions, 
     isLoading, 
     error, 
     handleResponse 
@@ -59,7 +58,7 @@ const SurveyFormContent: React.FC<SurveyFormContentProps> = ({
       console.log("Checking for fields that should have validation errors cleared");
       
       // Create new error array
-      let newErrors = [...validationErrors];
+      const newErrors = [...validationErrors];
       let errorCleared = false;
       
       // Clear errors for standard fields that have been filled

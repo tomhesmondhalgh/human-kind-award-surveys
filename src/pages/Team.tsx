@@ -7,22 +7,19 @@ import { useAuth } from '../contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { Users, UserPlus, Mail, Crown, Edit3, Eye, Trash2, Building, AlertCircle, RefreshCw, Info } from 'lucide-react';
+import { Users, UserPlus, Mail, Crown, Edit3, Eye, Trash2, Building, AlertCircle, RefreshCw } from 'lucide-react';
 import RoleInfoTooltip from '../components/team/RoleInfoTooltip';
 import { useTeamMembers } from '../components/team/hooks/useTeamMembers';
 import { useTeamInvitations } from '../components/team/hooks/useTeamInvitations';
 import { Skeleton } from '../components/ui/skeleton';
 import TeamInviteModal from '../components/team/TeamInviteModal';
 import ConfirmDeleteModal from '../components/team/ConfirmDeleteModal';
-import OrganizationsList from '../components/team/OrganizationsList';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 
 const Team = () => {
   const { user, isAuthenticated, authCheckComplete } = useAuth();
-  const { currentOrganization, isLoading: orgLoading, error: orgError } = useOrganization();
+  const { currentOrganization, isLoading: orgLoading } = useOrganization();
   const [memberToDelete, setMemberToDelete] = React.useState<string | null>(null);
-  const [activeTab, setActiveTab] = React.useState('members');
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -35,9 +32,7 @@ const Team = () => {
       // If URL has an org ID that doesn't match current, switch to it
       // This will be handled by OrganizationContext
     }
-    
-    // Always set to members tab since organizations tab is hidden
-    setActiveTab('members');
+
   }, [location, currentOrganization, orgLoading]);
 
   const {
@@ -55,7 +50,6 @@ const Team = () => {
 
   const {
     invitations,
-    invitationsLoading
   } = useTeamInvitations(currentOrganization?.id);
 
   // Function to handle sending invitations that returns void

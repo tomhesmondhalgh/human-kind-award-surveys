@@ -7,7 +7,7 @@ import MyPurchases from '../components/user/MyPurchases';
 import { useAdminRole } from '../hooks/useAdminRole';
 
 const Purchases = () => {
-  const { isAdmin, isLoading } = useAdminRole();
+  const { isAdmin } = useAdminRole();
   
   return (
     <MainLayout>

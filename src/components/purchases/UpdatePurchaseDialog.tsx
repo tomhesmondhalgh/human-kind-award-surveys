@@ -31,7 +31,7 @@ export const UpdatePurchaseDialog: React.FC<UpdatePurchaseDialogProps> = ({
   const [billingContactEmail, setBillingContactEmail] = useState(purchase.billing_contact_email || '');
   
   // Use our new hook for update logic
-  const { updatePurchase, isSubmitting, error, setError } = usePurchaseUpdater();
+  const { updatePurchase, isSubmitting, error } = usePurchaseUpdater();
 
   const handlePaymentStatusChange = (value: string) => {
     setPaymentStatus(value as PaymentStatus);

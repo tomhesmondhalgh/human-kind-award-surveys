@@ -6,7 +6,6 @@ import { Plus, Eye, EyeOff, Archive } from 'lucide-react';
 import QuestionModal from './QuestionModal';
 import QuestionsList from './QuestionsList';
 import { CustomQuestion } from '../../types/customQuestions';
-import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '../ui/skeleton';
 import Pagination from '../surveys/Pagination';

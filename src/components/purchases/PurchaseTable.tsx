@@ -24,7 +24,7 @@ export const PurchaseTable: React.FC<PurchaseTableProps> = ({
   onUpdatePurchase
 }) => {
   // Helper function to get status badge
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string | null) => {
     switch (status) {
       case 'payment_made':
         return <Badge className="bg-green-500">Payment Made</Badge>;
