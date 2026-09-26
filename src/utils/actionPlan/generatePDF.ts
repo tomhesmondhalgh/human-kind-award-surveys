@@ -1,6 +1,4 @@
 
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 import { supabase } from '../../lib/supabase';
 import { ActionPlanDescriptor } from '../../types/actionPlan';
 
@@ -25,6 +23,13 @@ export async function generatePDF(organizationId: string): Promise<{ success: bo
       return { success: false, error: 'No action plan data found to export' };
     }
     
+    // Loaded on demand as they're large. Importing jspdf-autotable adds
+    // doc.autoTable() to jsPDF, as the static import used to.
+    const [{ default: jsPDF }] = await Promise.all([
+      import('jspdf'),
+      import('jspdf-autotable'),
+    ]);
+
     // Create PDF
     const doc = new jsPDF();
     
