@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { SurveyTemplate } from '../../utils/types/survey';
-import { SurveyFormData } from '../../types/surveyForm';
+import { CustomQuestionType, SurveyFormData } from '../../types/surveyForm';
 import SurveyIntro from './SurveyIntro';
 import SurveyFormContent from './SurveyFormContent';
 import PreviewModeFooter from './PreviewModeFooter';
@@ -9,7 +9,7 @@ import PreviewModeFooter from './PreviewModeFooter';
 interface SurveyFormWrapperProps {
   surveyTemplate: SurveyTemplate;
   formData: SurveyFormData;
-  surveyId: string | null;
+  customQuestions: CustomQuestionType[];
   isSubmitting: boolean;
   isPreview: boolean;
   handleInputChange: (key: string, value: string) => void;
@@ -20,7 +20,7 @@ interface SurveyFormWrapperProps {
 const SurveyFormWrapper: React.FC<SurveyFormWrapperProps> = ({
   surveyTemplate,
   formData,
-  surveyId,
+  customQuestions,
   isSubmitting,
   isPreview,
   handleInputChange,
@@ -39,7 +39,7 @@ const SurveyFormWrapper: React.FC<SurveyFormWrapperProps> = ({
           
           <SurveyFormContent
             formData={formData}
-            surveyId={surveyId}
+            customQuestions={customQuestions}
             isSubmitting={isSubmitting}
             handleInputChange={handleInputChange}
             handleCustomQuestionResponse={handleCustomQuestionResponse}
