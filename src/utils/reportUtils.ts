@@ -1,6 +1,4 @@
 
-import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
 import { SummaryData } from "./summaryUtils";
 import { supabase } from "../lib/supabase";
 import { DetailedQuestionResponse, TextResponse } from "./analysisUtils";
@@ -14,6 +12,12 @@ export const generatePDF = async (
     console.error('Analysis container ref is not available');
     return;
   }
+
+  // Loaded on demand: these libraries are large and only needed for export.
+  const [{ jsPDF }, { default: html2canvas }] = await Promise.all([
+    import("jspdf"),
+    import("html2canvas"),
+  ]);
 
   const contentElement = analysisRef.current;
   const pdfWidth = 210; // A4 width in mm
