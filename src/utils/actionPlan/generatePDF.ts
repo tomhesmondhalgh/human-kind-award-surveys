@@ -23,9 +23,9 @@ export async function generatePDF(organizationId: string): Promise<{ success: bo
       return { success: false, error: 'No action plan data found to export' };
     }
     
-    // Loaded on demand as they're large. Importing jspdf-autotable adds
-    // doc.autoTable() to jsPDF, as the static import used to.
-    const [{ default: jsPDF }] = await Promise.all([
+    // Loaded on demand as they're large. jspdf-autotable v5 no longer
+    // patches doc.autoTable() onto jsPDF, so call its autoTable(doc, ...) export.
+    const [{ default: jsPDF }, { autoTable }] = await Promise.all([
       import('jspdf'),
       import('jspdf-autotable'),
     ]);
@@ -65,7 +65,7 @@ export async function generatePDF(organizationId: string): Promise<{ success: bo
       ]);
       
       // Add table
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: yPosition,
         head: [['Ref', 'Description', 'Status', 'Assigned To', 'Deadline', 'Key Actions']],
         body: tableData,

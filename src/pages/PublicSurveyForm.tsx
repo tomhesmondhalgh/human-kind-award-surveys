@@ -6,7 +6,6 @@ import { useSurveyForm } from '../hooks/useSurveyForm';
 import SurveyLoading from '../components/survey-form/SurveyLoading';
 import SurveyNotFound from '../components/survey-form/SurveyNotFound';
 import SurveyFormWrapper from '../components/survey-form/SurveyFormWrapper';
-import { CustomQuestionsProvider } from '../contexts/CustomQuestionsContext'; 
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -20,6 +19,7 @@ const PublicSurveyForm: React.FC = () => {
   const { 
     isLoading, 
     surveyData,
+    customQuestions,
     error
   } = useSurveyData(surveyId, isPreview);
   
@@ -70,18 +70,16 @@ const PublicSurveyForm: React.FC = () => {
   }
   
   return (
-    <CustomQuestionsProvider>
       <SurveyFormWrapper
         surveyTemplate={surveyData}
         formData={formData}
-        surveyId={surveyId}
+        customQuestions={customQuestions}
         isSubmitting={isSubmitting}
         isPreview={isPreview}
         handleInputChange={handleInputChange}
         handleCustomQuestionResponse={handleCustomQuestionResponse}
         handleSubmit={handleSubmit}
       />
-    </CustomQuestionsProvider>
   );
 };
 

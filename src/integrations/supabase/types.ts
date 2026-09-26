@@ -199,12 +199,6 @@ isOneToOne: false
       referencedRelation: "profiles"
       referencedColumns: ["id"]
     },{
-      foreignKeyName: "fk_organization_invitations_organization_id"
-      columns: ["organization_id"]
-isOneToOne: false
-      referencedRelation: "organizations"
-      referencedColumns: ["id"]
-    },{
       foreignKeyName: "organization_invitations_organization_id_fkey"
       columns: ["organization_id"]
 isOneToOne: false
@@ -224,12 +218,6 @@ isOneToOne: false
                   }
                   Relationships: [
                     {
-      foreignKeyName: "fk_organization_memberships_organization_id"
-      columns: ["organization_id"]
-isOneToOne: false
-      referencedRelation: "organizations"
-      referencedColumns: ["id"]
-    },{
       foreignKeyName: "fk_organization_memberships_user_id"
       columns: ["user_id"]
 isOneToOne: false
@@ -392,13 +380,13 @@ isOneToOne: false
                   ]
                 },"survey_responses": {
                   Row: {
-                    "confidence_in_role": string | null,"created_at": string,"doing_well": string | null,"health_state": string | null,"id": string,"improvements": string | null,"leadership_prioritize": string | null,"leaving_contemplation": string | null,"manageable_workload": string | null,"org_pride": string | null,"recommendation_score": string | null,"role": string | null,"support_access": string | null,"survey_template_id": string | null,"valued_member": string | null,"work_life_balance": string | null
+                    "confidence_in_role": string | null,"created_at": string,"doing_well": string | null,"health_state": string | null,"id": string,"improvements": string | null,"leadership_prioritize": string | null,"leaving_contemplation": string | null,"manageable_workload": string | null,"org_pride": string | null,"recommendation_score": string | null,"role": string | null,"support_access": string | null,"survey_template_id": string,"valued_member": string | null,"work_life_balance": string | null
                   }
                   Insert: {
-                    "confidence_in_role"?: string | null,"created_at"?: string,"doing_well"?: string | null,"health_state"?: string | null,"id"?: string,"improvements"?: string | null,"leadership_prioritize"?: string | null,"leaving_contemplation"?: string | null,"manageable_workload"?: string | null,"org_pride"?: string | null,"recommendation_score"?: string | null,"role"?: string | null,"support_access"?: string | null,"survey_template_id"?: string | null,"valued_member"?: string | null,"work_life_balance"?: string | null
+                    "confidence_in_role"?: string | null,"created_at"?: string,"doing_well"?: string | null,"health_state"?: string | null,"id"?: string,"improvements"?: string | null,"leadership_prioritize"?: string | null,"leaving_contemplation"?: string | null,"manageable_workload"?: string | null,"org_pride"?: string | null,"recommendation_score"?: string | null,"role"?: string | null,"support_access"?: string | null,"survey_template_id": string,"valued_member"?: string | null,"work_life_balance"?: string | null
                   }
                   Update: {
-                    "confidence_in_role"?: string | null,"created_at"?: string,"doing_well"?: string | null,"health_state"?: string | null,"id"?: string,"improvements"?: string | null,"leadership_prioritize"?: string | null,"leaving_contemplation"?: string | null,"manageable_workload"?: string | null,"org_pride"?: string | null,"recommendation_score"?: string | null,"role"?: string | null,"support_access"?: string | null,"survey_template_id"?: string | null,"valued_member"?: string | null,"work_life_balance"?: string | null
+                    "confidence_in_role"?: string | null,"created_at"?: string,"doing_well"?: string | null,"health_state"?: string | null,"id"?: string,"improvements"?: string | null,"leadership_prioritize"?: string | null,"leaving_contemplation"?: string | null,"manageable_workload"?: string | null,"org_pride"?: string | null,"recommendation_score"?: string | null,"role"?: string | null,"support_access"?: string | null,"survey_template_id"?: string,"valued_member"?: string | null,"work_life_balance"?: string | null
                   }
                   Relationships: [
                     {
@@ -463,25 +451,6 @@ isOneToOne: false
                         Relationships: [
                     
                   ]
-                },"public_survey_templates": {
-                  Row: {
-                    "close_date": string | null,"created_at": string | null,"date": string | null,"id": string | null,"name": string | null,"organization_id": string | null,"status": Database["public"]['Enums']["survey_status"] | null
-                  }
-                  Insert: {
-                           "close_date"?: string | null,"created_at"?: string | null,"date"?: string | null,"id"?: string | null,"name"?: string | null,"organization_id"?: string | null,"status"?: Database["public"]['Enums']["survey_status"] | null
-                         }
-                        Update: {
-                           "close_date"?: string | null,"created_at"?: string | null,"date"?: string | null,"id"?: string | null,"name"?: string | null,"organization_id"?: string | null,"status"?: Database["public"]['Enums']["survey_status"] | null
-                         }
-                        Relationships: [
-                    {
-      foreignKeyName: "survey_templates_organization_id_fkey"
-      columns: ["organization_id"]
-isOneToOne: false
-      referencedRelation: "organizations"
-      referencedColumns: ["id"]
-    }
-                  ]
                 },"user_payment_summary": {
                   Row: {
                     "amount": number | null,"billing_address": string | null,"billing_contact_email": string | null,"billing_contact_name": string | null,"billing_postcode": string | null,"billing_school_name_redacted": string | null,"created_at": string | null,"currency": string | null,"id": string | null,"invoice_number": string | null,"payment_date": string | null,"payment_method": Database["public"]['Enums']["payment_method"] | null,"payment_status": Database["public"]['Enums']["payment_status"] | null,"plan_type": Database["public"]['Enums']["plan_type"] | null,"purchase_type": string | null,"subscription_id": string | null,"user_id": string | null
@@ -537,6 +506,9 @@ isOneToOne: false
 { Args: { "user_uuid": string }; Returns: {
               "address": string,"created_at": string,"id": string,"name": string,"role": Database["public"]['Enums']["organization_role"],"updated_at": string,"urn": string
             }[]
+                           },
+"get_public_survey":
+{ Args: { "p_survey_id": string }; Returns: Json
                            },
 "get_user_subscription":
 { Args: { "user_uuid": string }; Returns: {

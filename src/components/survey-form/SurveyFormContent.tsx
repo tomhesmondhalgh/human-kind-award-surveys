@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { SurveyFormData } from '../../types/surveyForm';
+import { CustomQuestionType, SurveyFormData } from '../../types/surveyForm';
 import StandardQuestions from './StandardQuestions';
 import CustomQuestionsSection from './CustomQuestionsSection';
 import SubmitButton from './SubmitButton';
@@ -11,7 +11,7 @@ import { AlertTriangle } from 'lucide-react';
 
 interface SurveyFormContentProps {
   formData: SurveyFormData;
-  surveyId: string | null;
+  customQuestions: CustomQuestionType[];
   isSubmitting: boolean;
   handleInputChange: (key: string, value: string) => void;
   handleCustomQuestionResponse: (questionId: string, value: string) => void;
@@ -20,7 +20,7 @@ interface SurveyFormContentProps {
 
 const SurveyFormContent: React.FC<SurveyFormContentProps> = ({
   formData,
-  surveyId,
+  customQuestions,
   isSubmitting,
   handleInputChange,
   handleCustomQuestionResponse,
@@ -36,7 +36,7 @@ const SurveyFormContent: React.FC<SurveyFormContentProps> = ({
     isLoading, 
     error, 
     handleResponse 
-  } = useSurveyCustomQuestions(surveyId);
+  } = useSurveyCustomQuestions(customQuestions);
   
   // Report errors from custom questions to the user
   useEffect(() => {
