@@ -1,5 +1,5 @@
 
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useTeamMembers } from '@/components/team/hooks/useTeamMembers';
@@ -8,9 +8,6 @@ import React from 'react';
 // Mock Supabase client
 // vi.mock factories are hoisted above imports, so their data must be hoisted too.
 const mockSupabase = vi.hoisted(() => ({
-  auth: {
-    getSession: vi.fn(),
-  },
   from: vi.fn(() => ({
     select: vi.fn(() => ({
       eq: vi.fn(() => ({
@@ -78,9 +75,7 @@ describe('useTeamMembers', () => {
     expect(result.current.isLoading).toBe(true);
   });
 
-  // Out of date: written for an earlier version of this code and never run until
-  // 2026-09 (the suite was broken). Rewrite alongside REMEDIATION_PLAN.md item 31.
-  it.skip('should fetch team members successfully', async () => {
+  it('should fetch team members successfully', async () => {
     const mockMembers = [
       {
         id: '1',
@@ -93,10 +88,6 @@ describe('useTeamMembers', () => {
         },
       },
     ];
-
-    mockSupabase.auth.getSession.mockResolvedValue({
-      data: { session: { user: { id: 'user-1' } } },
-    });
 
     mockSupabase.from.mockReturnValue({
       select: vi.fn().mockReturnValue({
@@ -116,17 +107,11 @@ describe('useTeamMembers', () => {
     });
 
     expect(result.current.members).toHaveLength(1);
-    expect(result.current.members?.[0].profiles.first_name).toBe('John');
+    expect(result.current.members?.[0].profile?.first_name).toBe('John');
   });
 
-  // Out of date: written for an earlier version of this code and never run until
-  // 2026-09 (the suite was broken). Rewrite alongside REMEDIATION_PLAN.md item 31.
-  it.skip('should handle fetch error', async () => {
+  it('should handle fetch error', async () => {
     const mockError = new Error('Fetch failed');
-
-    mockSupabase.auth.getSession.mockResolvedValue({
-      data: { session: { user: { id: 'user-1' } } },
-    });
 
     mockSupabase.from.mockReturnValue({
       select: vi.fn().mockReturnValue({
@@ -141,16 +126,15 @@ describe('useTeamMembers', () => {
       wrapper: createWrapper(),
     });
 
+    // The hook retries failed fetches twice (1s then 2s apart) before giving up.
     await waitFor(() => {
       expect(result.current.isError).toBe(true);
-    });
+    }, { timeout: 5000 });
 
     expect(result.current.error).toEqual(mockError);
-  });
+  }, 10000);
 
-  // Out of date: written for an earlier version of this code and never run until
-  // 2026-09 (the suite was broken). Rewrite alongside REMEDIATION_PLAN.md item 31.
-  it.skip('should handle invite modal state', () => {
+  it('should handle invite modal state', () => {
     const { result } = renderHook(() => useTeamMembers('org-123'), {
       wrapper: createWrapper(),
     });
@@ -159,11 +143,11 @@ describe('useTeamMembers', () => {
     expect(result.current.isInviteModalOpen).toBe(false);
 
     // Open modal
-    result.current.setIsInviteModalOpen(true);
+    act(() => result.current.setIsInviteModalOpen(true));
     expect(result.current.isInviteModalOpen).toBe(true);
 
     // Close modal
-    result.current.setIsInviteModalOpen(false);
+    act(() => result.current.setIsInviteModalOpen(false));
     expect(result.current.isInviteModalOpen).toBe(false);
   });
 });
