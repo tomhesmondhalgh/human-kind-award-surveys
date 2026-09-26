@@ -24,7 +24,13 @@ Background docs: `AppDescription.md` (features), `TestPlan.md` (manual test scri
 
 ## Database schema
 
-Migrations live in `supabase/migrations/`. Lovable wrote them, and they may not fully match the live database: the earliest start in June 2025, but the project dates from February 2025. Until that has been checked (`npx supabase db pull` / `supabase migration list`), check the live schema before relying on the migration files. Make all future schema changes as new migration files.
+`supabase/migrations/` starts from a single baseline (`*_baseline.sql`) dumped from the live database on 2026-09-26. Lovable's earlier migrations were replaced because they didn't match the live history; they're in git history if needed.
+
+- Make every schema change as a new migration: `npx supabase migration new <name>`, then `npx supabase db push`.
+- Test locally first: `npx supabase start` (needs Docker) applies all migrations to a local database.
+- Check for drift with `npx supabase db diff --linked --schema public` (should say "No schema changes found").
+- Triggers on `auth.users` (such as `on_auth_user_created`) aren't included in public-schema dumps, so add them to migrations by hand.
+- `supabase/scripts/` holds ad-hoc SQL that isn't a migration.
 
 Regenerate types after schema changes:
 `npx supabase gen types typescript --project-id bagaaqkmewkuwtudwnqw > src/integrations/supabase/types.ts`
