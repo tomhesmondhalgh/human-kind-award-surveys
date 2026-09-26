@@ -199,12 +199,6 @@ isOneToOne: false
       referencedRelation: "profiles"
       referencedColumns: ["id"]
     },{
-      foreignKeyName: "fk_organization_invitations_organization_id"
-      columns: ["organization_id"]
-isOneToOne: false
-      referencedRelation: "organizations"
-      referencedColumns: ["id"]
-    },{
       foreignKeyName: "organization_invitations_organization_id_fkey"
       columns: ["organization_id"]
 isOneToOne: false
@@ -224,12 +218,6 @@ isOneToOne: false
                   }
                   Relationships: [
                     {
-      foreignKeyName: "fk_organization_memberships_organization_id"
-      columns: ["organization_id"]
-isOneToOne: false
-      referencedRelation: "organizations"
-      referencedColumns: ["id"]
-    },{
       foreignKeyName: "fk_organization_memberships_user_id"
       columns: ["user_id"]
 isOneToOne: false
@@ -392,13 +380,13 @@ isOneToOne: false
                   ]
                 },"survey_responses": {
                   Row: {
-                    "confidence_in_role": string | null,"created_at": string,"doing_well": string | null,"health_state": string | null,"id": string,"improvements": string | null,"leadership_prioritize": string | null,"leaving_contemplation": string | null,"manageable_workload": string | null,"org_pride": string | null,"recommendation_score": string | null,"role": string | null,"support_access": string | null,"survey_template_id": string | null,"valued_member": string | null,"work_life_balance": string | null
+                    "confidence_in_role": string | null,"created_at": string,"doing_well": string | null,"health_state": string | null,"id": string,"improvements": string | null,"leadership_prioritize": string | null,"leaving_contemplation": string | null,"manageable_workload": string | null,"org_pride": string | null,"recommendation_score": string | null,"role": string | null,"support_access": string | null,"survey_template_id": string,"valued_member": string | null,"work_life_balance": string | null
                   }
                   Insert: {
-                    "confidence_in_role"?: string | null,"created_at"?: string,"doing_well"?: string | null,"health_state"?: string | null,"id"?: string,"improvements"?: string | null,"leadership_prioritize"?: string | null,"leaving_contemplation"?: string | null,"manageable_workload"?: string | null,"org_pride"?: string | null,"recommendation_score"?: string | null,"role"?: string | null,"support_access"?: string | null,"survey_template_id"?: string | null,"valued_member"?: string | null,"work_life_balance"?: string | null
+                    "confidence_in_role"?: string | null,"created_at"?: string,"doing_well"?: string | null,"health_state"?: string | null,"id"?: string,"improvements"?: string | null,"leadership_prioritize"?: string | null,"leaving_contemplation"?: string | null,"manageable_workload"?: string | null,"org_pride"?: string | null,"recommendation_score"?: string | null,"role"?: string | null,"support_access"?: string | null,"survey_template_id": string,"valued_member"?: string | null,"work_life_balance"?: string | null
                   }
                   Update: {
-                    "confidence_in_role"?: string | null,"created_at"?: string,"doing_well"?: string | null,"health_state"?: string | null,"id"?: string,"improvements"?: string | null,"leadership_prioritize"?: string | null,"leaving_contemplation"?: string | null,"manageable_workload"?: string | null,"org_pride"?: string | null,"recommendation_score"?: string | null,"role"?: string | null,"support_access"?: string | null,"survey_template_id"?: string | null,"valued_member"?: string | null,"work_life_balance"?: string | null
+                    "confidence_in_role"?: string | null,"created_at"?: string,"doing_well"?: string | null,"health_state"?: string | null,"id"?: string,"improvements"?: string | null,"leadership_prioritize"?: string | null,"leaving_contemplation"?: string | null,"manageable_workload"?: string | null,"org_pride"?: string | null,"recommendation_score"?: string | null,"role"?: string | null,"support_access"?: string | null,"survey_template_id"?: string,"valued_member"?: string | null,"work_life_balance"?: string | null
                   }
                   Relationships: [
                     {
