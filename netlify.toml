@@ -1,7 +1,7 @@
 
 # Netlify configuration
 [build]
-  command = "bun run build"
+  command = "npm run build"
   publish = "dist"
   # Add legacy-peer-deps flag to resolve package conflicts and force a clean build
   environment = { NPM_FLAGS = "--legacy-peer-deps", NETLIFY_EXPERIMENTAL_BUILD_CLEAR_CACHE = "true" }
@@ -34,7 +34,3 @@
   for = "/assets/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
-    
-# Configure functions directory for Supabase functions
-[functions]
-  directory = "supabase/functions"

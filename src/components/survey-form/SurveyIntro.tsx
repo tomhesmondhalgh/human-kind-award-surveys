@@ -15,7 +15,7 @@ const SurveyIntro: React.FC<SurveyIntroProps> = ({ surveyTemplate, name }) => {
     <>
       <div className="mb-8 text-center">
         <img 
-          src="/lovable-uploads/895356bb-776b-4070-8a89-a6e33e70cee6.png" 
+          src="/human-kind-logo.png" 
           alt="Our Human Kind Logo" 
           className="mx-auto max-h-20 mb-4"
         />
