@@ -48,22 +48,16 @@ backend = "postgres"
 verify_jwt = true
 
 [functions.send-survey-email]
-verify_jwt = false
-
-[functions.send-welcome-email]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-admin-notification]
-verify_jwt = false
-
-[functions.send-test-emails]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-closure-notification]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-analysis-email]
-verify_jwt = false
+verify_jwt = true
 
 [functions.create-payment-session]
 verify_jwt = true

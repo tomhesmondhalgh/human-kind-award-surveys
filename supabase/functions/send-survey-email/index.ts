@@ -1,139 +1,74 @@
-
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createEmailTemplate } from "../_shared/emailTemplate.ts";
+import { HttpError, json, serveJson, siteUrl } from "../_shared/http.ts";
+import { requireSurveyRole, requireUser } from "../_shared/auth.ts";
+import { escapeHtml, isEmail } from "../_shared/html.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const MAX_RECIPIENTS = 500;
 
-const handler = async (req: Request): Promise<Response> => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+// Sends survey invitations or reminders. The caller must be an editor in the
+// survey's organisation; the survey name and link come from the database, not
+// the request, so the email can't be repurposed.
+serveJson(async (req) => {
+  const user = await requireUser(req);
+  const { surveyId, emails, isReminder } = await req.json();
 
-  try {
-    console.log('Received request to send-survey-email function');
-    
-    const requestBody = await req.text();
-    console.log('Raw request body:', requestBody);
-    
-    let requestData;
+  if (typeof surveyId !== 'string') throw new HttpError(400, 'surveyId is required');
+  if (!Array.isArray(emails) || emails.length === 0) throw new HttpError(400, 'No email addresses provided');
+  if (emails.length > MAX_RECIPIENTS) throw new HttpError(400, `At most ${MAX_RECIPIENTS} recipients per request`);
+
+  const survey = await requireSurveyRole(user.id, surveyId, 'editor');
+
+  const recipients = [...new Set(emails.map((e: unknown) => String(e).trim().toLowerCase()))].filter(isEmail);
+  if (recipients.length === 0) throw new HttpError(400, 'No valid email addresses provided');
+
+  const resendApiKey = Deno.env.get("RESEND_API_KEY");
+  if (!resendApiKey) throw new Error("Missing RESEND_API_KEY");
+  const resend = new Resend(resendApiKey);
+
+  const surveyUrl = `${siteUrl()}/survey/${survey.id}`;
+  const name = escapeHtml(survey.name);
+  const subject = isReminder
+    ? `Reminder: Please complete the "${survey.name}" wellbeing survey`
+    : `You're invited to complete the "${survey.name}" wellbeing survey`;
+
+  const content = `
+    <p>${isReminder
+      ? `This is a friendly reminder to complete the "${name}" wellbeing survey.`
+      : `You have been invited to participate in the "${name}" wellbeing survey.`}</p>
+    <p>Your feedback is important to help improve the wellbeing of staff at your school. The survey is anonymous and will only take a few minutes to complete.</p>
+  `;
+
+  const html = createEmailTemplate({
+    title: `${isReminder ? 'Reminder: ' : ''}Wellbeing Survey Invitation`,
+    preheader: `Complete the ${survey.name} survey - your feedback matters`,
+    content,
+    buttonText: "Complete Survey",
+    buttonUrl: surveyUrl,
+  });
+
+  const successful: string[] = [];
+  const failed: { email: string; error: string }[] = [];
+  for (const email of recipients) {
     try {
-      requestData = JSON.parse(requestBody);
-      console.log('Parsed request data:', requestData);
-    } catch (parseError) {
-      console.error('Error parsing request body:', parseError);
-      throw new Error('Invalid JSON in request body');
+      const { error } = await resend.emails.send({
+        from: "Human Kind <contact@humankindaward.com>",
+        to: email,
+        subject,
+        html,
+      });
+      if (error) throw new Error(error.message);
+      successful.push(email);
+    } catch (e) {
+      failed.push({ email, error: e instanceof Error ? e.message : String(e) });
     }
-    
-    const { surveyId, surveyName, emails, surveyUrl, isReminder } = requestData;
-    
-    if (!surveyId || !surveyName || !emails || !surveyUrl) {
-      console.error('Missing required fields:', { surveyId, surveyName, emails: Array.isArray(emails) ? emails.length : 'not array', surveyUrl });
-      throw new Error('Missing required fields in request');
-    }
-    
-    console.log(`Processing email request for survey: ${surveyName} (${surveyId})`);
-    console.log(`Recipients: ${Array.isArray(emails) ? emails.join(', ') : 'Invalid emails format - not an array'}`);
-    console.log(`Survey URL: ${surveyUrl}`);
-    console.log(`Is reminder: ${isReminder}`);
-    
-    if (!Array.isArray(emails) || emails.length === 0) {
-      throw new Error('No valid email addresses provided');
-    }
-    
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    if (!resendApiKey) {
-      console.error('Missing RESEND_API_KEY environment variable');
-      throw new Error("Missing RESEND_API_KEY environment variable");
-    }
-    
-    console.log('Initializing Resend with API key');
-    const resend = new Resend(resendApiKey);
-    
-    const results = {
-      successful: [],
-      failed: [],
-    };
-    
-    console.log(`Starting to send emails to ${emails.length} recipients`);
-    for (const email of emails) {
-      try {
-        console.log(`Sending email to: ${email}`);
-        
-        const subject = isReminder 
-          ? `Reminder: Please complete the "${surveyName}" wellbeing survey`
-          : `You're invited to complete the "${surveyName}" wellbeing survey`;
-
-        const content = `
-          <p>${isReminder 
-            ? `This is a friendly reminder to complete the "${surveyName}" wellbeing survey.` 
-            : `You have been invited to participate in the "${surveyName}" wellbeing survey.`}</p>
-          
-          <p>Your feedback is important to help improve the wellbeing of staff at your school. The survey is anonymous and will only take a few minutes to complete.</p>
-        `;
-
-        const html = createEmailTemplate({
-          title: `${isReminder ? 'Reminder: ' : ''}Wellbeing Survey Invitation`,
-          preheader: `Complete the ${surveyName} survey - your feedback matters`,
-          content,
-          buttonText: "Complete Survey",
-          buttonUrl: surveyUrl,
-        });
-        
-        const response = await resend.emails.send({
-          from: "Human Kind <contact@humankindaward.com>",
-          to: email,
-          subject: subject,
-          html: html,
-        });
-        
-        console.log(`Email sent successfully to ${email}, response:`, response);
-        results.successful.push(email);
-      } catch (emailError) {
-        console.error(`Failed to send email to ${email}:`, emailError);
-        results.failed.push({ email, error: emailError.message });
-      }
-    }
-    
-    const responseData = {
-      success: true,
-      message: `Processed ${emails.length} emails`,
-      count: results.successful.length,
-      results: results,
-    };
-    
-    console.log('Email sending complete, response:', responseData);
-    
-    return new Response(
-      JSON.stringify(responseData),
-      {
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
-        status: 200,
-      }
-    );
-  } catch (error) {
-    console.error("Error processing request:", error);
-    
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message,
-      }),
-      {
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
-        status: 400,
-      }
-    );
   }
-};
 
-serve(handler);
+  console.log(`send-survey-email: survey ${survey.id}, sent ${successful.length}, failed ${failed.length}`);
+  return json(req, {
+    success: true,
+    message: `Processed ${recipients.length} emails`,
+    count: successful.length,
+    results: { successful, failed },
+  });
+});

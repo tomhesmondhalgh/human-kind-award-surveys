@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 import { createEmailTemplate } from "../_shared/emailTemplate.ts";
+import { verifyAuthHook } from "../_shared/authHook.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -28,14 +29,20 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     console.log("Password reset email function triggered");
     
-    const payload: PasswordResetRequest = await req.json();
+    const payload = await verifyAuthHook<PasswordResetRequest>(req);
+    if (!payload) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     console.log("Received payload for user:", payload.user.email);
 
     const { user, email_data } = payload;
     const { token_hash } = email_data;
 
     // Construct the password reset URL with token in query parameters for direct verification
-    const resetUrl = `https://surveys.humankindaward.com/reset-password?token=${token_hash}&type=recovery`;
+    const resetUrl = `https://surveys.humankindaward.com/reset-password?token=${encodeURIComponent(token_hash)}&type=recovery`;
 
     console.log("Generated reset URL for user:", user.email);
 
