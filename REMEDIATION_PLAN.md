@@ -73,6 +73,16 @@ Verify: `curl` each function unauthenticated → expect 401; with a valid user J
 35. **TypeScript ratchet**: turn on `noImplicitAny` + `strictNullChecks` (47 errors to fix, concentrated in auth and payment code); re-enable `@typescript-eslint/no-unused-vars`; work down the 143 `no-explicit-any` errors starting with `AuthContext.tsx` and `typeConversions.ts`; fix the 17 `react-hooks/exhaustive-deps` warnings (auth/org/Stripe contexts first).
 36. **Small fixes**: absolute `og:image` URL (`https://surveys.humankindaward.com/og-image.png`); local favicon instead of the HubSpot CDN link; fix invalid `.is('stripe_subscription_id','not.null')` in `check-subscription:107`; unify the three hardcoded fallback domains onto `SITE_URL`.
 
+## Phase 1 status and follow-ups (added 2026-09-26)
+
+Phase 1 is in PRs #35 (database), #36 (email functions) and #37 (payments, HubSpot, remaining functions), each with deploy steps. Found during Phase 1, now Phase 2 work:
+
+- **Closure emails have never worked.** `checkForClosedSurveys` (`src/utils/survey/templates.ts`) queries `profiles(email)`, which doesn't exist, and runs in every logged-in user's browser. Replace it with a scheduled job (pg_cron + the now-secured `send-closure-notification`), and record which surveys have been notified so nobody is emailed twice.
+- **`sync-hubspot-users` "survey creators" mode** queries `survey_templates.creator_id`, which doesn't exist. Decide what "creator" means (org admins with surveys?) and fix.
+- **Remaining anon EXECUTE grants** on the boolean helper functions (`user_is_organization_member` etc.) and Supabase's default privileges were deliberately left in #35. RLS policies call those helpers during anonymous survey submission, so revoke them carefully, testing the public survey form.
+- **Six orphaned edge functions** are live on Supabase with no source in the repo; #36's deploy steps delete them.
+- `send-password-reset-email` and `send-auth-email` ignore Resend errors (they report success when sending fails). Minor.
+
 ## Open questions for Tom (don't block Phase 1 on these)
 
 - Have card payments worked recently? (Determines urgency/approach for items 15/26.)
