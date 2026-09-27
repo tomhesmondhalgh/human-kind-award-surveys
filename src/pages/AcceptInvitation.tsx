@@ -8,6 +8,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Loader2, UserPlus, AlertCircle, CheckCircle2, Mail, Clock } from 'lucide-react';
 import { toast } from 'sonner';
+import { readFunctionErrorBody } from '@/utils/functionError';
+
+const sameEmail = (a?: string | null, b?: string | null) =>
+  !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
 
 const AcceptInvitation = () => {
   const [searchParams] = useSearchParams();
@@ -41,11 +45,13 @@ const AcceptInvitation = () => {
 
       if (error || !data) {
         console.error('❌ Invitation not found:', error);
-        
-        // Check for specific error types
-        if (error?.message?.includes('expired')) {
+
+        // The reason is in the function's JSON reply, not error.message.
+        const reason = ((await readFunctionErrorBody(error))?.error ?? error?.message ?? '').toLowerCase();
+
+        if (reason.includes('expired')) {
           setStatus('expired');
-        } else if (error?.message?.includes('already accepted')) {
+        } else if (reason.includes('already accepted')) {
           // Check if user is authenticated before redirecting
           if (isAuthenticated) {
             console.log('✅ User authenticated, redirecting to team page');
@@ -151,8 +157,28 @@ const AcceptInvitation = () => {
           setTimeout(() => acceptInvitation(retryCount + 1), (retryCount + 1) * 2000);
           return;
         }
-        
-        throw error;
+
+        const body = await readFunctionErrorBody(error);
+        const reason = typeof body?.error === 'string' ? body.error : '';
+
+        if (body?.emailMismatch) {
+          toast.error('This invitation is for a different email address', {
+            description: `Log out and sign in as ${invitation?.email} to accept it.`
+          });
+          return;
+        }
+        if (/expired/i.test(reason)) {
+          setStatus('expired');
+          return;
+        }
+        if (/already been accepted/i.test(reason)) {
+          toast.info('This invitation has already been accepted. Taking you to your team...');
+          await refreshOrganizations();
+          navigate('/team');
+          return;
+        }
+
+        throw new Error(reason || error.message);
       }
 
       if (data?.alreadyMember) {
@@ -303,7 +329,7 @@ const AcceptInvitation = () => {
     );
   }
 
-  const emailMatches = user?.email === invitation?.email;
+  const emailMatches = sameEmail(user?.email, invitation?.email);
 
   return (
     <MainLayout>
@@ -348,7 +374,7 @@ const AcceptInvitation = () => {
                   <div className="text-sm text-amber-700 space-y-1">
                     <p className="font-medium">Email mismatch</p>
                     <p>You're logged in as <strong>{user?.email}</strong> but this invitation is for <strong>{invitation?.email}</strong>.</p>
-                    <p>You can still accept, or log out and sign in with the invited email.</p>
+                    <p>To accept it, log out and sign in (or create an account) with the invited email address.</p>
                   </div>
                 </div>
               )
@@ -363,7 +389,7 @@ const AcceptInvitation = () => {
                       acceptInvitation();
                     }
                   }} 
-                  disabled={isAccepting}
+                  disabled={isAccepting || !emailMatches}
                   className="w-full"
                 >
                   {isAccepting ? (
