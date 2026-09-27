@@ -3,6 +3,7 @@ import React from 'react';
 import { Lock } from "lucide-react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
+import { useNationalBenchmarks } from "@/hooks/useNationalBenchmarks";
 
 interface RecommendationScoreSectionProps {
   score: number;
@@ -14,7 +15,9 @@ const RecommendationScoreSection: React.FC<RecommendationScoreSectionProps> = ({
   score,
   nationalAverage,
   hasAccess
-}) => (
+}) => {
+  const { label, note } = useNationalBenchmarks();
+  return (
   <Card className="p-6 h-full">
     <h3 className="text-lg mb-4 font-semibold">Recommendation Score</h3>
     <div className="flex items-center justify-center space-x-12 h-52">
@@ -25,7 +28,7 @@ const RecommendationScoreSection: React.FC<RecommendationScoreSectionProps> = ({
       {hasAccess ? (
         <div className="text-center">
           <p className="text-4xl font-bold text-gray-500">{nationalAverage.toFixed(1)}</p>
-          <p className="text-sm text-gray-500">National average</p>
+          <p className="text-sm text-gray-500">{label}</p>
         </div>
       ) : (
         <div className="text-center border border-gray-200 rounded-lg p-4 bg-gray-50">
@@ -41,7 +44,9 @@ const RecommendationScoreSection: React.FC<RecommendationScoreSectionProps> = ({
     <p className="text-xs text-gray-500 text-center mt-4">
       Average score for "How likely would you recommend this organization to others as a place to work?" (0-10)
     </p>
+    {hasAccess && <p className="text-xs text-gray-400 text-center mt-1">{note}</p>}
   </Card>
-);
+  );
+};
 
 export default RecommendationScoreSection;

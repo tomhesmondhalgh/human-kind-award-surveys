@@ -1,4 +1,11 @@
 
+import {
+  ILLUSTRATIVE_RECOMMENDATION_AVERAGE,
+  WELLBEING_FIELDS,
+  fetchNationalBenchmarks,
+  nationalAgreementSplit,
+  nationalRecommendationAverage,
+} from '@/utils/benchmarks';
 import { supabase } from '@/integrations/supabase/client';
 import { frequencyOptions } from '@/components/survey-form/constants';
 
@@ -124,7 +131,7 @@ export const getRecommendationScore = async (
     if (!data || data.length === 0) {
       return {
         score: 0,
-        nationalAverage: 7.8 // Keep the benchmark
+        nationalAverage: nationalRecommendationAverage(await fetchNationalBenchmarks())
       };
     }
     
@@ -139,12 +146,12 @@ export const getRecommendationScore = async (
     
     return {
       score: averageScore,
-      nationalAverage: 7.8 // Hardcoded benchmark
+      nationalAverage: nationalRecommendationAverage(await fetchNationalBenchmarks())
     };
   } catch (error) {
     console.error('Error in getRecommendationScore:', error);
     // Return zeros instead of mock data
-    return { score: 0, nationalAverage: 7.8 };
+    return { score: 0, nationalAverage: ILLUSTRATIVE_RECOMMENDATION_AVERAGE };
   }
 };
 
@@ -301,9 +308,11 @@ export const getDetailedWellbeingResponses = async (
       throw error;
     }
     
+    const benchmarks = await fetchNationalBenchmarks();
+
     // If no data, return default structure with national averages
     if (!data || data.length === 0) {
-      return wellbeingQuestions.map(question => ({
+      return wellbeingQuestions.map((question, index) => ({
         question,
         schoolResponses: {
           "Strongly Agree": 0,
@@ -311,12 +320,7 @@ export const getDetailedWellbeingResponses = async (
           "Disagree": 0,
           "Strongly Disagree": 0
         },
-        nationalResponses: {
-          "Strongly Agree": 0.25,
-          "Agree": 0.40,
-          "Disagree": 0.25,
-          "Strongly Disagree": 0.10
-        }
+        nationalResponses: nationalAgreementSplit(benchmarks, WELLBEING_FIELDS[index])
       }));
     }
     
@@ -363,12 +367,7 @@ export const getDetailedWellbeingResponses = async (
       return {
         question,
         schoolResponses: percentages,
-        nationalResponses: {
-          "Strongly Agree": 0.25, // Use decimals for stacked 100% charts
-          "Agree": 0.40,
-          "Disagree": 0.25,
-          "Strongly Disagree": 0.10
-        }
+        nationalResponses: nationalAgreementSplit(benchmarks, field)
       };
     });
     

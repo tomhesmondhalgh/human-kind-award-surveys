@@ -5,6 +5,8 @@ import { Lock } from "lucide-react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { LEAVING_CONTEMPLATION_OPTIONS, type LeavingContemplationData } from "../../utils/analysisUtils";
+import { useNationalBenchmarks } from "@/hooks/useNationalBenchmarks";
+import { nationalLeavingSplit } from "@/utils/benchmarks";
 
 interface LeavingContemplationChartProps {
   data: LeavingContemplationData;
@@ -20,17 +22,6 @@ const OPTION_COLOURS: Record<string, string> = {
   "All the Time": "#FF5252"
 };
 
-// Placeholder national figures (see review item C2), carried over unchanged from
-// the old agree/disagree labels onto the matching answers; no national figure
-// has ever existed for "All the Time".
-const NATIONAL_AVERAGE: Record<string, number> = {
-  "Never": 0.25,
-  "Rarely": 0.25,
-  "Sometimes": 0.40,
-  "Often": 0.10,
-  "All the Time": 0
-};
-
 const LeavingContemplationChart: React.FC<LeavingContemplationChartProps> = ({
   data,
   hasAccess
@@ -41,9 +32,11 @@ const LeavingContemplationChart: React.FC<LeavingContemplationChartProps> = ({
   });
 
   const chartData = [toRow("Your School", data.proportions)];
-  
+
+  const { benchmarks, label: nationalLabel, note } = useNationalBenchmarks();
+
   if (hasAccess) {
-    chartData.push(toRow("National Average", NATIONAL_AVERAGE));
+    chartData.push(toRow(nationalLabel, nationalLeavingSplit(benchmarks)));
   }
   
   const hasData = data.total > 0;
@@ -88,6 +81,7 @@ const LeavingContemplationChart: React.FC<LeavingContemplationChartProps> = ({
       <p className="text-xs text-gray-500 text-center mt-2">
         Responses to: "In the last 6 months I have contemplated leaving my role"
       </p>
+      {hasAccess && <p className="text-xs text-gray-400 text-center mt-1">{note}</p>}
     </Card>
   );
 };
