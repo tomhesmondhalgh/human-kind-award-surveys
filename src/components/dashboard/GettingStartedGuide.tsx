@@ -60,7 +60,7 @@ const GettingStartedGuide = () => {
       icon: <List className="h-5 w-5 text-brandPurple-600" />,
       action: {
         text: 'Create Survey',
-        link: '/new-survey'
+        link: '/survey-editor'
       },
       completed: completedSteps.includes('create-survey')
     },

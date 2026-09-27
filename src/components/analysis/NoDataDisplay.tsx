@@ -19,7 +19,7 @@ const NoDataDisplay: React.FC = () => {
           <h2 className="text-2xl font-semibold text-gray-700 mb-4">No surveys found</h2>
           <p className="text-gray-600 mb-6">You haven't created any surveys yet or no responses have been collected.</p>
           <button 
-            onClick={() => navigate('/new-survey')} 
+            onClick={() => navigate('/survey-editor')} 
             className="bg-brandPurple-500 hover:bg-brandPurple-600 text-white font-medium py-2 px-6 rounded-md transition-all duration-200"
           >
             Create Your First Survey

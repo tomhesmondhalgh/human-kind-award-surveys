@@ -2,21 +2,13 @@
 import React, { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 
 interface SurveyLinkProps {
   surveyUrl: string | null;
-  surveyId?: string;
-  currentStatus?: string;
-  onStatusChange?: () => void;
 }
 
-const SurveyLink: React.FC<SurveyLinkProps> = ({ 
-  surveyUrl, 
-  surveyId, 
-  currentStatus,
-  onStatusChange 
-}) => {
+// Copying a link never changes a survey's status: publishing is done from the editor.
+const SurveyLink: React.FC<SurveyLinkProps> = ({ surveyUrl }) => {
   const [copied, setCopied] = useState(false);
 
   if (!surveyUrl) return null;
@@ -28,27 +20,6 @@ const SurveyLink: React.FC<SurveyLinkProps> = ({
       toast.success("Survey link copied to clipboard", {
         description: "You can now share this link with your staff."
       });
-      
-      // Update survey status to 'Sent' if it's not already 'Sent' or 'Completed'
-      if (surveyId && currentStatus && 
-          currentStatus !== 'Sent' && 
-          currentStatus !== 'Completed') {
-        console.log(`Updating survey ${surveyId} status to Sent after copying link`);
-        
-        const { error } = await supabase
-          .from('survey_templates')
-          .update({ status: 'Sent' })
-          .eq('id', surveyId);
-          
-        if (error) {
-          console.error('Error updating survey status:', error);
-        } else {
-          console.log('Successfully updated survey status to Sent');
-          if (onStatusChange) {
-            onStatusChange();
-          }
-        }
-      }
       
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
@@ -70,6 +41,7 @@ const SurveyLink: React.FC<SurveyLinkProps> = ({
           className="form-input flex-grow text-sm"
         />
         <button 
+          type="button"
           onClick={handleCopyUrl}
           className="ml-2 btn-secondary flex items-center"
         >
