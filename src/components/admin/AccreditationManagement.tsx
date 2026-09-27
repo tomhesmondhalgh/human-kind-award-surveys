@@ -12,6 +12,12 @@ import { toast } from 'sonner';
 import { AccreditationSubmission, AccreditationStatus } from '@/types/accreditation';
 import { Award, Eye, CheckCircle, XCircle, Clock, AlertCircle, Search } from 'lucide-react';
 
+const STATUS_LABELS: Partial<Record<AccreditationStatus, string>> = {
+  approved: 'approved',
+  rejected: 'rejected',
+  under_review: 'under review',
+};
+
 const AccreditationManagement = () => {
   const [submissions, setSubmissions] = useState<AccreditationSubmission[]>([]);
   const [selectedSubmission, setSelectedSubmission] = useState<AccreditationSubmission | null>(null);
@@ -107,7 +113,18 @@ const AccreditationManagement = () => {
         return;
       }
 
-      toast.success(`Submission ${newStatus === 'approved' ? 'approved' : 'rejected'} successfully`);
+      const label = STATUS_LABELS[newStatus] ?? newStatus;
+      const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-accreditation-decision', {
+        body: { submissionId },
+      });
+      if (emailError || !emailResult?.success) {
+        console.error('Error sending decision email:', emailError ?? emailResult);
+        toast.warning(`Submission marked ${label}, but the email to the school failed to send. Please contact them directly.`);
+      } else if (!emailResult.emailsSent) {
+        toast.warning(`Submission marked ${label}, but the school has no admins to email.`);
+      } else {
+        toast.success(`Submission marked ${label} and the school has been emailed`);
+      }
       setIsReviewDialogOpen(false);
       setReviewNotes('');
       setSelectedSubmission(null);
@@ -340,7 +357,17 @@ const AccreditationManagement = () => {
                               </div>
 
                               {selectedSubmission.status !== 'approved' && selectedSubmission.status !== 'rejected' && (
-                                <div className="flex gap-2 pt-4">
+                                <div className="flex flex-wrap gap-2 pt-4">
+                                  {selectedSubmission.status === 'submitted' && (
+                                    <Button
+                                      onClick={() => handleStatusUpdate(selectedSubmission.id, 'under_review')}
+                                      disabled={isUpdating}
+                                      variant="outline"
+                                    >
+                                      <AlertCircle className="h-4 w-4 mr-1" />
+                                      Mark Under Review
+                                    </Button>
+                                  )}
                                   <Button
                                     onClick={() => handleStatusUpdate(selectedSubmission.id, 'approved')}
                                     disabled={isUpdating}

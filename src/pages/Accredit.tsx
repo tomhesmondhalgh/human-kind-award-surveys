@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getSectionProgressSummary } from '../utils/actionPlanUtils';
+import { generateCertificate } from '../utils/accreditation/generateCertificate';
 interface AccreditationSubmission {
   id: string;
   status: 'not_submitted' | 'submitted' | 'under_review' | 'approved' | 'rejected';
@@ -21,6 +22,7 @@ interface AccreditationSubmission {
   approved_at?: string | null;
   next_submission_due?: string | null;
   reviewer_notes?: string | null;
+  updated_at: string;
 }
 const Accredit = () => {
   const {
@@ -156,13 +158,13 @@ const Accredit = () => {
   };
 
   const handleDownloadCertificate = async () => {
-    if (!submission) return;
-    
+    if (!submission || !currentOrganization) return;
     try {
-      toast.success('Certificate download will be implemented soon');
-      // TODO: Implement certificate generation and download
-      // This could use jsPDF (already installed) to generate a certificate
-      // with the school name, approval date, and accreditation details
+      await generateCertificate({
+        organizationName: currentOrganization.name,
+        approvedAt: submission.approved_at ?? submission.reviewed_at ?? submission.updated_at,
+        validUntil: submission.next_submission_due,
+      });
     } catch (error) {
       console.error('Error downloading certificate:', error);
       toast.error('Failed to download certificate');
