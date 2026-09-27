@@ -14,6 +14,15 @@ export type RedemptionCode = {
   updated_at: string;
 };
 
+export type CodeRedemption = {
+  id: string;
+  redeemed_at: string;
+  email: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  school_name: string | null;
+};
+
 export type RedemptionCodeCreate = {
   code: string;
   plan_type: string;
@@ -135,19 +144,11 @@ export const AdminRedemptionCodeService = {
   },
 
   /**
-   * Get redemptions for a specific code (admin only)
+   * Who redeemed a code (admin only). Emails live in auth.users, which the
+   * API doesn't expose, so this goes through admin_get_code_redemptions.
    */
-  async getRedemptions(codeId: string): Promise<any[]> {
-    const { data, error } = await supabase
-      .from('redemptions')
-      .select(`
-        *,
-        user:user_id (
-          email:auth.users!id(email),
-          profile:profiles!id(first_name, last_name, school_name)
-        )
-      `)
-      .eq('code_id', codeId);
+  async getRedemptions(codeId: string): Promise<CodeRedemption[]> {
+    const { data, error } = await supabase.rpc('admin_get_code_redemptions', { p_code_id: codeId });
 
     if (error) {
       console.error('Error fetching redemptions:', error);

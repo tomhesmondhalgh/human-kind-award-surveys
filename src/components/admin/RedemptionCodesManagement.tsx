@@ -18,7 +18,7 @@ import {
   Trash2, 
   Users
 } from "lucide-react";
-import { AdminRedemptionCodeService, RedemptionCode } from "../../services/redemptionCodeService";
+import { AdminRedemptionCodeService, CodeRedemption, RedemptionCode } from "../../services/redemptionCodeService";
 import { toast } from 'sonner';
 
 const RedemptionCodesManagement: React.FC = () => {
@@ -27,7 +27,7 @@ const RedemptionCodesManagement: React.FC = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isViewRedemptionsDialogOpen, setIsViewRedemptionsDialogOpen] = useState(false);
-  const [redemptions, setRedemptions] = useState<any[]>([]);
+  const [redemptions, setRedemptions] = useState<CodeRedemption[]>([]);
   const [redemptionsLoading, setRedemptionsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentCode, setCurrentCode] = useState<RedemptionCode | null>(null);
@@ -445,15 +445,15 @@ const RedemptionCodesManagement: React.FC = () => {
                           <TableCell>
                             <div>
                               <div>
-                                {redemption.user?.profile?.first_name} {redemption.user?.profile?.last_name}
+                                {redemption.first_name} {redemption.last_name}
                               </div>
                               <div className="text-sm text-muted-foreground">
-                                {redemption.user?.email?.email}
+                                {redemption.email}
                               </div>
                             </div>
                           </TableCell>
                           <TableCell>
-                            {redemption.user?.profile?.school_name || 'N/A'}
+                            {redemption.school_name || 'N/A'}
                           </TableCell>
                           <TableCell>
                             {formatDate(redemption.redeemed_at)}

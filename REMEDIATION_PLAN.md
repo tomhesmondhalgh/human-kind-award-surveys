@@ -12,6 +12,35 @@ Plan to fix the findings of the 2026-09-26 full code review (four parallel revie
 
 **Known trap — signup flow.** `supabase/config.toml` has `enable_confirmations = true`, and `src/utils/auth/signUp.ts` calls `create_or_update_profile` (line ~104), `setup_user_organization` (~149) and `accept_invitation_during_signup` (~183) client-side right after `signUp()` — at that point there may be **no session**, so `auth.uid()` is NULL. Locking those functions to `auth.uid()` naively will break signup. The fixes in Phase 1 route around this; test the full signup path (fresh email, and invitation-accept signup) locally before shipping.
 
+## Status (updated 2026-09-27)
+
+**All 36 items are done and deployed**, plus the follow-ups found along the way. What remains is optional, listed at the end.
+
+| Items | PRs |
+|---|---|
+| Phase 1 (1-22) | #35, #36, #37 |
+| Phase 2: 23-25 blocked features, 26 post-payment, 28 tests | #41, #44, #39 |
+| Phase 1 follow-ups: closure emails via pg_cron, HubSpot survey creators | #45, #46 |
+| 27 schema integrity, remaining anon EXECUTE grants | indexes #47; duplicate FKs, NOT NULL/RESTRICT and anon grants #53 |
+| 29, 30, 32, 36 | #38, #40, #42, #43 |
+| 31 one auth system | #50 |
+| 33 dependencies | #39 (removals, devDependencies), #51 (jspdf 4, react-router 7; audit 0), #56 (unused Stripe.js removed) |
+| 34 consolidation | #52 (also made payment_history.amount pounds everywhere) |
+| 35 TypeScript ratchet | #55 (`strict: true`, lint 0 errors) |
+| Custom scripts removal | #49 |
+
+Found and fixed after the review:
+- Logged-out respondents couldn't open surveys (since 2025-10-14): #54.
+- Error reporting through Sentry: #48. Source-map upload in #56 (needs `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` set in Vercel).
+- Admin redemption details always failed: #56.
+- The auth email hooks now report Resend failures: #56.
+
+Open questions: all answered by Tom. Global custom questions are admin-only; invitations must be accepted with the invited email; custom scripts are deleted.
+
+Optional follow-ups:
+- About 80 `no-explicit-any` lint warnings. Fix them as files are touched.
+- Four unit tests are still skipped: `tests/integration/organization.test.tsx` predates the current OrganizationContext.
+
 ---
 
 ## Phase 1 — Critical security (do first, one PR for the migration + one for edge functions)

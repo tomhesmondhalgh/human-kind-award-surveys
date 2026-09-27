@@ -67,6 +67,8 @@ const handler = async (req: Request): Promise<Response> => {
       subject: "Reset Your Password - Human Kind Award",
       html: emailHtml,
     });
+    // Resend reports failures in the response rather than throwing.
+    if (emailResponse.error) throw new Error(`Resend error: ${emailResponse.error.message}`);
 
     console.log("Password reset email sent successfully:", emailResponse);
 

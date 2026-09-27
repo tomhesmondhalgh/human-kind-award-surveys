@@ -470,6 +470,11 @@ isOneToOne: false
             "accept_invitation_during_signup":
 { Args: { "invitation_token": string,"user_uuid": string }; Returns: Json
                            },
+"admin_get_code_redemptions":
+{ Args: { "p_code_id": string }; Returns: {
+              "email": string | null,"first_name": string | null,"id": string,"last_name": string | null,"redeemed_at": string,"school_name": string | null
+            }[]
+                           },
 "admin_get_all_payments":
 { Args: Record<PropertyKey, never>; Returns: {
               "amount": number,"billing_address": string,"billing_contact_email": string,"billing_contact_name": string,"billing_postcode": string,"billing_school_name": string,"created_at": string,"currency": string,"id": string,"invoice_id": string,"invoice_number": string,"payment_date": string,"payment_method": Database["public"]['Enums']["payment_method"],"payment_status": Database["public"]['Enums']["payment_status"],"plan_type": string,"purchase_type": string,"stripe_payment_id": string,"subscription_id": string
