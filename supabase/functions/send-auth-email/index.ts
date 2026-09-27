@@ -2,6 +2,8 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 import { createEmailTemplate } from "../_shared/emailTemplate.ts";
 import { verifyAuthHook } from "../_shared/authHook.ts";
+import { authLink, emailChangeMessages } from "../_shared/authEmailLinks.ts";
+import { escapeHtml } from "../_shared/html.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -13,10 +15,12 @@ const corsHeaders = {
 interface AuthEmailPayload {
   user: {
     email: string;
+    new_email?: string;
   };
   email_data: {
     token: string;
     token_hash: string;
+    token_hash_new?: string;
     redirect_to?: string;
     email_action_type: string;
     site_url: string;
@@ -44,14 +48,35 @@ const handler = async (req: Request): Promise<Response> => {
     const { user, email_data } = payload;
     const { email_action_type, token_hash } = email_data;
 
-    let emailContent: string;
-    let subject: string;
+    let emailContent = "";
+    let subject = "";
+    // Most actions send one email to the user; email_change may send two.
+    let extraMessages: { to: string; subject: string; html: string }[] | null = null;
 
     switch (email_action_type) {
-      case "signup":
       case "email_change": {
+        extraMessages = emailChangeMessages(payload).map((m) => ({
+          to: m.to,
+          subject: "Confirm Your Email Address Change",
+          html: createEmailTemplate({
+            title: "Confirm Your Email Address Change",
+            content: m.isNewAddress
+              ? `<p>We received a request to change the email address on your Humankind Award Surveys account to this address.</p>
+                 <p>Please confirm by clicking the button below:</p>`
+              : `<p>We received a request to change the email address on your Humankind Award Surveys account from this address to ${escapeHtml(payload.user.new_email ?? "")}.</p>
+                 <p>Please confirm by clicking the button below:</p>`,
+            buttonText: "Confirm Email Change",
+            buttonUrl: authLink(m.tokenHash, "email_change"),
+            footerText: "If you didn't ask to change your email address, please ignore this email and contact us."
+          }),
+        }));
+        console.log(`✅ Generated ${extraMessages.length} email change confirmation email(s)`);
+        break;
+      }
+
+      case "signup": {
         // Construct email confirmation URL with token in query parameters
-        const confirmUrl = `https://surveys.humankindaward.com/login?token=${encodeURIComponent(token_hash)}&type=signup`;
+        const confirmUrl = authLink(token_hash, "signup");
         
         emailContent = createEmailTemplate({
           title: "Confirm Your Email Address",
@@ -91,7 +116,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       case "magiclink": {
         // Construct magic link URL
-        const magicLinkUrl = `https://surveys.humankindaward.com/login?token=${encodeURIComponent(token_hash)}&type=magiclink`;
+        const magicLinkUrl = authLink(token_hash, "magiclink");
         
         emailContent = createEmailTemplate({
           title: "Your Magic Link",
@@ -135,20 +160,26 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    const messages = extraMessages ?? [{ to: user.email, subject, html: emailContent }];
+
     // Send email via Resend
-    console.log("📤 Sending email via Resend...");
-    const emailResponse = await resend.emails.send({
-      from: "Human Kind <contact@humankindaward.com>",
-      to: [user.email],
-      subject: subject,
-      html: emailContent,
-    });
-    // Resend reports failures in the response rather than throwing.
-    if (emailResponse.error) throw new Error(`Resend error: ${emailResponse.error.message}`);
+    console.log(`📤 Sending ${messages.length} email(s) via Resend...`);
+    const responses = [];
+    for (const message of messages) {
+      const emailResponse = await resend.emails.send({
+        from: "Human Kind <contact@humankindaward.com>",
+        to: [message.to],
+        subject: message.subject,
+        html: message.html,
+      });
+      // Resend reports failures in the response rather than throwing.
+      if (emailResponse.error) throw new Error(`Resend error: ${emailResponse.error.message}`);
+      responses.push(emailResponse);
+    }
 
-    console.log("✅ Email sent successfully:", emailResponse);
+    console.log("✅ Email(s) sent successfully");
 
-    return new Response(JSON.stringify(emailResponse), {
+    return new Response(JSON.stringify(responses.length === 1 ? responses[0] : responses), {
       status: 200,
       headers: {
         "Content-Type": "application/json",

@@ -161,14 +161,20 @@ export function useTeamMembers(organizationId?: string) {
     mutationFn: async (memberId: string) => {
       console.log('🗑️ Removing member:', memberId);
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('organization_memberships')
         .delete()
-        .eq('id', memberId);
+        .eq('id', memberId)
+        .select('id');
         
       if (error) {
         console.error('❌ Error removing member:', error);
         throw new Error(`Failed to remove member: ${error.message}`);
+      }
+
+      // RLS reports a blocked delete as zero rows, not as an error.
+      if (!data || data.length === 0) {
+        throw new Error('This member was not removed. Only organisation admins can remove team members.');
       }
       
       console.log('✅ Member removed successfully');
