@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { Button } from '../ui/button';
 import SurveyFormInputs from './SurveyFormInputs';
 import { Form } from '../ui/form';
@@ -17,22 +16,9 @@ import {
 import CustomQuestionsSelect from './CustomQuestionsSelect';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-// Form schema
-const surveyFormSchema = z.object({
-  name: z.string()
-    .trim()
-    .min(1, { message: 'Survey name is required' })
-    .min(3, { message: 'Survey name must be at least 3 characters' }),
-  date: z.date({
-    required_error: 'Survey date is required',
-  }),
-  closeDate: z.date().optional(),
-  recipients: z.string().optional(),
-  status: z.enum(['Saved', 'Scheduled', 'Sent', 'Completed', 'Archived']).optional(),
-  distributionMethod: z.enum(['link', 'email']).default('link')
-});
+import { surveyFormSchema, SurveyFormData } from './surveyFormSchema';
 
-export type SurveyFormData = z.infer<typeof surveyFormSchema>;
+export type { SurveyFormData };
 
 interface SurveyFormProps {
   initialData?: Partial<SurveyFormData>;
@@ -87,19 +73,18 @@ const SurveyForm: React.FC<SurveyFormProps> = ({
     }
   };
 
+  // Both buttons run the zod schema first so field errors show inline and
+  // nothing is saved or published with invalid data.
   const handlePreviewClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault(); // Prevent form submission
-    console.log('Preview button clicked on mobile:', isMobile);
+    e.preventDefault();
     if (!onPreviewSurvey) return;
-    const data = form.getValues();
-    onPreviewSurvey(data, selectedCustomQuestionIds || []);
+    form.handleSubmit((data) => onPreviewSurvey(data, selectedCustomQuestionIds || []))();
   };
   
   const handleSendSurvey = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault(); // Prevent form submission
+    e.preventDefault();
     if (!onSendSurvey) return;
-    const data = form.getValues();
-    onSendSurvey(data, selectedCustomQuestionIds || []);
+    form.handleSubmit((data) => onSendSurvey(data, selectedCustomQuestionIds || []))();
   };
 
   // Create a wrapper for tooltips that conditionally renders based on device

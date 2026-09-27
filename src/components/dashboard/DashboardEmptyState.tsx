@@ -26,7 +26,7 @@ const DashboardEmptyState = () => {
               to understand how your staff are feeling.
             </p>
             <Button 
-              onClick={() => navigate('/new-survey')}
+              onClick={() => navigate('/survey-editor')}
               size="lg"
               className="text-lg px-8 py-6 h-auto"
             >

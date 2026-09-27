@@ -10,7 +10,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { useIsMobile } from '../hooks/use-mobile';
-import { sendSurveyReminder } from '../utils/survey/sendReminder';
 import { AlertCircle, Archive, Eye, EyeOff, HelpCircle } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Skeleton } from '../components/ui/skeleton';
@@ -182,11 +181,7 @@ const Surveys = () => {
             }),
             status,
             responseCount: template.survey_responses.length > 0 ? template.survey_responses[0].count : 0,
-            closeDate: template.close_date ? new Date(template.close_date).toLocaleDateString('en-GB', { 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            }) : undefined,
+            closeDate: template.close_date ?? undefined,
             url: `${window.location.origin}/survey/${template.id}`,
             formattedDate: new Date(template.date).toLocaleDateString('en-GB', {
               month: 'long',
@@ -235,27 +230,11 @@ const Surveys = () => {
     fetchSurveys();
   }, [user, currentOrganization, currentPage, refreshFlag, orgLoading, showArchived]);
 
-  const handleSendReminder = async (id: string) => {
-    console.log(`Sending reminder for survey ${id}`);
-    
-    const success = await sendSurveyReminder(id);
-    
-    if (success) {
-      toast.success("Reminder sent successfully!", {
-        description: "Your staff will receive an email reminder shortly."
-      });
-    }
-  };
-
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo(0, 0);
   };
   
-  const refreshSurveys = () => {
-    setRefreshFlag(prev => prev + 1);
-  };
-
   const totalPages = Math.ceil(totalSurveys / SURVEYS_PER_PAGE);
 
   // Show loading state while organization context is loading
@@ -426,8 +405,6 @@ const Surveys = () => {
                 <div aria-live="polite">
                   <SurveyList 
                     surveys={surveys} 
-                    onSendReminder={handleSendReminder}
-                    refreshList={refreshSurveys}
                     userRole={currentOrganization?.role}
                   />
                 </div>
