@@ -4,7 +4,7 @@ import { BarChart3, Target } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SectionSurveyScores } from '@/hooks/useSectionSurveyScores';
-import { MIN_RESPONSES_FOR_SECTION_SCORES } from '@/utils/surveyFramework';
+import { MIN_RESPONSES_TO_SHOW_RESULTS } from '@/lib/anonymity';
 
 interface SurveyFocusAreasProps {
   data: SectionSurveyScores | null | undefined;
@@ -26,7 +26,7 @@ const SurveyFocusAreas: React.FC<SurveyFocusAreasProps> = ({ data, isLoading, is
         <div className="flex-1">
           <h3 className="font-semibold text-lg">See where to focus</h3>
           <p className="text-sm text-gray-600">
-            Once a staff survey has at least {MIN_RESPONSES_FOR_SECTION_SCORES} responses, we'll show how staff rated
+            Once a staff survey has at least {MIN_RESPONSES_TO_SHOW_RESULTS} responses, we'll show how staff rated
             each area of the framework here and suggest where to start.
           </p>
         </div>

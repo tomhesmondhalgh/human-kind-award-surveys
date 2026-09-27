@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { MIN_RESPONSES_TO_SHOW_RESULTS } from '@/lib/anonymity';
 import {
   FRAMEWORK_QUESTION_FIELDS,
-  MIN_RESPONSES_FOR_SECTION_SCORES,
   SectionScore,
   SurveyAnswerRow,
   computeSectionScores,
@@ -37,7 +37,7 @@ export async function fetchSectionSurveyScores(organizationId: string): Promise<
       .eq('survey_template_id', survey.id);
     if (responsesError) throw responsesError;
     const answers = (rows ?? []) as unknown as SurveyAnswerRow[];
-    if (answers.length < MIN_RESPONSES_FOR_SECTION_SCORES) continue;
+    if (answers.length < MIN_RESPONSES_TO_SHOW_RESULTS) continue;
 
     const scores = computeSectionScores(answers);
     return {

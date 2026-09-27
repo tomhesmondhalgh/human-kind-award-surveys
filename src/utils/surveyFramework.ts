@@ -51,9 +51,6 @@ export type FrameworkQuestionField = (typeof FRAMEWORK_QUESTION_MAP)[number]['fi
 
 export const FRAMEWORK_QUESTION_FIELDS = FRAMEWORK_QUESTION_MAP.map((q) => q.field);
 
-// TODO: replace with the shared MIN_RESPONSES_TO_SHOW_RESULTS constant once
-// the anonymity-floor change is merged.
-export const MIN_RESPONSES_FOR_SECTION_SCORES = 5;
 
 const normalise = (text: string) => text.toLowerCase().replace(/[^a-z]+/g, ' ').trim();
 
