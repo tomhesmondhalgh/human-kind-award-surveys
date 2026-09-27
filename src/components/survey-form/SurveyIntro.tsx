@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { SurveyTemplate } from '../../utils/types/survey';
+import { MIN_RESPONSES_TO_SHOW_RESULTS } from '../../lib/anonymity';
 
 interface SurveyIntroProps {
   surveyTemplate?: SurveyTemplate | null;
@@ -29,6 +30,10 @@ const SurveyIntro: React.FC<SurveyIntroProps> = ({ surveyTemplate, name }) => {
           crucial information that will help them improve the wellbeing of staff. You'll also be helping to 
           improve staff wellbeing on a national level. This is an anonymous survey, please do not include 
           any personal identifiable data.
+        </p>
+        <p className="text-gray-700 mt-3">
+          Results are only shown to your school or college once at least {MIN_RESPONSES_TO_SHOW_RESULTS} colleagues
+          have responded, and your answers are never linked to you.
         </p>
       </div>
     </>
