@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Send, Copy, Edit } from 'lucide-react';
+import { Send, Copy, Edit, QrCode } from 'lucide-react';
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,7 @@ import { getCloseDateDisplay } from '@/utils/survey/closeDate';
 import { OrganizationRole } from '@/types/organizations';
 import { canEditContent } from '@/utils/organizationPermissions';
 
-interface Survey {
+export interface SurveyListItem {
   id: string;
   name: string;
   date: string;
@@ -24,7 +24,8 @@ interface Survey {
 }
 
 interface SurveyListProps {
-  surveys: Survey[];
+  surveys: SurveyListItem[];
+  onShare?: (survey: SurveyListItem) => void;
   userRole?: OrganizationRole;
 }
 
@@ -45,7 +46,7 @@ const getStatusBadgeVariant = (status: string): "default" | "secondary" | "destr
   }
 };
 
-const SurveyList: React.FC<SurveyListProps> = ({ surveys, userRole }) => {
+const SurveyList: React.FC<SurveyListProps> = ({ surveys, onShare, userRole }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sendingReminder, setSendingReminder] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -77,7 +78,7 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, userRole }) => {
     navigate(`/survey-editor/${id}`);
   };
   
-  const handleSendReminder = async (survey: Survey) => {
+  const handleSendReminder = async (survey: SurveyListItem) => {
     if (!canEdit) {
       toast.error("You don't have permission to send reminders");
       return;
@@ -199,7 +200,7 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, userRole }) => {
                 {survey.responseCount}
               </div>
               
-              <div className="col-span-4 flex justify-end space-x-4">
+              <div className="col-span-4 flex flex-wrap justify-end gap-x-4 gap-y-2">
                 {survey.status === 'Sent' && canEdit && survey.emails && survey.emails.trim() !== '' && (
                   <button 
                     onClick={() => handleSendReminder(survey)}
@@ -222,6 +223,17 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, userRole }) => {
                   >
                     <Copy size={16} className="mr-1" />
                     <span>{copiedId === survey.id ? 'Copied!' : 'Copy Link'}</span>
+                  </button>
+                )}
+                
+                {survey.status === 'Sent' && onShare && (
+                  <button 
+                    onClick={() => onShare(survey)}
+                    className="flex items-center text-sm text-gray-500 hover:text-brandPurple-600 transition-colors whitespace-nowrap"
+                    title="QR code and suggested email for staff"
+                  >
+                    <QrCode size={16} className="mr-1" />
+                    <span>Share</span>
                   </button>
                 )}
                 
@@ -319,6 +331,16 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, userRole }) => {
               >
                 <Copy size={16} className="mr-1" />
                 <span>{copiedId === survey.id ? 'Copied!' : 'Copy Link'}</span>
+              </button>
+            )}
+            
+            {survey.status === 'Sent' && onShare && (
+              <button 
+                onClick={() => onShare(survey)}
+                className="flex items-center text-sm text-gray-500 hover:text-brandPurple-600 transition-colors"
+              >
+                <QrCode size={16} className="mr-1" />
+                <span>Share</span>
               </button>
             )}
             

@@ -5,7 +5,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '../ui/button';
 import SurveyFormInputs from './SurveyFormInputs';
 import { Form } from '../ui/form';
-import SurveyLink from './SurveyLink';
 import { Play, Send } from 'lucide-react';
 import { 
   Tooltip,
@@ -34,24 +33,13 @@ interface SurveyFormProps {
 const SurveyForm: React.FC<SurveyFormProps> = ({ 
   initialData, 
   onSubmit, 
-  isEdit = false,
-  surveyId,
   isSubmitting = false,
   initialCustomQuestionIds = [],
   onPreviewSurvey,
   onSendSurvey
 }) => {
-  const [showSurveyLink, setShowSurveyLink] = useState<boolean>(false);
-  const [surveyLink, setSurveyLink] = useState<string>('');
   const [selectedCustomQuestionIds, setSelectedCustomQuestionIds] = useState<string[]>(initialCustomQuestionIds);
   const isMobile = useIsMobile();
-  
-  React.useEffect(() => {
-    if (showSurveyLink && surveyId) {
-      const baseUrl = window.location.origin;
-      setSurveyLink(`${baseUrl}/survey/${surveyId}`);
-    }
-  }, [showSurveyLink, surveyId]);
   
   const form = useForm<SurveyFormData>({
     resolver: zodResolver(surveyFormSchema),
@@ -67,10 +55,6 @@ const SurveyForm: React.FC<SurveyFormProps> = ({
   
   const handleFormSubmit = (data: SurveyFormData) => {
     onSubmit(data, selectedCustomQuestionIds || []);
-    
-    if (isEdit && surveyId) {
-      setShowSurveyLink(true);
-    }
   };
 
   // Both buttons run the zod schema first so field errors show inline and
@@ -160,18 +144,6 @@ const SurveyForm: React.FC<SurveyFormProps> = ({
           </div>
         </form>
       </Form>
-      
-      {showSurveyLink && surveyLink && (
-        <div className="border-2 border-brandPurple-300 rounded-lg p-6 bg-brandPurple-50 mt-8 shadow-sm">
-          <h3 className="text-lg font-semibold mb-2 text-brandPurple-900">
-            📋 Your Survey is Published!
-          </h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Share this link with your staff to collect responses
-          </p>
-          <SurveyLink surveyUrl={surveyLink} />
-        </div>
-      )}
     </div>
   );
 };

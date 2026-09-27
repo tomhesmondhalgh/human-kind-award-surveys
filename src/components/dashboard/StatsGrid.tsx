@@ -35,7 +35,7 @@ const StatsGrid = ({ totalSurveys, totalRespondents, responseRate, benchmarkScor
       link: null
     },
     { 
-      label: 'Would Recommend', 
+      label: 'Avg. recommendation score', 
       value: benchmarkScore ? `${benchmarkScore}/10` : '0/10', 
       icon: BarChart, 
       color: 'bg-amber-100 text-amber-600',
