@@ -7,7 +7,6 @@ import { AuthProvider } from './contexts/AuthContext';
 import { OrganizationProvider } from './contexts/OrganizationContext';
 import { TestingModeProvider } from './contexts/TestingModeContext';
 import { CustomQuestionsProvider } from './contexts/CustomQuestionsContext';
-import StripeProvider from './components/stripe/StripeProvider';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import ErrorBoundary from './components/error/ErrorBoundary';
 
@@ -61,7 +60,6 @@ function App() {
           <OrganizationProvider>
             <TestingModeProvider>
               <CustomQuestionsProvider>
-                <StripeProvider>
                   <Router>
                     <div className="App">
                       <Suspense fallback={<PageLoader />}>
@@ -104,7 +102,6 @@ function App() {
                       <Toaster position="top-right" />
                     </div>
                   </Router>
-                </StripeProvider>
               </CustomQuestionsProvider>
             </TestingModeProvider>
           </OrganizationProvider>
