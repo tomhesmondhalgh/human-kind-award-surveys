@@ -5,6 +5,7 @@ import CustomTextQuestion from './CustomTextQuestion';
 import CustomMultipleChoiceQuestion from './CustomMultipleChoiceQuestion';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 import { AlertCircle, AlertTriangle } from 'lucide-react';
+import { customQuestionMessage } from './validation';
 
 interface CustomQuestionsSectionProps {
   questions: CustomQuestionType[];
@@ -53,17 +54,12 @@ const CustomQuestionsSection: React.FC<CustomQuestionsSectionProps> = ({
 
   // If no questions, show a message only if an attempt to load them was made
   if (!questions || !Array.isArray(questions) || questions.length === 0) {
-    console.log('No questions to display in CustomQuestionsSection');
     return null;
   }
 
-  console.log('Rendering questions in CustomQuestionsSection:', questions);
-
-  // Helper function to check if a custom question has validation error
-  const hasQuestionError = (questionId: string, questionText: string): boolean => {
-    return validationErrors.some(error => 
-      error.includes(questionId) || error.includes(questionText)
-    );
+  const errorFor = (question: CustomQuestionType): string | undefined => {
+    const message = customQuestionMessage(question);
+    return validationErrors.includes(message) ? message : undefined;
   };
 
   return (
@@ -85,7 +81,6 @@ const CustomQuestionsSection: React.FC<CustomQuestionsSectionProps> = ({
           }
           
           const currentValue = responses[question.id] || '';
-          const hasError = hasQuestionError(question.id, question.text);
           
           const isMultipleChoice = 
             question.type === 'multiple_choice' && 
@@ -102,7 +97,7 @@ const CustomQuestionsSection: React.FC<CustomQuestionsSectionProps> = ({
                 options={question.options || []}
                 value={currentValue}
                 onChange={(e) => onResponse(question.id, e.target.value)}
-                error={hasError ? 'This field is required' : undefined}
+                error={errorFor(question)}
               />
             );
           }
@@ -114,7 +109,7 @@ const CustomQuestionsSection: React.FC<CustomQuestionsSectionProps> = ({
               name={`custom-${question.id}`}
               value={currentValue}
               onChange={(e) => onResponse(question.id, e.target.value)}
-              error={hasError ? 'This field is required' : undefined}
+              error={errorFor(question)}
             />
           );
         })}
