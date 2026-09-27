@@ -8,7 +8,7 @@ const SurveyComplete = () => {
     <MainLayout>
       <div className="page-container max-w-3xl mx-auto py-8">
         <PageTitle
-          title="Thank You for Completing the Survey!"
+          title="Thank you for taking part"
         />
         
         <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 mb-8">
@@ -32,13 +32,21 @@ const SurveyComplete = () => {
             Your response has been recorded
           </h2>
           
-          <p className="text-gray-600 mb-8 text-center">
-            Your feedback will help improve staff wellbeing at your organization and contribute to national insights on education staff wellbeing.
+          <p className="text-gray-600 mb-4 text-center">
+            Thank you for sharing your views. Your feedback helps your school understand what's working and what could be better for staff wellbeing.
+          </p>
+
+          <p className="text-gray-600 mb-4 text-center">
+            Your answers are anonymous. We don't ask for your name or email address, and your school sees the survey results for all staff together, never linked to you.
+          </p>
+
+          <p className="text-gray-600 text-center">
+            You can now close this page.
           </p>
         </div>
         
         <p className="text-sm text-gray-500 mt-8 text-center">
-          The National Staff Wellbeing Survey is committed to improving working conditions for education professionals across the country.
+          The Human Kind Award helps schools and colleges look after the people who work in them.
         </p>
       </div>
     </MainLayout>

@@ -7,20 +7,27 @@ const Index = () => {
   const features = [
     {
       title: 'Easy Survey Distribution',
-      description: 'Send surveys to staff with just a few clicks, track responses, and send reminders.'
+      description: 'Share a link or email your staff in a few clicks, track responses, and send reminders.'
     },
     {
-      title: 'Powerful Analytics',
-      description: 'Visualise results with intuitive graphs and compare your school data with national benchmarks.'
+      title: 'Clear Results',
+      description: 'See how your staff feel about leadership, workload, balance, health, support and more, in simple charts.'
     },
     {
       title: 'Anonymous Responses',
       description: 'Staff can submit feedback anonymously, encouraging honest and open communication.'
     },
     {
-      title: 'Wellbeing Focused',
-      description: 'Questions designed by wellbeing experts to identify key areas for improvement.'
+      title: 'Built on the Human Kind Framework',
+      description: 'Every question links to the Human Kind framework, so your results point straight to the areas to work on.'
     }
+  ];
+
+  const steps = [
+    { title: 'Survey your staff', description: 'Send a short, anonymous wellbeing survey. It only takes staff a few minutes.' },
+    { title: 'See your results', description: 'Find out what staff think your school does well and where they would like to see change.' },
+    { title: 'Build your action plan', description: 'Plan improvements across the eight areas of the Human Kind framework, from leadership to values.' },
+    { title: 'Get accredited', description: 'Submit your completed plan for review and receive your Human Kind Award certificate.' },
   ];
 
   return (
@@ -35,7 +42,7 @@ const Index = () => {
           <div className="flex flex-col md:flex-row items-center">
             <div className="md:w-1/2 md:pr-12 lg:pr-20 mb-10 md:mb-0">
               <span className="inline-block bg-brandPurple-100 text-brandPurple-800 text-sm font-medium px-3 py-1 rounded-full mb-4 animate-slide-up">
-                National Staff Wellbeing Survey
+                Human Kind Award
               </span>
               <h1 
                 id="hero-heading"
@@ -44,8 +51,8 @@ const Index = () => {
                 Create a happy, healthy team
               </h1>
               <p className="text-lg text-gray-700 mb-8 animate-slide-up [animation-delay:200ms]">
-                Our survey helps school leaders understand staff wellbeing in their setting 
-                compared with other schools and colleges nationwide.
+                Survey your staff, see what's working, plan improvements against the
+                Human Kind framework, and get your school accredited for its commitment to staff wellbeing.
               </p>
               <div className="flex flex-wrap gap-4 animate-slide-up [animation-delay:300ms]">
                 <Link 
@@ -91,11 +98,11 @@ const Index = () => {
               id="features-heading"
               className="text-3xl font-bold text-gray-900 mb-4"
             >
-              Why use our wellbeing survey?
+              Why use the Human Kind Award?
             </h2>
             <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-              Our platform makes it simple to gather, analyse, and act on staff feedback,
-              helping you create a happier, more productive educational environment.
+              We make it simple to gather, understand and act on staff feedback,
+              helping you create a happier, healthier place to work.
             </p>
           </div>
           
@@ -113,9 +120,41 @@ const Index = () => {
         </div>
       </section>
 
+      {/* How It Works Section */}
+      <section
+        className="py-16 bg-brandPurple-50"
+        aria-labelledby="journey-heading"
+      >
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-12">
+            <h2
+              id="journey-heading"
+              className="text-3xl font-bold text-gray-900 mb-4"
+            >
+              Your journey to the Human Kind Award
+            </h2>
+            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+              Four steps, at your own pace.
+            </p>
+          </div>
+
+          <ol className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {steps.map((step, index) => (
+              <li key={step.title} className="card p-6 h-full">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brandPurple-600 text-white font-bold mb-3">
+                  {index + 1}
+                </span>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">{step.title}</h3>
+                <p className="text-gray-600">{step.description}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section 
-        className="py-16 bg-brandPurple-50"
+        className="py-16 bg-white"
         aria-labelledby="cta-heading"
       >
         <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
