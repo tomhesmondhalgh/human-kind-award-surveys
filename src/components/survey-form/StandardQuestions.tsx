@@ -5,6 +5,7 @@ import RatingQuestion from './RatingQuestion';
 import RadioQuestion from './RadioQuestion';
 import TextQuestion from './TextQuestion';
 import { frequencyOptions } from './constants';
+import { REQUIRED_FIELD_MESSAGES } from './validation';
 import {
   Select,
   SelectContent,
@@ -24,48 +25,11 @@ const StandardQuestions: React.FC<StandardQuestionsProps> = ({
   handleInputChange,
   validationErrors = []
 }) => {
-  // Map of error messages for specific fields
-  const fieldErrorMessages: Record<string, string> = {
-    'role': 'Role is required',
-    'leadership_prioritize': 'Leadership prioritisation rating is required',
-    'manageable_workload': 'Workload rating is required',
-    'work_life_balance': 'Work-life balance rating is required',
-    'health_state': 'Health state rating is required',
-    'valued_member': 'Team value rating is required',
-    'support_access': 'Support access rating is required',
-    'confidence_in_role': 'Role confidence rating is required',
-    'org_pride': 'Organisation pride rating is required',
-    'recommendation_score': 'Recommendation score is required',
-    'leaving_contemplation': 'Leaving contemplation response is required',
-    'doing_well': 'Doing well response is required',
-    'improvements': 'Improvements response is required'
+  const getErrorMessage = (fieldName: keyof typeof REQUIRED_FIELD_MESSAGES): string | undefined => {
+    const message = REQUIRED_FIELD_MESSAGES[fieldName];
+    return message && validationErrors.includes(message) ? message : undefined;
   };
-
-  // Check if a field has a validation error
-  const hasError = (fieldName: string): boolean => {
-    // Direct match for field error message
-    const errorMessage = fieldErrorMessages[fieldName];
-    if (!errorMessage) return false;
-    
-    console.log(`Checking field: ${fieldName}, error message: ${errorMessage}`);
-    
-    // Check if this exact error message exists in the validation errors
-    const found = validationErrors.includes(errorMessage);
-    
-    if (found) {
-      console.log(`Field ${fieldName} has validation error`);
-    }
-    
-    return found;
-  };
-
-  // Helper function to get error message for a field
-  const getErrorMessage = (fieldName: string): string | undefined => {
-    if (hasError(fieldName)) {
-      return fieldErrorMessages[fieldName];
-    }
-    return undefined;
-  };
+  const hasError = (fieldName: keyof typeof REQUIRED_FIELD_MESSAGES) => !!getErrorMessage(fieldName);
 
   return (
     <div className="space-y-16">
@@ -192,8 +156,7 @@ const StandardQuestions: React.FC<StandardQuestionsProps> = ({
         name="doing_well"
         value={formData.doing_well}
         onChange={(e) => handleInputChange('doing_well', e.target.value)}
-        required
-        error={getErrorMessage('doing_well')}
+        required={false}
       />
       
       <TextQuestion
@@ -201,8 +164,7 @@ const StandardQuestions: React.FC<StandardQuestionsProps> = ({
         name="improvements"
         value={formData.improvements}
         onChange={(e) => handleInputChange('improvements', e.target.value)}
-        required
-        error={getErrorMessage('improvements')}
+        required={false}
       />
     </div>
   );

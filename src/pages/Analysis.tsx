@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from "sonner";
 import MainLayout from '../components/layout/MainLayout';
 import PageContainer from '../components/layout/PageContainer';
@@ -11,9 +12,15 @@ import {
   getDetailedWellbeingResponses, 
   getTextResponses, 
   getCustomQuestionResponses,
+  getResponseCount,
+  emptyLeavingContemplation,
+  type LeavingContemplationData,
+  type SurveyOption,
   type TextResponse
 } from '../utils/analysisUtils';
-import { getSurveySummary } from '../utils/summaryUtils';
+import { buildAnalysisDateRange } from '../utils/analysisDateRange';
+import { getSurveySummary, type SummaryData } from '../utils/summaryUtils';
+import { canShowResults, MIN_RESPONSES_TO_SHOW_RESULTS } from '../lib/anonymity';
 import { generatePDF, sendReportByEmail } from '../utils/reportUtils';
 import { useAuth } from '../contexts/AuthContext';
 import ScreenOrientationOverlay from '../components/ui/ScreenOrientationOverlay';
@@ -28,8 +35,13 @@ const Analysis = () => {
   const { user } = useAuth();
   const analysisRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
-  const [surveyOptions, setSurveyOptions] = useState<any[]>([]);
-  const [selectedSurvey, setSelectedSurvey] = useState<string>("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [surveyOptions, setSurveyOptions] = useState<SurveyOption[]>([]);
+  const requestedSurveyId = searchParams.get('surveyId');
+  // The URL is the source of truth, so dashboard links land on the right survey.
+  const selectedSurvey = surveyOptions.some(s => s.id === requestedSurveyId)
+    ? (requestedSurveyId as string)
+    : surveyOptions[0]?.id ?? "";
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>("all-time");
   const [customDateRange, setCustomDateRange] = useState<{
     from: Date | undefined;
@@ -42,14 +54,15 @@ const Analysis = () => {
     score: 0,
     nationalAverage: 0
   });
-  const [leavingContemplation, setLeavingContemplation] = useState<Record<string, number>>({});
+  const [responseCount, setResponseCount] = useState(0);
+  const [leavingContemplation, setLeavingContemplation] = useState<LeavingContemplationData>(emptyLeavingContemplation());
   const [detailedResponses, setDetailedResponses] = useState<any[]>([]);
   const [textResponses, setTextResponses] = useState<{ doingWell: TextResponse[]; improvements: TextResponse[] }>({
     doingWell: [],
     improvements: []
   });
   const [customQuestionResponses, setCustomQuestionResponses] = useState<any[]>([]);
-  const [summary, setSummary] = useState<any>({});
+  const [summary, setSummary] = useState<Partial<SummaryData>>({});
   const [noData, setNoData] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [overlayDismissed, setOverlayDismissed] = useState(false);
@@ -79,13 +92,11 @@ const Analysis = () => {
         
         setSurveyOptions(options);
         
+        // With surveys, loading continues until the selected survey's data arrives.
         if (options.length === 0) {
           setNoData(true);
-        } else {
-          setSelectedSurvey(options[0]?.id || "");
+          setLoading(false);
         }
-        
-        setLoading(false);
       } catch (error) {
         console.error('Error loading survey options:', error);
         toast.error("Failed to load surveys");
@@ -97,27 +108,45 @@ const Analysis = () => {
     loadSurveyOptions();
   }, [user]);
 
+  // Keep ?surveyId= in step with the survey actually shown.
   useEffect(() => {
+    if (selectedSurvey && requestedSurveyId !== selectedSurvey) {
+      setSearchParams(params => {
+        const next = new URLSearchParams(params);
+        next.set('surveyId', selectedSurvey);
+        return next;
+      }, { replace: true });
+    }
+  }, [selectedSurvey, requestedSurveyId, setSearchParams]);
+
+  useEffect(() => {
+    if (!selectedSurvey) return;
+    // Ignore results from a request that a newer survey/date choice has replaced.
+    let cancelled = false;
+
+    const clearResults = () => {
+      setLeavingContemplation(emptyLeavingContemplation());
+      setDetailedResponses([]);
+      setTextResponses({ doingWell: [], improvements: [] });
+      setCustomQuestionResponses([]);
+      setSummary({});
+    };
+
     const loadData = async () => {
-      if (!selectedSurvey) return;
       try {
         setLoading(true);
-        let startDate = "";
-        let endDate = "";
-        if (selectedTimeRange === "last-30-days") {
-          const thirtyDaysAgo = new Date();
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-          startDate = thirtyDaysAgo.toISOString().split('T')[0];
-        } else if (selectedTimeRange === "last-90-days") {
-          const ninetyDaysAgo = new Date();
-          ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-          startDate = ninetyDaysAgo.toISOString().split('T')[0];
-        } else if (selectedTimeRange === "custom-range" && customDateRange.from) {
-          startDate = customDateRange.from.toISOString().split('T')[0];
-          if (customDateRange.to) {
-            endDate = customDateRange.to.toISOString().split('T')[0];
-          }
+        const { startDate, endDate } = buildAnalysisDateRange(selectedTimeRange, customDateRange);
+
+        const count = await getResponseCount(selectedSurvey, startDate, endDate);
+        if (cancelled) return;
+        setResponseCount(count);
+
+        // Below the anonymity floor nothing is fetched or shown.
+        if (!canShowResults(count)) {
+          clearResults();
+          return;
         }
+
         const [recommendationScoreData, leavingContemplationData, detailedResponsesData, textResponsesData, customQuestionResponsesData] = await Promise.all([
           getRecommendationScore(selectedSurvey, startDate, endDate), 
           getLeavingContemplation(selectedSurvey, startDate, endDate), 
@@ -125,6 +154,7 @@ const Analysis = () => {
           getTextResponses(selectedSurvey, startDate, endDate),
           getCustomQuestionResponses(selectedSurvey, startDate, endDate)
         ]);
+        if (cancelled) return;
         
         setRecommendationScore(recommendationScoreData);
         setLeavingContemplation(leavingContemplationData);
@@ -132,20 +162,33 @@ const Analysis = () => {
         setTextResponses(textResponsesData);
         setCustomQuestionResponses(customQuestionResponsesData);
         
-        const summaryData = await getSurveySummary(selectedSurvey, recommendationScoreData, leavingContemplationData, detailedResponsesData, textResponsesData);
+        const summaryData = await getSurveySummary(count, recommendationScoreData, leavingContemplationData, detailedResponsesData, textResponsesData);
+        if (cancelled) return;
         setSummary(summaryData);
       } catch (error) {
+        if (cancelled) return;
         console.error('Error loading data:', error);
+        // Fail closed: without a trustworthy count, show nothing.
+        setResponseCount(0);
+        clearResults();
         toast.error("Failed to load data for selected survey");
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     loadData();
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedSurvey, selectedTimeRange, customDateRange]);
 
   const handleSurveyChange = (value: string) => {
-    setSelectedSurvey(value);
+    setSearchParams(params => {
+      const next = new URLSearchParams(params);
+      next.set('surveyId', value);
+      return next;
+    });
   };
 
   const handleTimeRangeChange = (value: string) => {
@@ -169,6 +212,10 @@ const Analysis = () => {
 
   const handleExportPDF = async () => {
     try {
+      if (!canShowResults(responseCount)) {
+        toast.error(`Results can be exported once at least ${MIN_RESPONSES_TO_SHOW_RESULTS} people have responded.`);
+        return;
+      }
       setExportLoading(true);
       if (!analysisRef.current) {
         toast.error("Cannot generate PDF. Report content not found.");
@@ -188,17 +235,21 @@ const Analysis = () => {
 
   const handleExportReport = async () => {
     try {
+      if (!canShowResults(responseCount)) {
+        toast.error(`Results can be shared once at least ${MIN_RESPONSES_TO_SHOW_RESULTS} people have responded.`);
+        return;
+      }
       setExportLoading(true);
       if (!user?.email) {
         toast.error("User email not found. Cannot send report.");
         return;
       }
-      const surveyName = getSurveyName();
-      const leavingData = Object.entries(leavingContemplation).map(([name, value]) => ({
-        name,
-        value
-      }));
-      await sendReportByEmail(user.email, selectedSurvey, surveyName, summary, recommendationScore, leavingData, detailedResponses, textResponses);
+      await sendReportByEmail(user.email, selectedSurvey, responseCount, {
+        summary: summary as SummaryData,
+        recommendationScore,
+        leavingContemplation,
+        detailedResponses
+      });
       toast.success("Report sent to your email!");
     } catch (error) {
       console.error("Error sending report:", error);
@@ -207,6 +258,9 @@ const Analysis = () => {
       setExportLoading(false);
     }
   };
+
+  const activeDateRange = buildAnalysisDateRange(selectedTimeRange, customDateRange);
+  const isDateFiltered = Boolean(activeDateRange.startDate || activeDateRange.endDate);
 
   const shouldShowOverlay = isMobile && orientation === 'portrait' && !overlayDismissed;
 
@@ -230,6 +284,7 @@ const Analysis = () => {
           selectedTimeRange={selectedTimeRange}
           customDateRange={customDateRange}
           exportLoading={exportLoading}
+          exportDisabled={loading || !canShowResults(responseCount)}
           onSurveyChange={handleSurveyChange}
           onTimeRangeChange={handleTimeRangeChange}
           onCustomDateRangeChange={handleCustomDateRangeChange}
@@ -242,6 +297,8 @@ const Analysis = () => {
         ) : (
           <DataWrapper 
             isLoading={loading || subscriptionLoading}
+            responseCount={responseCount}
+            dateFiltered={isDateFiltered}
             summary={summary}
             recommendationScore={recommendationScore}
             leavingContemplation={leavingContemplation}

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 import { findUserByEmail } from '../_shared/auth.ts';
+import { pickInvitationToResend } from '../_shared/invitations.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -81,22 +82,47 @@ const handler = async (req: Request): Promise<Response> => {
       
       const newExpiresAt = new Date();
       newExpiresAt.setDate(newExpiresAt.getDate() + 7);
-      
+
+      // There can be several unaccepted rows for one address (an expired one
+      // plus a newer one). Resend the live one if there is one, otherwise the
+      // newest, and only touch that row.
+      const { data: pendingInvitations, error: lookupError } = await supabaseAdmin
+        .from('organization_invitations')
+        .select('id, email, expires_at, created_at')
+        .eq('organization_id', organizationId)
+        .is('accepted_at', null);
+
+      if (lookupError) {
+        console.error('❌ Failed to look up invitation:', lookupError);
+        return new Response(
+          JSON.stringify({ error: `Failed to look up invitation: ${lookupError.message}` }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const target = pickInvitationToResend(pendingInvitations ?? [], email);
+
+      if (!target) {
+        console.error('❌ No existing invitation found to resend');
+        return new Response(
+          JSON.stringify({ error: 'No existing invitation found to resend' }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       const { data: updatedInvitation, error: updateError } = await supabaseAdmin
         .from('organization_invitations')
         .update({
           expires_at: newExpiresAt.toISOString(),
           // Keep the same token so existing links still work
         })
-        .eq('email', email)
-        .eq('organization_id', organizationId)
-        .is('accepted_at', null)
+        .eq('id', target.id)
         .select(`
           *,
           organizations!organization_invitations_organization_id_fkey (name)
         `)
         .single();
-      
+
       if (updateError) {
         console.error('❌ Failed to update invitation:', updateError);
         return new Response(
@@ -131,7 +157,8 @@ const handler = async (req: Request): Promise<Response> => {
           body: {
             email,
             organizationName: updatedInvitation.organizations?.name || 'your organization',
-            role,
+            // The role they will actually get is the one on the invitation.
+            role: updatedInvitation.role,
             inviterName,
             invitationToken: updatedInvitation.token // Use existing token
           }
@@ -168,7 +195,8 @@ const handler = async (req: Request): Promise<Response> => {
       .eq('organization_id', organizationId)
       .is('accepted_at', null)
       .gt('expires_at', new Date().toISOString())
-      .single();
+      .limit(1)
+      .maybeSingle();
 
     if (existingInvitation) {
       console.warn('⚠️ Existing pending invitation found');

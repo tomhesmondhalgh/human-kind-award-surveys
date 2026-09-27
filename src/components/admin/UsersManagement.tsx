@@ -94,14 +94,21 @@ const UsersManagement = () => {
         }
       } else {
         // Revoke admin role
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('user_roles')
           .delete()
           .eq('user_id', userId)
-          .eq('role', 'admin');
+          .eq('role', 'admin')
+          .select('user_id');
         
         if (error) {
           throw new Error(`Failed to revoke admin role: ${error.message}`);
+        }
+
+        // RLS reports a blocked delete as zero rows. Admins can't remove their
+        // own admin role, so the platform always keeps one.
+        if (!data || data.length === 0) {
+          throw new Error("Admin role not removed. You can't remove your own admin access; ask another admin.");
         }
       }
       

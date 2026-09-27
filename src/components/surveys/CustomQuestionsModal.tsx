@@ -251,7 +251,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ question, isSelected, onTog
           <p className="font-medium text-sm">{question.text}</p>
           <div className="flex items-center mt-1 gap-2">
             <Badge variant="outline" className="text-xs">
-              Free Text
+              {question.type === 'multiple_choice' ? 'Multiple Choice' : 'Free Text'}
             </Badge>
           </div>
         </div>

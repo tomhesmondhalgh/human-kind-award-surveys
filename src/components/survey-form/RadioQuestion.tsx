@@ -29,19 +29,19 @@ const RadioQuestion: React.FC<RadioQuestionProps> = ({
   const isMobile = useIsMobile();
 
   if (useSlider && options.every(opt => !isNaN(Number(opt)))) {
-    const handleSliderChange = (newValue: number[]) => {
+    const minValue = parseInt(options[0]);
+    const maxValue = parseInt(options[options.length - 1]);
+    const isAnswered = value !== '';
+
+    const choose = (chosen: number | string) => {
       const event = {
         target: {
           name,
-          value: String(newValue[0])
+          value: String(chosen)
         }
       } as React.ChangeEvent<HTMLInputElement>;
       onChange(event);
     };
-
-    const currentValue = value ? parseInt(value) : 0;
-    const minValue = parseInt(options[0]);
-    const maxValue = parseInt(options[options.length - 1]);
 
     return (
       <div className="mb-16">
@@ -51,6 +51,9 @@ const RadioQuestion: React.FC<RadioQuestionProps> = ({
             {required && <span className="sr-only"> (Required)</span>}
           </legend>
           <div className="px-2 md:px-4 py-6">
+            <p className={cn("text-center text-sm mb-3", isAnswered ? "text-brandPurple-700 font-medium" : "text-gray-500")} aria-live="polite">
+              {isAnswered ? `You chose ${value}` : 'Tap the line or a number to choose'}
+            </p>
             <div className="flex justify-between mb-2">
               <div className="text-center text-sm text-gray-600">
                 Not at all likely
@@ -59,26 +62,34 @@ const RadioQuestion: React.FC<RadioQuestionProps> = ({
                 Extremely Likely
               </div>
             </div>
-            <Slider 
-              defaultValue={[currentValue]} 
-              max={maxValue} 
-              min={minValue} 
-              step={1} 
-              value={[currentValue]}
-              onValueChange={handleSliderChange}
-              className="mb-2"
+            {/* Until answered, the thumb and filled track are hidden so the
+                slider can't look like it's set to 0. Tapping where the hidden
+                thumb sits doesn't count as a change, hence the pointer-up. */}
+            <Slider
+              max={maxValue}
+              min={minValue}
+              step={1}
+              value={[isAnswered ? parseInt(value) : minValue]}
+              onValueChange={(newValue) => choose(newValue[0])}
+              onPointerUp={() => { if (!isAnswered) choose(minValue); }}
+              className={cn("mb-2", !isAnswered && "[&_.bg-primary]:opacity-0 [&_[role=slider]]:opacity-0")}
               aria-label={`${label} scale from ${minValue} to ${maxValue}`}
             />
             <div className="flex justify-between mt-2">
               {options.map((option) => (
-                <div key={option} className="text-center">
-                  <span className={cn(
-                    "text-sm", 
-                    value === option ? "font-bold text-brandPurple-600" : "text-gray-600"
-                  )}>
-                    {option}
-                  </span>
-                </div>
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => choose(option)}
+                  aria-label={`Choose ${option}`}
+                  aria-pressed={value === option}
+                  className={cn(
+                    "text-sm min-w-[1.5rem] rounded",
+                    value === option ? "font-bold text-brandPurple-600" : "text-gray-600 hover:text-brandPurple-600"
+                  )}
+                >
+                  {option}
+                </button>
               ))}
             </div>
           </div>

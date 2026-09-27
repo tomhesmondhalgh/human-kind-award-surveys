@@ -132,13 +132,13 @@ isOneToOne: false
                   ]
                 },"custom_questions": {
                   Row: {
-                    "archived": boolean | null,"created_at": string | null,"creator_id": string,"id": string,"options": (string)[] | null,"organization_id": string | null,"text": string,"type": string
+                    "archived": boolean | null,"created_at": string | null,"creator_id": string | null,"id": string,"options": (string)[] | null,"organization_id": string | null,"text": string,"type": string
                   }
                   Insert: {
-                    "archived"?: boolean | null,"created_at"?: string | null,"creator_id": string,"id"?: string,"options"?: (string)[] | null,"organization_id"?: string | null,"text": string,"type": string
+                    "archived"?: boolean | null,"created_at"?: string | null,"creator_id"?: string | null,"id"?: string,"options"?: (string)[] | null,"organization_id"?: string | null,"text": string,"type": string
                   }
                   Update: {
-                    "archived"?: boolean | null,"created_at"?: string | null,"creator_id"?: string,"id"?: string,"options"?: (string)[] | null,"organization_id"?: string | null,"text"?: string,"type"?: string
+                    "archived"?: boolean | null,"created_at"?: string | null,"creator_id"?: string | null,"id"?: string,"options"?: (string)[] | null,"organization_id"?: string | null,"text"?: string,"type"?: string
                   }
                   Relationships: [
                     
@@ -368,12 +368,6 @@ isOneToOne: false
       foreignKeyName: "survey_questions_survey_id_fkey"
       columns: ["survey_id"]
 isOneToOne: false
-      referencedRelation: "public_survey_templates"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "survey_questions_survey_id_fkey"
-      columns: ["survey_id"]
-isOneToOne: false
       referencedRelation: "survey_templates"
       referencedColumns: ["id"]
     }
@@ -393,25 +387,19 @@ isOneToOne: false
       foreignKeyName: "survey_responses_survey_template_id_fkey"
       columns: ["survey_template_id"]
 isOneToOne: false
-      referencedRelation: "public_survey_templates"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "survey_responses_survey_template_id_fkey"
-      columns: ["survey_template_id"]
-isOneToOne: false
       referencedRelation: "survey_templates"
       referencedColumns: ["id"]
     }
                   ]
                 },"survey_templates": {
                   Row: {
-                    "close_date": string | null,"created_at": string,"date": string,"emails": string | null,"id": string,"name": string,"organization_id": string,"status": Database["public"]['Enums']["survey_status"] | null,"updated_at": string
+                    "close_date": string | null,"closure_notified_at": string | null,"created_at": string,"date": string,"emails": string | null,"id": string,"name": string,"organization_id": string,"status": Database["public"]['Enums']["survey_status"] | null,"updated_at": string
                   }
                   Insert: {
-                    "close_date"?: string | null,"created_at"?: string,"date"?: string,"emails"?: string | null,"id"?: string,"name": string,"organization_id": string,"status"?: Database["public"]['Enums']["survey_status"] | null,"updated_at"?: string
+                    "close_date"?: string | null,"closure_notified_at"?: string | null,"created_at"?: string,"date"?: string,"emails"?: string | null,"id"?: string,"name": string,"organization_id": string,"status"?: Database["public"]['Enums']["survey_status"] | null,"updated_at"?: string
                   }
                   Update: {
-                    "close_date"?: string | null,"created_at"?: string,"date"?: string,"emails"?: string | null,"id"?: string,"name"?: string,"organization_id"?: string,"status"?: Database["public"]['Enums']["survey_status"] | null,"updated_at"?: string
+                    "close_date"?: string | null,"closure_notified_at"?: string | null,"created_at"?: string,"date"?: string,"emails"?: string | null,"id"?: string,"name"?: string,"organization_id"?: string,"status"?: Database["public"]['Enums']["survey_status"] | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -483,11 +471,13 @@ isOneToOne: false
 "can_respond_to_custom_question":
 { Args: { "question_uuid": string,"response_uuid": string }; Returns: boolean
                            },
-"count_email_responses":
-{ Args: { "survey_id": string }; Returns: number
-                           },
 "count_survey_responses":
 { Args: { "survey_id": string }; Returns: number
+                           },
+"create_organization":
+{ Args: { "p_address"?: string,"p_name": string,"p_urn"?: string }; Returns: {
+              "address": string | null,"created_at": string,"id": string,"name": string,"updated_at": string,"urn": string | null
+            }
                            },
 "create_or_update_profile":
 { Args: { "profile_first_name": string,"profile_id": string,"profile_job_title": string,"profile_last_name": string,"profile_school_address": string,"profile_school_name": string }; Returns: undefined

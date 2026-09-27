@@ -22,7 +22,10 @@ const TextQuestion: React.FC<TextQuestionProps> = ({
 }) => (
   <div className="mb-16">
     <label htmlFor={name} className="block text-lg font-medium mb-2 text-left">
-      {label} {required && <span className="text-red-500">*</span>}
+      {label}{' '}
+      {required
+        ? <span className="text-red-500">*</span>
+        : <span className="text-base font-normal text-gray-500">(optional)</span>}
     </label>
     {subtitle && <p className="text-sm text-gray-600 mb-2 text-left">{subtitle}</p>}
     <textarea

@@ -42,7 +42,7 @@ const NavLinks: React.FC = () => {
         to="/surveys" 
         className={`${navLinkClass} ${isActive('/surveys') ? activeNavLinkClass : ""}`}
       >
-        Survey
+        Surveys
       </Link>
       
       <Link 
@@ -56,7 +56,7 @@ const NavLinks: React.FC = () => {
         to="/improve" 
         className={`${navLinkClass} ${isActive('/improve') ? activeNavLinkClass : ""}`}
       >
-        Improve
+        Action Plan
       </Link>
       
       <Link 

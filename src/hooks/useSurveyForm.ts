@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { SurveyFormData } from '../types/surveyForm';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -23,6 +23,9 @@ const initialFormData: SurveyFormData = {
 export const useSurveyForm = (surveyId: string | null, isPreview: boolean) => {
   const [formData, setFormData] = useState<SurveyFormData>(initialFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // State updates aren't visible until the next render, so a quick double-click
+  // could start two submissions; the ref blocks the second one immediately.
+  const inFlight = useRef(false);
 
   const handleInputChange = (key: string, value: string) => {
     setFormData(prev => ({
@@ -57,6 +60,8 @@ export const useSurveyForm = (surveyId: string | null, isPreview: boolean) => {
       return false;
     }
 
+    if (inFlight.current) return false;
+    inFlight.current = true;
     setIsSubmitting(true);
 
     try {
@@ -112,6 +117,7 @@ export const useSurveyForm = (surveyId: string | null, isPreview: boolean) => {
       toast.error(error.message || 'Failed to submit survey');
       return false;
     } finally {
+      inFlight.current = false;
       setIsSubmitting(false);
     }
   };

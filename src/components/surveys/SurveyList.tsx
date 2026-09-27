@@ -1,21 +1,21 @@
 
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Send, Copy, Edit } from 'lucide-react';
+import { Send, Copy, Edit, QrCode } from 'lucide-react';
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from "@/components/ui/badge";
 import { useMediaQuery } from '@/hooks/use-media-query';
-import { format } from 'date-fns';
+import { getCloseDateDisplay } from '@/utils/survey/closeDate';
 import { OrganizationRole } from '@/types/organizations';
 import { canEditContent } from '@/utils/organizationPermissions';
 
-interface Survey {
+export interface SurveyListItem {
   id: string;
   name: string;
   date: string;
   formattedDate: string;
-  status: 'Scheduled' | 'Sent' | 'Completed';
+  status: 'Saved' | 'Scheduled' | 'Sent' | 'Completed' | 'Archived';
   responseCount: number;
   closeDate?: string;
   closeDisplayDate?: string;
@@ -24,9 +24,8 @@ interface Survey {
 }
 
 interface SurveyListProps {
-  surveys: Survey[];
-  onSendReminder: (id: string) => void;
-  refreshList?: () => void;
+  surveys: SurveyListItem[];
+  onShare?: (survey: SurveyListItem) => void;
   userRole?: OrganizationRole;
 }
 
@@ -47,42 +46,7 @@ const getStatusBadgeVariant = (status: string): "default" | "secondary" | "destr
   }
 };
 
-const getCloseDateDisplay = (closeDate?: string | null) => {
-  if (!closeDate) return { text: 'No close date', className: 'text-muted-foreground' };
-  
-  const date = new Date(closeDate);
-  const now = new Date();
-  const daysUntilClose = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  
-  if (daysUntilClose < 0) {
-    return { 
-      text: `Closed ${format(date, 'dd/MM/yyyy')}`, 
-      className: 'text-muted-foreground' 
-    };
-  } else if (daysUntilClose === 0) {
-    return { 
-      text: 'Closes today', 
-      className: 'text-red-600 font-medium' 
-    };
-  } else if (daysUntilClose <= 3) {
-    return { 
-      text: `Closes ${format(date, 'dd/MM/yyyy')} (${daysUntilClose} days)`, 
-      className: 'text-orange-600 font-medium' 
-    };
-  } else if (daysUntilClose <= 7) {
-    return { 
-      text: `Closes ${format(date, 'dd/MM/yyyy')}`, 
-      className: 'text-yellow-700 font-medium' 
-    };
-  } else {
-    return { 
-      text: `Closes ${format(date, 'dd/MM/yyyy')}`, 
-      className: 'text-foreground' 
-    };
-  }
-};
-
-const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder, refreshList, userRole }) => {
+const SurveyList: React.FC<SurveyListProps> = ({ surveys, onShare, userRole }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sendingReminder, setSendingReminder] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -90,33 +54,13 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder, refres
 
   const canEdit = canEditContent(userRole);
 
-  const copyToClipboard = async (id: string, text: string, currentStatus: string) => {
+  // Copying a link never changes the survey's status. Only live ('Sent')
+  // surveys offer a link; drafts must be published from the editor.
+  const copyToClipboard = async (id: string, text: string) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedId(id);
       toast.success("Survey link copied to clipboard");
-      
-      // Only update status if it's not already 'Sent' or 'Completed'
-      if (currentStatus !== 'Sent' && currentStatus !== 'Completed') {
-        console.log(`Updating survey ${id} status to Sent after copying link`);
-        
-        const { error } = await supabase
-          .from('survey_templates')
-          .update({ status: 'Sent' })
-          .eq('id', id);
-          
-        if (error) {
-          console.error('Error updating survey status:', error);
-          // Don't show error to user, but log it
-        } else {
-          console.log('Successfully updated survey status to Sent');
-          // Call refreshList to update the UI instead of reloading the page
-          if (refreshList) {
-            refreshList();
-          }
-        }
-      }
-      
       setTimeout(() => setCopiedId(null), 2000);
     } catch (error) {
       console.error('Error copying to clipboard:', error);
@@ -134,7 +78,7 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder, refres
     navigate(`/survey-editor/${id}`);
   };
   
-  const handleSendReminder = async (survey: Survey) => {
+  const handleSendReminder = async (survey: SurveyListItem) => {
     if (!canEdit) {
       toast.error("You don't have permission to send reminders");
       return;
@@ -179,7 +123,6 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder, refres
       console.log("Reminder sending result:", data);
       
       if (data.success) {
-        onSendReminder(survey.id);
         toast.success("Reminders sent successfully", {
           description: `Sent to ${data.count} recipients.`
         });
@@ -257,7 +200,7 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder, refres
                 {survey.responseCount}
               </div>
               
-              <div className="col-span-4 flex justify-end space-x-4">
+              <div className="col-span-4 flex flex-wrap justify-end gap-x-4 gap-y-2">
                 {survey.status === 'Sent' && canEdit && survey.emails && survey.emails.trim() !== '' && (
                   <button 
                     onClick={() => handleSendReminder(survey)}
@@ -272,15 +215,35 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder, refres
                   </button>
                 )}
                 
-                {survey.url && (
+                {survey.url && survey.status === 'Sent' && (
                   <button 
-                    onClick={() => copyToClipboard(survey.id, survey.url!, survey.status)}
+                    onClick={() => copyToClipboard(survey.id, survey.url!)}
                     className="flex items-center text-sm text-gray-500 hover:text-brandPurple-600 transition-colors whitespace-nowrap"
                     title="Copy survey link to clipboard"
                   >
                     <Copy size={16} className="mr-1" />
                     <span>{copiedId === survey.id ? 'Copied!' : 'Copy Link'}</span>
                   </button>
+                )}
+                
+                {survey.status === 'Sent' && onShare && (
+                  <button 
+                    onClick={() => onShare(survey)}
+                    className="flex items-center text-sm text-gray-500 hover:text-brandPurple-600 transition-colors whitespace-nowrap"
+                    title="QR code and suggested email for staff"
+                  >
+                    <QrCode size={16} className="mr-1" />
+                    <span>Share</span>
+                  </button>
+                )}
+                
+                {survey.status === 'Saved' && canEdit && (
+                  <span
+                    className="flex items-center text-sm text-muted-foreground whitespace-nowrap"
+                    title="Open Edit and click Publish to get a shareable link"
+                  >
+                    Draft: publish to share
+                  </span>
                 )}
                 
                 {canEdit && (
@@ -361,14 +324,33 @@ const SurveyList: React.FC<SurveyListProps> = ({ surveys, onSendReminder, refres
               </button>
             )}
             
-            {survey.url && (
+            {survey.url && survey.status === 'Sent' && (
               <button 
-                onClick={() => copyToClipboard(survey.id, survey.url!, survey.status)}
+                onClick={() => copyToClipboard(survey.id, survey.url!)}
                 className="flex items-center text-sm text-gray-500 hover:text-brandPurple-600 transition-colors"
               >
                 <Copy size={16} className="mr-1" />
                 <span>{copiedId === survey.id ? 'Copied!' : 'Copy Link'}</span>
               </button>
+            )}
+            
+            {survey.status === 'Sent' && onShare && (
+              <button 
+                onClick={() => onShare(survey)}
+                className="flex items-center text-sm text-gray-500 hover:text-brandPurple-600 transition-colors"
+              >
+                <QrCode size={16} className="mr-1" />
+                <span>Share</span>
+              </button>
+            )}
+            
+            {survey.status === 'Saved' && canEdit && (
+              <span
+                className="flex items-center text-sm text-muted-foreground whitespace-nowrap"
+                title="Open Edit and click Publish to get a shareable link"
+              >
+                Draft: publish to share
+              </span>
             )}
             
             {canEdit && (

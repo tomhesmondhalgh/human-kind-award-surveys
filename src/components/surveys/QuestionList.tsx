@@ -49,6 +49,7 @@ const QuestionList: React.FC<QuestionListProps> = ({
           </div>
           
           <button
+            type="button"
             onClick={() => removeQuestion(question.id)}
             className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-200 flex-shrink-0 ml-2"
             aria-label="Remove question"

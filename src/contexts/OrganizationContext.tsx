@@ -134,41 +134,21 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       console.log('OrganizationContext: Creating organization:', { name, address, urn });
       
-      // Create the organization
-      const { data: orgData, error: orgError } = await supabase
-        .from('organizations')
-        .insert({
-          name,
-          address: address || null,
-          urn: urn || null,
-        })
-        .select('*')
-        .single();
-        
-      if (orgError) {
+      // One server-side step: the org and the caller's admin membership are
+      // created together (the membership insert alone is blocked by RLS).
+      const { data: orgData, error: orgError } = await supabase.rpc('create_organization', {
+        p_name: name,
+        p_address: address || undefined,
+        p_urn: urn || undefined,
+      });
+
+      if (orgError || !orgData) {
         console.error('OrganizationContext: Error creating organization:', orgError);
-        throw orgError;
+        throw orgError ?? new Error('Failed to create organisation');
       }
-      
+
       console.log('OrganizationContext: Organization created:', orgData);
-      
-      // Add user as admin of the new organization
-      const { error: membershipError } = await supabase
-        .from('organization_memberships')
-        .insert({
-          user_id: user.id,
-          organization_id: orgData.id,
-          role: 'admin',
-          is_primary: true
-        });
-        
-      if (membershipError) {
-        console.error('OrganizationContext: Error creating membership:', membershipError);
-        throw membershipError;
-      }
-      
-      console.log('OrganizationContext: Membership created successfully');
-      
+
       // Create the OrganizationWithRole object
       const newOrg: OrganizationWithRole = {
         ...orgData,
@@ -185,7 +165,8 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       return newOrg;
     } catch (error) {
       console.error('OrganizationContext: Error in createOrganization:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create organisation';
+      const message = (error as { message?: unknown } | null)?.message;
+      const errorMessage = typeof message === 'string' && message ? message : 'Failed to create organisation';
       toast.error(`Failed to create organisation: ${errorMessage}`);
       return null;
     } finally {
