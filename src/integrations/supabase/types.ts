@@ -512,6 +512,9 @@ isOneToOne: false
               "address": string,"created_at": string,"id": string,"name": string,"role": Database["public"]['Enums']["organization_role"],"updated_at": string,"urn": string
             }[]
                            },
+"get_national_benchmarks":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "get_public_survey":
 { Args: { "p_survey_id": string }; Returns: Json
                            },

@@ -4,6 +4,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { Lock } from "lucide-react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
+import { useNationalBenchmarks } from "@/hooks/useNationalBenchmarks";
+import { nationalLeavingSplit } from "@/utils/benchmarks";
 
 interface LeavingContemplationChartProps {
   data: Record<string, number>;
@@ -22,13 +24,21 @@ const LeavingContemplationChart: React.FC<LeavingContemplationChartProps> = ({
     "Strongly Agree": data["Strongly Agree"] || 0
   }];
   
+  const { benchmarks, label: nationalLabel, note } = useNationalBenchmarks();
+
   if (hasAccess) {
+    // This chart still uses the old agree/disagree labels for the frequency
+    // answers and leaves out "All the Time", so do the same to the national
+    // figures to keep the two rows comparable.
+    const national = nationalLeavingSplit(benchmarks);
+    const shown = national["Never"] + national["Rarely"] + national["Sometimes"] + national["Often"];
+    const share = (value: number) => (shown > 0 ? value / shown : 0);
     chartData.push({
-      name: "National Average",
-      "Strongly Disagree": 0.25,
-      "Disagree": 0.25,
-      "Agree": 0.40,
-      "Strongly Agree": 0.10
+      name: nationalLabel,
+      "Strongly Disagree": share(national["Never"]),
+      "Disagree": share(national["Rarely"]),
+      "Agree": share(national["Sometimes"]),
+      "Strongly Agree": share(national["Often"])
     });
   }
   
@@ -75,6 +85,7 @@ const LeavingContemplationChart: React.FC<LeavingContemplationChartProps> = ({
       <p className="text-xs text-gray-500 text-center mt-2">
         Responses to: "I have considered leaving this organization in the past year"
       </p>
+      {hasAccess && <p className="text-xs text-gray-400 text-center mt-1">{note}</p>}
     </Card>
   );
 };

@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { useNationalBenchmarks } from "@/hooks/useNationalBenchmarks";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Lock } from "lucide-react";
 import { Card } from "../ui/card";
@@ -23,10 +24,12 @@ const WellbeingQuestionChart: React.FC<WellbeingQuestionChartProps> = ({
     "Agree": data.schoolResponses?.["Agree"] || 0,
     "Strongly Agree": data.schoolResponses?.["Strongly Agree"] || 0
   }];
-  
+
+  const { label: nationalLabel, isIllustrative } = useNationalBenchmarks();
+
   if (hasAccess) {
     chartData.push({
-      name: "National Average",
+      name: nationalLabel,
       "Strongly Disagree": data.nationalResponses?.["Strongly Disagree"] || 0,
       "Disagree": data.nationalResponses?.["Disagree"] || 0,
       "Agree": data.nationalResponses?.["Agree"] || 0,
@@ -37,6 +40,9 @@ const WellbeingQuestionChart: React.FC<WellbeingQuestionChartProps> = ({
   return (
     <Card className="p-4">
       <h3 className="text-md mb-2 font-semibold my-0 py-[10px]">{title}</h3>
+      {hasAccess && isIllustrative && (
+        <p className="-mt-2 mb-1 text-xs text-gray-400">Illustrative figures, not real national data.</p>
+      )}
       <div className="h-52">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} layout="vertical" stackOffset="expand" barSize={30} margin={{
