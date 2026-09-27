@@ -21,6 +21,7 @@ import ArchiveSurveyDialog from '../components/surveys/ArchiveSurveyDialog';
 import { validateEmails } from '../utils/survey/sendReminder';
 import { OrganizationPermissionValidator } from '@/utils/organizationPermissions';
 import { toEndOfLocalDay } from '@/utils/survey/closeDate';
+import type { LiveSurveyInfo } from '../components/surveys/SurveyLiveDialog';
 
 const SurveyEditor = () => {
   const { id } = useParams<{ id: string }>();
@@ -305,8 +306,15 @@ const SurveyEditor = () => {
       if (action === 'preview') {
         window.open(`/survey/${newSurveyId}?preview=true`, '_blank');
       } else if (action === 'send') {
-        await handleSendEmails(newSurveyId!, data.distributionMethod, emailsValue);
-        navigate('/surveys');
+        const sendResult = await handleSendEmails(newSurveyId!, data.distributionMethod, emailsValue, data.name);
+        const publishedSurvey: LiveSurveyInfo = {
+          id: newSurveyId!,
+          name: data.name,
+          closeDate: closeDate ? closeDate.toISOString() : null,
+          ...sendResult
+        };
+        // The Surveys page opens the "Your survey is live" dialog from this state.
+        navigate('/surveys', { state: { publishedSurvey } });
       }
       
       return newSurveyId;
@@ -375,78 +383,43 @@ const SurveyEditor = () => {
     await handleSubmit(data, selectedCustomQuestionIds, 'send');
   };
   
-  const handleSendEmails = async (surveyId: string, distributionMethod: 'link' | 'email', emails: string) => {
+  const handleSendEmails = async (
+    surveyId: string,
+    distributionMethod: 'link' | 'email',
+    emails: string,
+    surveyName: string
+  ): Promise<Pick<LiveSurveyInfo, 'distributionMethod' | 'invitationsSent' | 'emailFailed'>> => {
+    if (distributionMethod === 'link' || !emails || emails.trim() === '') {
+      return { distributionMethod: 'link' };
+    }
+
+    const { validEmails, invalidEmails } = validateEmails(emails);
+    if (invalidEmails.length > 0 || validEmails.length === 0) {
+      return { distributionMethod: 'email', emailFailed: true };
+    }
+
     try {
-      // For link distribution, we've already marked the survey as sent
-      if (distributionMethod === 'link' || !emails || emails.trim() === '') {
-        toast.success("Survey published successfully", {
-          description: "Your survey is now live. Use Copy Link on the Surveys page to share it with your staff."
-        });
-        return;
-      }
-      
-      // Validate emails before sending
-      const { validEmails, invalidEmails } = validateEmails(emails);
-      
-      console.log('Email validation results:', { 
-        totalEmails: emails.split(',').length,
-        validCount: validEmails.length, 
-        invalidCount: invalidEmails.length,
-        validEmails: validEmails,
-        invalidEmails: invalidEmails
-      });
-      
-      if (invalidEmails.length > 0) {
-        toast.error(`Found ${invalidEmails.length} invalid email ${invalidEmails.length === 1 ? 'address' : 'addresses'}`, {
-          description: `Invalid: ${invalidEmails.join(', ')}. Please correct these before sending.`
-        });
-        return;
-      }
-      
-      if (validEmails.length === 0) {
-        toast.info("No valid email recipients found", {
-          description: "Use the survey link to share with participants."
-        });
-        return;
-      }
-      
-      const baseUrl = window.location.origin;
-      const surveyUrl = `${baseUrl}/survey/${surveyId}`;
-      
-      console.log('Sending survey emails to:', validEmails);
-      console.log('Survey URL:', surveyUrl);
-      
-      // Build request payload for edge function
-      const payload = { 
-        surveyId: surveyId,
-        surveyName: surveyData?.name || "Wellbeing Survey",
-        emails: validEmails,
-        surveyUrl: surveyUrl,
-        isReminder: false
-      };
-      
-      console.log('Edge function payload:', payload);
-      
-      // Send emails
       const { data, error } = await supabase.functions.invoke('send-survey-email', {
-        body: payload
+        body: {
+          surveyId,
+          surveyName: surveyName || "Wellbeing Survey",
+          emails: validEmails,
+          surveyUrl: `${window.location.origin}/survey/${surveyId}`,
+          isReminder: false
+        }
       });
-      
-      if (error) {
-        console.error('Error invoking send-survey-email function:', error);
-        throw error;
+
+      if (error || (data && data.success === false) || data?.count === 0) {
+        throw error || new Error(data?.error || 'Failed to send invitations');
       }
-      
-      console.log('Send survey email response:', data);
-      
-      toast.success("Invitations sent successfully!", {
-        description: `Email invitations sent to ${data?.count || validEmails.length} recipients.`
-      });
+
+      return {
+        distributionMethod: 'email',
+        invitationsSent: typeof data?.count === 'number' ? data.count : validEmails.length
+      };
     } catch (error) {
       console.error('Error sending survey emails:', error);
-      toast.error("Failed to send survey emails", {
-        description: "The survey has been saved and marked as sent, but there was an issue sending the emails."
-      });
+      return { distributionMethod: 'email', emailFailed: true };
     }
   };
 

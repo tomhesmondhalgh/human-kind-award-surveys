@@ -43,7 +43,10 @@ const Dashboard = () => {
           <DashboardEmptyState />
         ) : (
           <div className="space-y-8">
-            <GettingStartedGuide />
+            <GettingStartedGuide
+              totalSurveys={stats.totalSurveys}
+              totalRespondents={stats.totalRespondents}
+            />
             
             <StatsGrid 
               totalSurveys={stats.totalSurveys}

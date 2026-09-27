@@ -94,7 +94,7 @@ const RecentSurveysList = ({ surveys, isLoading }: RecentSurveysListProps) => {
             </TableHeader>
             <TableBody>
               {surveys.map((survey) => {
-                const status = getSurveyStatus(survey.date, survey.close_date);
+                const status = getSurveyStatus(survey.date, survey.close_date, survey.status);
                 
                 return (
                   <TableRow key={survey.id}>
@@ -147,7 +147,7 @@ const RecentSurveysList = ({ surveys, isLoading }: RecentSurveysListProps) => {
       <h2 className="text-xl font-semibold mb-4">Most Recent Surveys</h2>
       <div className="space-y-4">
         {surveys.map((survey) => {
-          const status = getSurveyStatus(survey.date, survey.close_date);
+          const status = getSurveyStatus(survey.date, survey.close_date, survey.status);
           
           return (
             <Card key={survey.id} className="p-4">

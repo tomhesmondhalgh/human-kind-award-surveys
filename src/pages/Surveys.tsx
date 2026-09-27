@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
 import PageContainer from '../components/layout/PageContainer';
 import PageTitle from '../components/ui/PageTitle';
 import SurveyList from '../components/surveys/SurveyList';
+import SurveyLiveDialog, { LiveSurveyInfo } from '../components/surveys/SurveyLiveDialog';
 import Pagination from '../components/surveys/Pagination';
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
@@ -84,7 +85,19 @@ const Surveys = () => {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const isMobile = useIsMobile();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [liveSurvey, setLiveSurvey] = useState<LiveSurveyInfo | null>(null);
 
+  // Arriving from a successful publish: show the "Your survey is live" dialog
+  // once, then clear the router state so a refresh doesn't reopen it.
+  useEffect(() => {
+    const published = (location.state as { publishedSurvey?: LiveSurveyInfo } | null)?.publishedSurvey;
+    if (published) {
+      setLiveSurvey(published);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.state, location.pathname, navigate]);
 
   useEffect(() => {
     const fetchSurveys = async () => {
@@ -405,6 +418,12 @@ const Surveys = () => {
                 <div aria-live="polite">
                   <SurveyList 
                     surveys={surveys} 
+                    onShare={(survey) => setLiveSurvey({
+                      id: survey.id,
+                      name: survey.name,
+                      closeDate: survey.closeDate,
+                      distributionMethod: 'link'
+                    })}
                     userRole={currentOrganization?.role}
                   />
                 </div>
@@ -422,6 +441,11 @@ const Surveys = () => {
             )}
           </>
         )}
+        <SurveyLiveDialog
+          survey={liveSurvey}
+          schoolName={currentOrganization.name}
+          onClose={() => setLiveSurvey(null)}
+        />
       </PageContainer>
     </MainLayout>
   );
