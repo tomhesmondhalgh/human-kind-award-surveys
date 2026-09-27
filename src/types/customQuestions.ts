@@ -6,7 +6,7 @@ export interface CustomQuestion {
   options?: string[] | null;
   created_at: string | null;
   archived: boolean;
-  creator_id: string;
+  creator_id: string | null;
   organization_id?: string | null;
 }
 
@@ -26,7 +26,7 @@ export interface DbCustomQuestion {
   options?: string[] | null;
   created_at: string | null;
   archived?: boolean | null;
-  creator_id: string;
+  creator_id: string | null;
   organization_id?: string | null;
 }
 

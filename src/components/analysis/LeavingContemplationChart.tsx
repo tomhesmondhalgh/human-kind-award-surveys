@@ -4,52 +4,49 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { Lock } from "lucide-react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
+import { LEAVING_CONTEMPLATION_OPTIONS, type LeavingContemplationData } from "../../utils/analysisUtils";
 import { useNationalBenchmarks } from "@/hooks/useNationalBenchmarks";
 import { nationalLeavingSplit } from "@/utils/benchmarks";
 
 interface LeavingContemplationChartProps {
-  data: Record<string, number>;
+  data: LeavingContemplationData;
   hasAccess: boolean;
 }
+
+// Least to most frequent, green to red.
+const OPTION_COLOURS: Record<string, string> = {
+  "Never": "#00C853",
+  "Rarely": "#81C784",
+  "Sometimes": "#FFD54F",
+  "Often": "#FFA726",
+  "All the Time": "#FF5252"
+};
 
 const LeavingContemplationChart: React.FC<LeavingContemplationChartProps> = ({
   data,
   hasAccess
 }) => {
-  const chartData = [{
-    name: "Your School",
-    "Strongly Disagree": data["Strongly Disagree"] || 0,
-    "Disagree": data["Disagree"] || 0,
-    "Agree": data["Agree"] || 0,
-    "Strongly Agree": data["Strongly Agree"] || 0
-  }];
-  
+  const toRow = (name: string, values: Record<string, number>) => ({
+    name,
+    ...Object.fromEntries(LEAVING_CONTEMPLATION_OPTIONS.map(option => [option, values[option] || 0]))
+  });
+
+  const chartData = [toRow("Your School", data.proportions)];
+
   const { benchmarks, label: nationalLabel, note } = useNationalBenchmarks();
 
   if (hasAccess) {
-    // This chart still uses the old agree/disagree labels for the frequency
-    // answers and leaves out "All the Time", so do the same to the national
-    // figures to keep the two rows comparable.
-    const national = nationalLeavingSplit(benchmarks);
-    const shown = national["Never"] + national["Rarely"] + national["Sometimes"] + national["Often"];
-    const share = (value: number) => (shown > 0 ? value / shown : 0);
-    chartData.push({
-      name: nationalLabel,
-      "Strongly Disagree": share(national["Never"]),
-      "Disagree": share(national["Rarely"]),
-      "Agree": share(national["Sometimes"]),
-      "Strongly Agree": share(national["Often"])
-    });
+    chartData.push(toRow(nationalLabel, nationalLeavingSplit(benchmarks)));
   }
   
-  const hasData = Object.values(data).some(val => val > 0);
+  const hasData = data.total > 0;
   
   return (
     <Card className="p-6 h-full">
       <h3 className="text-lg mb-4 font-semibold">Staff Contemplating Leaving</h3>
       <div className="h-52">
         <ResponsiveContainer width="100%" height="100%">
-          {hasData ? <BarChart data={chartData} layout="vertical" barSize={30} margin={{
+          {hasData ? <BarChart data={chartData} layout="vertical" stackOffset="expand" barSize={30} margin={{
           top: 5,
           right: 30,
           left: 20,
@@ -62,10 +59,9 @@ const LeavingContemplationChart: React.FC<LeavingContemplationChartProps> = ({
               <Legend wrapperStyle={{
                 fontSize: '10px'
               }} iconSize={8} layout="horizontal" verticalAlign="bottom" />
-              <Bar dataKey="Strongly Disagree" stackId="a" fill="#FF5252" />
-              <Bar dataKey="Disagree" stackId="a" fill="#FFA726" />
-              <Bar dataKey="Agree" stackId="a" fill="#81C784" />
-              <Bar dataKey="Strongly Agree" stackId="a" fill="#00C853" />
+              {LEAVING_CONTEMPLATION_OPTIONS.map(option => (
+                <Bar key={option} dataKey={option} stackId="a" fill={OPTION_COLOURS[option]} />
+              ))}
             </BarChart> : <div className="flex items-center justify-center h-full">
               <p className="text-gray-500">No data available</p>
             </div>}
@@ -83,7 +79,7 @@ const LeavingContemplationChart: React.FC<LeavingContemplationChartProps> = ({
         </div>
       )}
       <p className="text-xs text-gray-500 text-center mt-2">
-        Responses to: "I have considered leaving this organization in the past year"
+        Responses to: "In the last 6 months I have contemplated leaving my role"
       </p>
       {hasAccess && <p className="text-xs text-gray-400 text-center mt-1">{note}</p>}
     </Card>

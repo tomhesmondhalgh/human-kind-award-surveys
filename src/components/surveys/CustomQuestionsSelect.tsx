@@ -55,6 +55,7 @@ const CustomQuestionsSelect: React.FC<CustomQuestionsSelectProps> = ({
           Add your own custom questions to this survey. This feature requires a Foundation, Progress, or Premium plan.
         </p>
         <Button 
+          type="button"
           onClick={() => window.location.href = '/upgrade'} 
           variant="default"
           className="w-full sm:w-auto"

@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 import Stripe from "https://esm.sh/stripe@13.9.0";
 import { isAllowedOrigin } from "../_shared/http.ts";
+import { planTypeFromPlanName } from "../_shared/subscriptions.ts";
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "");
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
@@ -94,8 +95,18 @@ serve(async (req: Request) => {
 
     // Extract the stripe_price_id from the plan (server-side only)
     const stripePriceId = planData.stripe_price_id;
-    const planType = planData.name.toLowerCase();
+    const planType = planTypeFromPlanName(planData.name);
     const purchaseType = planData.purchase_type || 'subscription';
+
+    // The webhook writes plan_type into an enum column after the customer has
+    // paid, so an unrecognised plan name must be caught before checkout.
+    if (!planType) {
+      console.error('Plan name does not map to a plan type:', planData.name);
+      return new Response(
+        JSON.stringify({ error: `Plan "${planData.name}" is not set up for online payment. Please contact us.` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (!stripePriceId) {
       console.error('Plan has no Stripe price ID:', planData.id);
@@ -123,8 +134,7 @@ serve(async (req: Request) => {
       cancelUrl
     });
 
-    // Fix: Set customer_creation only for 'payment' mode
-    const sessionOptions = {
+    const sessionOptions: Record<string, unknown> = {
       mode: purchaseType === 'subscription' ? 'subscription' : 'payment',
       line_items: [
         {
@@ -142,21 +152,53 @@ serve(async (req: Request) => {
       allow_promotion_codes: true,
     };
 
-    // Only add customer_creation for payment mode
-    if (purchaseType !== 'subscription') {
-      // @ts-ignore - Add customer_creation only for payment mode
+    if (purchaseType === 'subscription') {
+      // Copied onto the Stripe subscription so renewal (invoice.paid) events
+      // can be tied back to the user and plan.
+      sessionOptions.subscription_data = { metadata: { userId: user.id, planType } };
+    } else {
       sessionOptions.customer_creation = 'always';
     }
 
-    const session = await stripe.checkout.sessions.create(sessionOptions);
+    // One pending row per user and plan: reuse it on repeat attempts so
+    // abandoned checkouts don't pile up. get_user_subscription ignores pending
+    // rows while an active plan exists, so this never hides a paid plan.
+    const { data: pendingRows, error: pendingError } = await supabase
+      .from('subscriptions')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('plan_type', planType)
+      .eq('status', 'pending')
+      .eq('payment_method', 'stripe')
+      .order('created_at', { ascending: false })
+      .limit(1);
+    if (pendingError) {
+      throw new Error(`Looking up pending subscription: ${pendingError.message}`);
+    }
 
-    await supabase.from('subscriptions').insert({
-      user_id: user.id,
-      plan_type: planType,
-      status: 'pending',
-      payment_method: 'stripe',
-      purchase_type: purchaseType,
-    });
+    if (pendingRows && pendingRows.length > 0) {
+      const { error: reuseError } = await supabase
+        .from('subscriptions')
+        .update({ purchase_type: purchaseType, updated_at: new Date().toISOString() })
+        .eq('id', pendingRows[0].id);
+      if (reuseError) {
+        throw new Error(`Updating pending subscription: ${reuseError.message}`);
+      }
+    } else {
+      const { error: insertError } = await supabase.from('subscriptions').insert({
+        user_id: user.id,
+        plan_type: planType,
+        status: 'pending',
+        payment_method: 'stripe',
+        purchase_type: purchaseType,
+      });
+      if (insertError) {
+        throw new Error(`Creating pending subscription: ${insertError.message}`);
+      }
+    }
+
+    // deno-lint-ignore no-explicit-any
+    const session = await stripe.checkout.sessions.create(sessionOptions as any);
 
     console.log('Session created successfully:', {
       sessionId: session.id,

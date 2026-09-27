@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
 import PageContainer from '../components/layout/PageContainer';
 import PageTitle from '../components/ui/PageTitle';
 import SurveyList from '../components/surveys/SurveyList';
+import SurveyLiveDialog, { LiveSurveyInfo } from '../components/surveys/SurveyLiveDialog';
 import Pagination from '../components/surveys/Pagination';
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { useIsMobile } from '../hooks/use-mobile';
-import { sendSurveyReminder } from '../utils/survey/sendReminder';
 import { AlertCircle, Archive, Eye, EyeOff, HelpCircle } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Skeleton } from '../components/ui/skeleton';
@@ -85,7 +85,19 @@ const Surveys = () => {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const isMobile = useIsMobile();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [liveSurvey, setLiveSurvey] = useState<LiveSurveyInfo | null>(null);
 
+  // Arriving from a successful publish: show the "Your survey is live" dialog
+  // once, then clear the router state so a refresh doesn't reopen it.
+  useEffect(() => {
+    const published = (location.state as { publishedSurvey?: LiveSurveyInfo } | null)?.publishedSurvey;
+    if (published) {
+      setLiveSurvey(published);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.state, location.pathname, navigate]);
 
   useEffect(() => {
     const fetchSurveys = async () => {
@@ -182,11 +194,7 @@ const Surveys = () => {
             }),
             status,
             responseCount: template.survey_responses.length > 0 ? template.survey_responses[0].count : 0,
-            closeDate: template.close_date ? new Date(template.close_date).toLocaleDateString('en-GB', { 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            }) : undefined,
+            closeDate: template.close_date ?? undefined,
             url: `${window.location.origin}/survey/${template.id}`,
             formattedDate: new Date(template.date).toLocaleDateString('en-GB', {
               month: 'long',
@@ -235,27 +243,11 @@ const Surveys = () => {
     fetchSurveys();
   }, [user, currentOrganization, currentPage, refreshFlag, orgLoading, showArchived]);
 
-  const handleSendReminder = async (id: string) => {
-    console.log(`Sending reminder for survey ${id}`);
-    
-    const success = await sendSurveyReminder(id);
-    
-    if (success) {
-      toast.success("Reminder sent successfully!", {
-        description: "Your staff will receive an email reminder shortly."
-      });
-    }
-  };
-
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo(0, 0);
   };
   
-  const refreshSurveys = () => {
-    setRefreshFlag(prev => prev + 1);
-  };
-
   const totalPages = Math.ceil(totalSurveys / SURVEYS_PER_PAGE);
 
   // Show loading state while organization context is loading
@@ -426,8 +418,12 @@ const Surveys = () => {
                 <div aria-live="polite">
                   <SurveyList 
                     surveys={surveys} 
-                    onSendReminder={handleSendReminder}
-                    refreshList={refreshSurveys}
+                    onShare={(survey) => setLiveSurvey({
+                      id: survey.id,
+                      name: survey.name,
+                      closeDate: survey.closeDate,
+                      distributionMethod: 'link'
+                    })}
                     userRole={currentOrganization?.role}
                   />
                 </div>
@@ -445,6 +441,11 @@ const Surveys = () => {
             )}
           </>
         )}
+        <SurveyLiveDialog
+          survey={liveSurvey}
+          schoolName={currentOrganization.name}
+          onClose={() => setLiveSurvey(null)}
+        />
       </PageContainer>
     </MainLayout>
   );

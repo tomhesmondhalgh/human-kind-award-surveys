@@ -11,6 +11,65 @@ const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
 );
 
+const IN_CHUNK = 100;
+
+function chunks<T>(items: T[], size = IN_CHUNK): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+// Survey and response totals per user, summed over the organisations each
+// user is a member of.
+async function countSurveysAndResponses(userIds: string[]) {
+  const surveyCounts: Record<string, number> = {};
+  const responseCounts: Record<string, number> = {};
+  if (userIds.length === 0) return { surveyCounts, responseCounts };
+
+  const memberships: { user_id: string; organization_id: string }[] = [];
+  for (const ids of chunks(userIds)) {
+    const { data, error } = await supabaseAdmin
+      .from('organization_memberships')
+      .select('user_id, organization_id')
+      .in('user_id', ids);
+    if (error) throw new Error(`Loading memberships: ${error.message}`);
+    memberships.push(...(data ?? []));
+  }
+
+  const orgIds = [...new Set(memberships.map((m) => m.organization_id))];
+  const surveysByOrg: Record<string, string[]> = {};
+  for (const ids of chunks(orgIds)) {
+    const { data, error } = await supabaseAdmin
+      .from('survey_templates')
+      .select('id, organization_id')
+      .in('organization_id', ids);
+    if (error) throw new Error(`Loading surveys: ${error.message}`);
+    for (const survey of data ?? []) {
+      (surveysByOrg[survey.organization_id] ??= []).push(survey.id);
+    }
+  }
+
+  const responsesByOrg: Record<string, number> = {};
+  await Promise.all(orgIds.map(async (orgId) => {
+    let total = 0;
+    for (const ids of chunks(surveysByOrg[orgId] ?? [])) {
+      const { count, error } = await supabaseAdmin
+        .from('survey_responses')
+        .select('id', { count: 'exact', head: true })
+        .in('survey_template_id', ids);
+      if (error) throw new Error(`Counting responses: ${error.message}`);
+      total += count ?? 0;
+    }
+    responsesByOrg[orgId] = total;
+  }));
+
+  for (const { user_id, organization_id } of memberships) {
+    surveyCounts[user_id] = (surveyCounts[user_id] ?? 0) + (surveysByOrg[organization_id]?.length ?? 0);
+    responseCounts[user_id] = (responseCounts[user_id] ?? 0) + (responsesByOrg[organization_id] ?? 0);
+  }
+  return { surveyCounts, responseCounts };
+}
+
 // Handle CORS preflight requests
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -136,44 +195,9 @@ Deno.serve(async (req) => {
         });
       }
       
-      // Get survey counts and response counts for all users
-      const surveyCounts: Record<string, number> = {};
-      const responseCounts: Record<string, number> = {};
-      
-      // This could be optimized further, but for now we'll keep it for consistency
-      await Promise.all(userIds.map(async (userId) => {
-        // Count surveys
-        const { count: surveyCount, error: surveyError } = await supabaseAdmin
-          .from('survey_templates')
-          .select('id', { count: 'exact', head: true })
-          .eq('creator_id', userId);
-          
-        if (!surveyError) {
-          surveyCounts[userId] = surveyCount || 0;
-        }
-        
-        // Get survey IDs for this user
-        const { data: surveys, error: surveysError } = await supabaseAdmin
-          .from('survey_templates')
-          .select('id')
-          .eq('creator_id', userId);
-          
-        if (!surveysError && surveys && surveys.length > 0) {
-          const surveyIds = surveys.map(s => s.id);
-          
-          // Count responses across all surveys
-          const { count: responseCount, error: responseError } = await supabaseAdmin
-            .from('survey_responses')
-            .select('id', { count: 'exact', head: true })
-            .in('survey_template_id', surveyIds);
-            
-          if (!responseError) {
-            responseCounts[userId] = responseCount || 0;
-          }
-        } else {
-          responseCounts[userId] = 0;
-        }
-      }));
+      // Surveys belong to organisations, so a user's counts are those of the
+      // organisation(s) they belong to.
+      const { surveyCounts, responseCounts } = await countSurveysAndResponses(userIds);
       
       // Get admin statuses for all users
       const adminStatuses: Record<string, boolean> = {};
@@ -285,43 +309,9 @@ Deno.serve(async (req) => {
         });
       }
       
-      // Get survey counts and response counts for each user
-      const surveyCounts: Record<string, number> = {};
-      const responseCounts: Record<string, number> = {};
-      
-      await Promise.all(userIds.map(async (userId) => {
-        // Count surveys
-        const { count: surveyCount, error: surveyError } = await supabaseAdmin
-          .from('survey_templates')
-          .select('id', { count: 'exact', head: true })
-          .eq('creator_id', userId);
-          
-        if (!surveyError) {
-          surveyCounts[userId] = surveyCount || 0;
-        }
-        
-        // Get survey IDs for this user
-        const { data: surveys, error: surveysError } = await supabaseAdmin
-          .from('survey_templates')
-          .select('id')
-          .eq('creator_id', userId);
-          
-        if (!surveysError && surveys && surveys.length > 0) {
-          const surveyIds = surveys.map(s => s.id);
-          
-          // Count responses across all surveys
-          const { count: responseCount, error: responseError } = await supabaseAdmin
-            .from('survey_responses')
-            .select('id', { count: 'exact', head: true })
-            .in('survey_template_id', surveyIds);
-            
-          if (!responseError) {
-            responseCounts[userId] = responseCount || 0;
-          }
-        } else {
-          responseCounts[userId] = 0;
-        }
-      }));
+      // Surveys belong to organisations, so a user's counts are those of the
+      // organisation(s) they belong to.
+      const { surveyCounts, responseCounts } = await countSurveysAndResponses(userIds);
       
       // Get admin statuses for all users
       const adminStatuses: Record<string, boolean> = {};

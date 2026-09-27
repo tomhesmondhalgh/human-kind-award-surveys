@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+import { answersForSurvey } from "../_shared/surveyResponses.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -118,6 +119,32 @@ serve(async (req) => {
       );
     }
 
+    // Custom answers must be for questions on this survey.
+    let customAnswers = validatedData.custom_responses ?? [];
+    if (customAnswers.length > 0) {
+      const { data: surveyQuestions, error: questionsError } = await supabase
+        .from('survey_questions')
+        .select('question_id')
+        .eq('survey_id', validatedData.survey_template_id);
+
+      if (questionsError) {
+        console.error('Error loading survey questions:', questionsError);
+        return new Response(
+          JSON.stringify({ error: 'An error occurred while submitting your response' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { kept, dropped } = answersForSurvey(
+        customAnswers,
+        (surveyQuestions ?? []).map((q: { question_id: string }) => q.question_id)
+      );
+      if (dropped.length > 0) {
+        console.warn(`Dropped ${dropped.length} custom answer(s) for questions not on survey ${validatedData.survey_template_id}`);
+      }
+      customAnswers = kept;
+    }
+
     // Sanitize text fields (trim whitespace)
     const sanitizedResponse = {
       survey_template_id: validatedData.survey_template_id,
@@ -154,8 +181,8 @@ serve(async (req) => {
     console.log('Survey response created:', responseData.id);
 
     // Insert custom question responses if provided
-    if (validatedData.custom_responses && validatedData.custom_responses.length > 0) {
-      const customResponses = validatedData.custom_responses.map(cr => ({
+    if (customAnswers.length > 0) {
+      const customResponses = customAnswers.map(cr => ({
         response_id: responseData.id,
         question_id: cr.question_id,
         answer: cr.answer.trim(),

@@ -1,6 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import { isPaidPlanType, paymentStatusEndsAccess, planTypeFromPlanName } from "../_shared/subscriptions.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -36,18 +37,27 @@ async function handleCreateInvoiceRequest(
   const { planType, purchaseType, billingDetails } = data;
   
   try {
-    // Get plan details from the database using case-insensitive comparison
-    const { data: planData, error: planError } = await supabase
+    const requestedPlan = typeof planType === 'string' ? planType.toLowerCase() : planType;
+    if (!isPaidPlanType(requestedPlan)) {
+      return new Response(JSON.stringify({ error: `Unknown plan "${planType}"` }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    const { data: activePlans, error: planError } = await supabase
       .from('plans')
       .select('*')
-      .ilike('name', planType)
-      .eq('is_active', true)
-      .maybeSingle();
+      .eq('is_active', true);
 
     if (planError) {
       console.error('Error retrieving plan from database:', planError);
       throw new Error('Failed to retrieve plan details');
     }
+
+    const planData = (activePlans ?? []).find(
+      (p: { name: string }) => planTypeFromPlanName(p.name) === requestedPlan
+    );
 
     if (!planData) {
       console.error('Plan not found:', planType);
@@ -64,53 +74,109 @@ async function handleCreateInvoiceRequest(
       priceInPounds
     });
     
-    console.log("Creating subscription record for user:", user.id);
-    
-    // Create a subscription record with payment_method 'invoice'
-    const { data: subscription, error: subscriptionError } = await supabase
+    // A repeat request for the same plan reuses the outstanding invoice
+    // request instead of creating another pending subscription and invoice.
+    const { data: pendingSubs, error: pendingError } = await supabase
       .from('subscriptions')
-      .insert({
-        user_id: user.id,
-        plan_type: planType.toLowerCase(),
-        status: 'pending',
-        payment_method: 'invoice',
-        purchase_type: purchaseType,
-      })
-      .select()
-      .single();
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('plan_type', requestedPlan)
+      .eq('status', 'pending')
+      .eq('payment_method', 'invoice')
+      .order('created_at', { ascending: false })
+      .limit(1);
 
-    if (subscriptionError) {
-      console.error('Error creating subscription:', subscriptionError);
+    if (pendingError) {
+      console.error('Error looking up pending subscription:', pendingError);
       throw new Error('Failed to create subscription record');
     }
 
-    console.log("Subscription created:", subscription.id);
+    let subscription = pendingSubs?.[0];
+    if (subscription) {
+      const { error: reuseError } = await supabase
+        .from('subscriptions')
+        .update({ purchase_type: purchaseType, updated_at: new Date().toISOString() })
+        .eq('id', subscription.id);
+      if (reuseError) {
+        console.error('Error updating pending subscription:', reuseError);
+        throw new Error('Failed to create subscription record');
+      }
+    } else {
+      const { data: created, error: subscriptionError } = await supabase
+        .from('subscriptions')
+        .insert({
+          user_id: user.id,
+          plan_type: requestedPlan,
+          status: 'pending',
+          payment_method: 'invoice',
+          purchase_type: purchaseType,
+        })
+        .select('id')
+        .single();
 
-    // payment_history amounts are in pounds (plans.price is in pence)
-    const { data: payment, error: paymentError } = await supabase
+      if (subscriptionError) {
+        console.error('Error creating subscription:', subscriptionError);
+        throw new Error('Failed to create subscription record');
+      }
+      subscription = created;
+    }
+
+    console.log("Subscription record:", subscription.id);
+
+    const paymentFields = {
+      amount: priceInPounds, // payment_history amounts are in pounds (plans.price is in pence)
+      currency: planData.currency || 'GBP',
+      billing_school_name: billingDetails.schoolName,
+      billing_address: billingDetails.address,
+      billing_contact_name: billingDetails.contactName,
+      billing_contact_email: billingDetails.contactEmail,
+    };
+
+    const { data: openPayments, error: openPaymentError } = await supabase
       .from('payment_history')
-      .insert({
-        subscription_id: subscription.id,
-        payment_method: 'invoice',
-        amount: priceInPounds,
-        currency: planData.currency || 'GBP',
-        payment_status: 'pending',
-        billing_school_name: billingDetails.schoolName,
-        billing_address: billingDetails.address,
-        billing_contact_name: billingDetails.contactName,
-        billing_contact_email: billingDetails.contactEmail,
-        billing_postcode: '', // Add if needed in the future
-        invoice_number: '', // Will be assigned by admin later
-      })
-      .select()
-      .single();
+      .select('id')
+      .eq('subscription_id', subscription.id)
+      .eq('payment_status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(1);
 
-    if (paymentError) {
-      console.error('Error creating payment record:', paymentError);
+    if (openPaymentError) {
+      console.error('Error looking up pending payment:', openPaymentError);
       throw new Error('Failed to create payment record');
     }
 
-    console.log("Payment record created:", payment.id);
+    let payment = openPayments?.[0];
+    if (payment) {
+      const { error: updatePaymentError } = await supabase
+        .from('payment_history')
+        .update(paymentFields)
+        .eq('id', payment.id);
+      if (updatePaymentError) {
+        console.error('Error updating payment record:', updatePaymentError);
+        throw new Error('Failed to create payment record');
+      }
+    } else {
+      const { data: created, error: paymentError } = await supabase
+        .from('payment_history')
+        .insert({
+          ...paymentFields,
+          subscription_id: subscription.id,
+          payment_method: 'invoice',
+          payment_status: 'pending',
+          billing_postcode: '', // Add if needed in the future
+          invoice_number: '', // Will be assigned by admin later
+        })
+        .select('id')
+        .single();
+
+      if (paymentError) {
+        console.error('Error creating payment record:', paymentError);
+        throw new Error('Failed to create payment record');
+      }
+      payment = created;
+    }
+
+    console.log("Payment record:", payment.id);
 
     return new Response(JSON.stringify({ 
       success: true, 
@@ -267,13 +333,14 @@ async function handleUpdatePaymentStatus(
         
         console.log("Subscription updated successfully");
 
-        // Also update any other pending subscriptions for this user with the same plan type to inactive
-        // This ensures only one subscription per plan type is active at a time
+        // Cancel any other pending rows for this user and plan (abandoned
+        // checkouts or duplicate requests) now that one has been paid.
         if (subscription && subscription.user_id) {
           const { error: deactivateError } = await supabase
             .from('subscriptions')
             .update({
-              status: 'inactive'
+              status: 'canceled',
+              updated_at: new Date().toISOString()
             })
             .eq('user_id', subscription.user_id)
             .eq('plan_type', subscription.plan_type)
@@ -292,6 +359,24 @@ async function handleUpdatePaymentStatus(
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+    }
+
+    // A refunded or cancelled payment ends the plan it paid for.
+    if (paymentStatusEndsAccess(status) && payment?.subscription_id) {
+      const now = new Date().toISOString();
+      const { error: cancelError } = await supabase
+        .from('subscriptions')
+        .update({ status: 'canceled', end_date: now, updated_at: now })
+        .eq('id', payment.subscription_id);
+
+      if (cancelError) {
+        console.error("Error cancelling subscription:", cancelError);
+        return new Response(
+          JSON.stringify({ error: 'Payment updated but the subscription could not be cancelled', details: cancelError }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      console.log("Subscription cancelled after payment marked", status, payment.subscription_id);
     }
 
     return new Response(

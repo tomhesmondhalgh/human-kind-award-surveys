@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { emailLinkType, verifyEmailLink } from '@/utils/auth/verifyEmailLink';
 
 const LOGIN_VERSION = 'main_login_component_v2';
 
@@ -163,6 +164,36 @@ const Login = () => {
     };
     
     verifyEmailToken();
+  }, [location.search, navigate]);
+
+  // Email-change and magic-link emails also land here, with their own type.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token');
+    const type = emailLinkType(params.get('type'));
+    if (!token || !type) return;
+
+    setIsVerifyingToken(true);
+    verifyEmailLink(token, type)
+      .then((result) => {
+        if (result.status === 'email_updated') {
+          toast.success('Email address updated');
+          navigate('/dashboard', { replace: true });
+        } else if (result.status === 'email_change_pending') {
+          toast.success('Confirmation received', {
+            description: 'Please also click the link we sent to your other email address to finish the change.'
+          });
+          navigate('/login', { replace: true });
+        } else if (result.status === 'signed_in') {
+          navigate('/dashboard', { replace: true });
+        } else {
+          toast.error('This link could not be used', {
+            description: 'It may have expired or already been used. Please try again.'
+          });
+          navigate('/login', { replace: true });
+        }
+      })
+      .finally(() => setIsVerifyingToken(false));
   }, [location.search, navigate]);
 
   const getReturnPath = () => {

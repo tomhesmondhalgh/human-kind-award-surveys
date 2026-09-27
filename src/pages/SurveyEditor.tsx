@@ -20,6 +20,8 @@ import { sendUserToHubspot } from '../utils/auth';
 import ArchiveSurveyDialog from '../components/surveys/ArchiveSurveyDialog';
 import { validateEmails } from '../utils/survey/sendReminder';
 import { OrganizationPermissionValidator } from '@/utils/organizationPermissions';
+import { toEndOfLocalDay } from '@/utils/survey/closeDate';
+import type { LiveSurveyInfo } from '../components/surveys/SurveyLiveDialog';
 
 const SurveyEditor = () => {
   const { id } = useParams<{ id: string }>();
@@ -116,7 +118,7 @@ const SurveyEditor = () => {
     }
   };
 
-  const handleSubmit = async (data: SurveyFormData, selectedCustomQuestionIds: string[], action?: 'save' | 'preview' | 'send') => {
+  const handleSubmit = async (data: SurveyFormData, selectedCustomQuestionIds: string[], action: 'preview' | 'send') => {
     try {
       setIsSubmitting(true);
       console.log('Survey data to be saved:', data);
@@ -179,7 +181,7 @@ const SurveyEditor = () => {
       }
 
       const surveyDate = new Date(data.date);
-      const closeDate = data.closeDate ? new Date(data.closeDate) : null;
+      const closeDate = data.closeDate ? toEndOfLocalDay(new Date(data.closeDate)) : null;
       
       // Determine the emails value based on the distribution method
       const emailsValue = data.distributionMethod === 'email' ? (data.recipients ?? '') : '';
@@ -226,16 +228,6 @@ const SurveyEditor = () => {
             description: errorMessage
           });
           throw new Error(errorMessage);
-        }
-        
-        // Delete existing question links before adding new ones
-        const { error: deleteError } = await supabase
-          .from('survey_questions')
-          .delete()
-          .eq('survey_id', savedSurveyId);
-          
-        if (deleteError) {
-          console.error('Error removing existing custom question links:', deleteError);
         }
       } else {
         // Only create a new survey if we don't have a saved ID yet
@@ -299,20 +291,8 @@ const SurveyEditor = () => {
         }
       }
       
-      // Link custom questions
-      if (selectedCustomQuestionIds.length > 0 && newSurveyId) {
-        const surveyQuestionLinks = selectedCustomQuestionIds.map(questionId => ({
-          survey_id: newSurveyId,
-          question_id: questionId
-        }));
-        
-        const { error: linkError } = await supabase
-          .from('survey_questions')
-          .insert(surveyQuestionLinks);
-          
-        if (linkError) {
-          console.error('Error linking custom questions:', linkError);
-        }
+      if (newSurveyId) {
+        await syncCustomQuestionLinks(newSurveyId, selectedCustomQuestionIds);
       }
       
       // Update local state with the saved data
@@ -326,24 +306,15 @@ const SurveyEditor = () => {
       if (action === 'preview') {
         window.open(`/survey/${newSurveyId}?preview=true`, '_blank');
       } else if (action === 'send') {
-        await handleSendEmails(newSurveyId!, data.distributionMethod, emailsValue);
-        navigate('/surveys');
-      } else if (action === 'save') {
-        // Display success message
-        toast.success("Survey published successfully", {
-          description: "Your survey is now live and ready to share."
-        });
-        navigate('/surveys');
-      } else {
-        // Default case, just show a success message
-        const successMessage = isEditMode ? "Survey updated successfully" : "Survey created successfully!";
-        const successDescription = isEditMode 
-          ? "Your survey has been updated and saved." 
-          : "Your survey has been saved. You can now preview or publish it.";
-        
-        toast.success(successMessage, {
-          description: successDescription
-        });
+        const sendResult = await handleSendEmails(newSurveyId!, data.distributionMethod, emailsValue, data.name);
+        const publishedSurvey: LiveSurveyInfo = {
+          id: newSurveyId!,
+          name: data.name,
+          closeDate: closeDate ? closeDate.toISOString() : null,
+          ...sendResult
+        };
+        // The Surveys page opens the "Your survey is live" dialog from this state.
+        navigate('/surveys', { state: { publishedSurvey } });
       }
       
       return newSurveyId;
@@ -361,6 +332,49 @@ const SurveyEditor = () => {
   };
 
 
+  // Only remove links the user deselected and only add new ones, so a failure
+  // part-way can't leave a live survey with none of its custom questions.
+  const syncCustomQuestionLinks = async (surveyId: string, selectedIds: string[]) => {
+    const { data: existingLinks, error: fetchError } = await supabase
+      .from('survey_questions')
+      .select('question_id')
+      .eq('survey_id', surveyId);
+
+    if (fetchError) {
+      console.error('Error loading existing custom question links:', fetchError);
+      throw new Error('The survey was saved, but its custom questions could not be updated. Please try again.');
+    }
+
+    const existingIds = new Set((existingLinks || []).map(link => link.question_id));
+    const selected = new Set(selectedIds);
+    const toRemove = [...existingIds].filter(questionId => !selected.has(questionId));
+    const toAdd = [...selected].filter(questionId => !existingIds.has(questionId));
+
+    if (toRemove.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('survey_questions')
+        .delete()
+        .eq('survey_id', surveyId)
+        .in('question_id', toRemove);
+
+      if (deleteError) {
+        console.error('Error removing custom question links:', deleteError);
+        throw new Error('The survey was saved, but removing custom questions failed. Please try again.');
+      }
+    }
+
+    if (toAdd.length > 0) {
+      const { error: insertError } = await supabase
+        .from('survey_questions')
+        .insert(toAdd.map(questionId => ({ survey_id: surveyId, question_id: questionId })));
+
+      if (insertError) {
+        console.error('Error linking custom questions:', insertError);
+        throw new Error('The survey was saved, but adding custom questions failed. Please try again.');
+      }
+    }
+  };
+
   const handlePreviewSurvey = async (data: SurveyFormData, selectedCustomQuestionIds: string[]) => {
     await handleSubmit(data, selectedCustomQuestionIds, 'preview');
   };
@@ -369,78 +383,43 @@ const SurveyEditor = () => {
     await handleSubmit(data, selectedCustomQuestionIds, 'send');
   };
   
-  const handleSendEmails = async (surveyId: string, distributionMethod: 'link' | 'email', emails: string) => {
+  const handleSendEmails = async (
+    surveyId: string,
+    distributionMethod: 'link' | 'email',
+    emails: string,
+    surveyName: string
+  ): Promise<Pick<LiveSurveyInfo, 'distributionMethod' | 'invitationsSent' | 'emailFailed'>> => {
+    if (distributionMethod === 'link' || !emails || emails.trim() === '') {
+      return { distributionMethod: 'link' };
+    }
+
+    const { validEmails, invalidEmails } = validateEmails(emails);
+    if (invalidEmails.length > 0 || validEmails.length === 0) {
+      return { distributionMethod: 'email', emailFailed: true };
+    }
+
     try {
-      // For link distribution, we've already marked the survey as sent
-      if (distributionMethod === 'link' || !emails || emails.trim() === '') {
-        toast.success("Survey published successfully", {
-          description: "Your survey is now live. Use the shareable link below to distribute to participants."
-        });
-        return;
-      }
-      
-      // Validate emails before sending
-      const { validEmails, invalidEmails } = validateEmails(emails);
-      
-      console.log('Email validation results:', { 
-        totalEmails: emails.split(',').length,
-        validCount: validEmails.length, 
-        invalidCount: invalidEmails.length,
-        validEmails: validEmails,
-        invalidEmails: invalidEmails
-      });
-      
-      if (invalidEmails.length > 0) {
-        toast.error(`Found ${invalidEmails.length} invalid email ${invalidEmails.length === 1 ? 'address' : 'addresses'}`, {
-          description: `Invalid: ${invalidEmails.join(', ')}. Please correct these before sending.`
-        });
-        return;
-      }
-      
-      if (validEmails.length === 0) {
-        toast.info("No valid email recipients found", {
-          description: "Use the survey link to share with participants."
-        });
-        return;
-      }
-      
-      const baseUrl = window.location.origin;
-      const surveyUrl = `${baseUrl}/survey/${surveyId}`;
-      
-      console.log('Sending survey emails to:', validEmails);
-      console.log('Survey URL:', surveyUrl);
-      
-      // Build request payload for edge function
-      const payload = { 
-        surveyId: surveyId,
-        surveyName: surveyData?.name || "Wellbeing Survey",
-        emails: validEmails,
-        surveyUrl: surveyUrl,
-        isReminder: false
-      };
-      
-      console.log('Edge function payload:', payload);
-      
-      // Send emails
       const { data, error } = await supabase.functions.invoke('send-survey-email', {
-        body: payload
+        body: {
+          surveyId,
+          surveyName: surveyName || "Wellbeing Survey",
+          emails: validEmails,
+          surveyUrl: `${window.location.origin}/survey/${surveyId}`,
+          isReminder: false
+        }
       });
-      
-      if (error) {
-        console.error('Error invoking send-survey-email function:', error);
-        throw error;
+
+      if (error || (data && data.success === false) || data?.count === 0) {
+        throw error || new Error(data?.error || 'Failed to send invitations');
       }
-      
-      console.log('Send survey email response:', data);
-      
-      toast.success("Invitations sent successfully!", {
-        description: `Email invitations sent to ${data?.count || validEmails.length} recipients.`
-      });
+
+      return {
+        distributionMethod: 'email',
+        invitationsSent: typeof data?.count === 'number' ? data.count : validEmails.length
+      };
     } catch (error) {
       console.error('Error sending survey emails:', error);
-      toast.error("Failed to send survey emails", {
-        description: "The survey has been saved and marked as sent, but there was an issue sending the emails."
-      });
+      return { distributionMethod: 'email', emailFailed: true };
     }
   };
 

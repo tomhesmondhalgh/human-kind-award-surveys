@@ -7,6 +7,7 @@ import {
   nationalRecommendationAverage,
 } from '@/utils/benchmarks';
 import { supabase } from '@/integrations/supabase/client';
+import { frequencyOptions } from '@/components/survey-form/constants';
 
 // Type definitions
 export interface SurveyOption {
@@ -154,34 +155,76 @@ export const getRecommendationScore = async (
   }
 };
 
+// The five answers the respondent form offers for "In the last 6 months I have
+// contemplated leaving my role", in chart order.
+export const LEAVING_CONTEMPLATION_OPTIONS = [...frequencyOptions];
+
+export interface LeavingContemplationData {
+  // Number of responses for each of LEAVING_CONTEMPLATION_OPTIONS.
+  counts: Record<string, number>;
+  // Share of responses for each option as a decimal (0-1), for stacked charts.
+  proportions: Record<string, number>;
+  total: number;
+}
+
+// Legacy / variant spellings seen or plausible in stored data.
+const LEAVING_ALIASES: Record<string, string> = {
+  'always': 'All the Time',
+  'all of the time': 'All the Time',
+};
+
+const normaliseLeavingAnswer = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null;
+  const key = value.trim().toLowerCase();
+  if (!key) return null;
+  const match = LEAVING_CONTEMPLATION_OPTIONS.find(option => option.toLowerCase() === key);
+  return match ?? LEAVING_ALIASES[key] ?? null;
+};
+
+export const emptyLeavingContemplation = (): LeavingContemplationData => {
+  const zeros = Object.fromEntries(LEAVING_CONTEMPLATION_OPTIONS.map(option => [option, 0]));
+  return { counts: { ...zeros }, proportions: { ...zeros }, total: 0 };
+};
+
+// Counts stored answers into the five form options. Unrecognised values are
+// logged and left out of both the counts and the total.
+export const summariseLeavingContemplation = (values: unknown[]): LeavingContemplationData => {
+  const result = emptyLeavingContemplation();
+  values.forEach(value => {
+    const option = normaliseLeavingAnswer(value);
+    if (option) {
+      result.counts[option]++;
+      result.total++;
+    } else if (value !== null && value !== undefined && value !== '') {
+      console.warn('Unrecognised leaving_contemplation value:', value);
+    }
+  });
+  if (result.total > 0) {
+    LEAVING_CONTEMPLATION_OPTIONS.forEach(option => {
+      result.proportions[option] = Math.round((result.counts[option] / result.total) * 100) / 100;
+    });
+  }
+  return result;
+};
+
 // Function to get leaving contemplation data
 export const getLeavingContemplation = async (
   surveyId: string, 
   startDate?: string, 
   endDate?: string
-): Promise<Record<string, number>> => {
+): Promise<LeavingContemplationData> => {
   try {
-    // Define the expected response categories
-    const emptyCounts: Record<string, number> = {
-      "Strongly Agree": 0,
-      "Agree": 0,
-      "Disagree": 0, 
-      "Strongly Disagree": 0
-    };
-    
-    // Try to get real data from Supabase
-    const query = supabase
+    let query = supabase
       .from('survey_responses')
       .select('leaving_contemplation')
       .eq('survey_template_id', surveyId)
-      .not('leaving_contemplation', 'is', null); // Only select non-null responses
+      .not('leaving_contemplation', 'is', null);
     
-    // Apply date filters if provided
     if (startDate) {
-      query.gte('created_at', startDate);
+      query = query.gte('created_at', startDate);
     }
     if (endDate) {
-      query.lte('created_at', endDate);
+      query = query.lte('created_at', endDate);
     }
     
     const { data, error } = await query;
@@ -191,56 +234,38 @@ export const getLeavingContemplation = async (
       throw error;
     }
     
-    // If no data, return empty structure
-    if (!data || data.length === 0) {
-      return emptyCounts;
-    }
-    
-    // Count responses for each option
-    const counts = { ...emptyCounts };
-    
-    // Map the database values to our expected categories
-    const valueMapping: Record<string, string> = {
-      'Often': 'Strongly Agree',
-      'Sometimes': 'Agree',
-      'Rarely': 'Disagree',
-      'Never': 'Strongly Disagree'
-    };
-    
-    data.forEach(response => {
-      const dbValue = response.leaving_contemplation;
-      if (dbValue) {
-        // Map the database value to the expected category
-        const mappedValue = valueMapping[dbValue] || dbValue;
-        if (counts[mappedValue] !== undefined) {
-          counts[mappedValue]++;
-        }
-      }
-    });
-    
-    console.log('Leaving contemplation data:', counts);
-    
-    // Convert to percentages for consistency with other charts
-    const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
-    const percentages: Record<string, number> = { ...emptyCounts };
-    
-    if (total > 0) {
-      Object.keys(percentages).forEach(key => {
-        percentages[key] = Math.round((counts[key] / total) * 100) / 100; // Return as decimal for stacked charts
-      });
-    }
-    
-    return percentages;
+    return summariseLeavingContemplation((data ?? []).map(row => row.leaving_contemplation));
   } catch (error) {
     console.error('Error in getLeavingContemplation:', error);
-    // Return empty structure instead of mock data
-    return {
-      "Strongly Agree": 0,
-      "Agree": 0,
-      "Disagree": 0, 
-      "Strongly Disagree": 0
-    };
+    return emptyLeavingContemplation();
   }
+};
+
+// Number of responses to a survey in the (optional) date range. This is the
+// real count used for the anonymity floor and the AI-summary minimum.
+export const getResponseCount = async (
+  surveyId: string,
+  startDate?: string,
+  endDate?: string
+): Promise<number> => {
+  let query = supabase
+    .from('survey_responses')
+    .select('id', { count: 'exact', head: true })
+    .eq('survey_template_id', surveyId);
+
+  if (startDate) {
+    query = query.gte('created_at', startDate);
+  }
+  if (endDate) {
+    query = query.lte('created_at', endDate);
+  }
+
+  const { count, error } = await query;
+  if (error) {
+    console.error('Error counting survey responses:', error);
+    throw error;
+  }
+  return count ?? 0;
 };
 
 // Function to get detailed wellbeing responses

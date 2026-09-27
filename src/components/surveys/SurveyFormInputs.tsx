@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { CalendarIcon } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { validateEmails } from '@/utils/survey/sendReminder';
+import { startOfDay, startOfToday } from 'date-fns';
 
 interface SurveyFormInputsProps {
   form: UseFormReturn<any>;
@@ -24,6 +25,7 @@ interface SurveyFormInputsProps {
 
 const SurveyFormInputs: React.FC<SurveyFormInputsProps> = ({ form }) => {
   const distributionMethod = form.watch('distributionMethod');
+  const startDate: Date | undefined = form.watch('date');
   
   const handleEmailBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const { value } = e.target;
@@ -146,7 +148,7 @@ const SurveyFormInputs: React.FC<SurveyFormInputsProps> = ({ form }) => {
                   mode="single"
                   selected={field.value}
                   onSelect={field.onChange}
-                  disabled={(date) => date < new Date()}
+                  disabled={(date) => date < startOfToday()}
                   initialFocus
                 />
               </PopoverContent>
@@ -186,7 +188,9 @@ const SurveyFormInputs: React.FC<SurveyFormInputsProps> = ({ form }) => {
                   mode="single"
                   selected={field.value}
                   onSelect={field.onChange}
-                  disabled={(date) => date < new Date()}
+                  disabled={(date) =>
+                    date < startOfToday() || (startDate ? date < startOfDay(startDate) : false)
+                  }
                   initialFocus
                 />
               </PopoverContent>

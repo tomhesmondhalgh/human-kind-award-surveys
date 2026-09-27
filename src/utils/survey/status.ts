@@ -9,7 +9,8 @@ import { SurveyTemplate } from "../types/survey";
  */
 export const isSurveyClosed = (survey: SurveyTemplate): boolean => {
   if (!survey.close_date) return false;
-  return new Date(survey.close_date) < new Date();
+  // Matches the database: open while close_date > now().
+  return new Date(survey.close_date) <= new Date();
 };
 
 /**

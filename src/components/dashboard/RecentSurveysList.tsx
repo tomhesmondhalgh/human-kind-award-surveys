@@ -69,7 +69,7 @@ const RecentSurveysList = ({ surveys, isLoading }: RecentSurveysListProps) => {
         <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-12 text-center">
           <h2 className="text-xl font-semibold mb-2">No surveys found</h2>
           <p className="text-gray-500 mb-6">You haven't created any surveys yet or no responses have been collected.</p>
-          <Link to="/new-survey" className="bg-brandPurple-500 hover:bg-brandPurple-600 text-white font-medium py-2 px-6 rounded-md transition-all duration-200 inline-block">
+          <Link to="/survey-editor" className="bg-brandPurple-500 hover:bg-brandPurple-600 text-white font-medium py-2 px-6 rounded-md transition-all duration-200 inline-block">
             Create Your First Survey
           </Link>
         </div>
@@ -94,7 +94,7 @@ const RecentSurveysList = ({ surveys, isLoading }: RecentSurveysListProps) => {
             </TableHeader>
             <TableBody>
               {surveys.map((survey) => {
-                const status = getSurveyStatus(survey.date, survey.close_date);
+                const status = getSurveyStatus(survey.date, survey.close_date, survey.status);
                 
                 return (
                   <TableRow key={survey.id}>
@@ -147,7 +147,7 @@ const RecentSurveysList = ({ surveys, isLoading }: RecentSurveysListProps) => {
       <h2 className="text-xl font-semibold mb-4">Most Recent Surveys</h2>
       <div className="space-y-4">
         {surveys.map((survey) => {
-          const status = getSurveyStatus(survey.date, survey.close_date);
+          const status = getSurveyStatus(survey.date, survey.close_date, survey.status);
           
           return (
             <Card key={survey.id} className="p-4">

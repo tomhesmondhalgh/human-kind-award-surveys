@@ -193,21 +193,29 @@ const OrganizationsList = () => {
     if (!user || !confirm("Are you sure you want to leave this organization?")) return;
     
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('organization_memberships')
         .delete()
         .eq('user_id', user.id)
-        .eq('organization_id', orgId);
+        .eq('organization_id', orgId)
+        .select('id');
         
       if (error) {
         throw error;
       }
+
+      // RLS reports a blocked delete as zero rows, not as an error.
+      if (!data || data.length === 0) {
+        throw new Error('You could not be removed from this organisation. Please contact an organisation admin.');
+      }
       
-      toast.success('Left organization successfully');
+      toast.success('Left organisation successfully');
       refreshOrganizations();
     } catch (error) {
       console.error('Error leaving organization:', error);
-      toast.error('Failed to leave organization');
+      toast.error('Failed to leave organisation', {
+        description: error instanceof Error ? error.message : undefined
+      });
     }
   };
 

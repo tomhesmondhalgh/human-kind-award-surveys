@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { functionErrorMessage } from '@/utils/functionError';
 
 interface InvitationData {
   email: string;
@@ -45,24 +46,9 @@ export async function sendTeamInvitation(data: InvitationData): Promise<Invitati
     if (error) {
       console.error('❌ Edge function error:', error);
       
-      // Try to extract the detailed error message from the response
-      let detailedError = error.message || 'Failed to send invitation';
-      
-      // If there's a context with more details, use that
-      if (error.context?.body) {
-        try {
-          const errorBody = typeof error.context.body === 'string' 
-            ? JSON.parse(error.context.body) 
-            : error.context.body;
-          
-          if (errorBody.error) {
-            detailedError = errorBody.error;
-          }
-        } catch (e) {
-          console.warn('Could not parse error body:', e);
-        }
-      }
-      
+      // The function's own message is in the JSON reply on error.context.
+      const detailedError = await functionErrorMessage(error, 'Failed to send invitation');
+
       return {
         success: false,
         error: detailedError

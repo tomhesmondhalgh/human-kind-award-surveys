@@ -17,6 +17,7 @@ interface SurveyControlsProps {
     to: Date | undefined;
   };
   exportLoading: boolean;
+  exportDisabled?: boolean;
   onSurveyChange: (value: string) => void;
   onTimeRangeChange: (value: string) => void;
   onCustomDateRangeChange: (range: {
@@ -33,6 +34,7 @@ const SurveyControls: React.FC<SurveyControlsProps> = ({
   selectedTimeRange,
   customDateRange,
   exportLoading,
+  exportDisabled = false,
   onSurveyChange,
   onTimeRangeChange,
   onCustomDateRangeChange,
@@ -150,7 +152,7 @@ const SurveyControls: React.FC<SurveyControlsProps> = ({
           variant="outline" 
           className="py-2 px-4 text-sm text-gray-700 w-full sm:w-auto" 
           onClick={onExportReport} 
-          disabled={exportLoading}
+          disabled={exportLoading || exportDisabled}
         >
           <Share className="h-4 w-4 mr-2" /> Export report
         </Button>
@@ -158,7 +160,7 @@ const SurveyControls: React.FC<SurveyControlsProps> = ({
           variant="outline" 
           className="py-2 px-4 text-sm text-gray-700 w-full sm:w-auto" 
           onClick={onExportPDF} 
-          disabled={exportLoading}
+          disabled={exportLoading || exportDisabled}
         >
           <Download className="h-4 w-4 mr-2" /> Download PDF
         </Button>

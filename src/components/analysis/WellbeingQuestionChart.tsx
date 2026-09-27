@@ -5,6 +5,9 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { Lock } from "lucide-react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
+import { Link } from "react-router-dom";
+import { ACTION_PLAN_SECTIONS } from "../../types/actionPlan";
+import { sectionForQuestionText } from "../../utils/surveyFramework";
 
 interface WellbeingQuestionChartProps {
   title: string;
@@ -17,6 +20,8 @@ const WellbeingQuestionChart: React.FC<WellbeingQuestionChartProps> = ({
   data,
   hasAccess
 }) => {
+  const sectionKey = sectionForQuestionText(title);
+  const section = ACTION_PLAN_SECTIONS.find(s => s.key === sectionKey);
   const chartData = [{
     name: "Your School",
     "Strongly Disagree": data.schoolResponses?.["Strongly Disagree"] || 0,
@@ -65,6 +70,17 @@ const WellbeingQuestionChart: React.FC<WellbeingQuestionChartProps> = ({
           </BarChart>
         </ResponsiveContainer>
       </div>
+      {section && (
+        <div className="mt-2 text-right">
+          <Link
+            to={`/improve?section=${section.key}`}
+            className="text-sm font-medium text-brandPurple-700 hover:underline"
+            aria-label={`Plan actions for ${section.title}`}
+          >
+            Plan actions for this &rarr;
+          </Link>
+        </div>
+      )}
       {!hasAccess && (
         <div className="mt-2 border border-gray-200 rounded-lg p-2 bg-gray-50 flex items-center text-xs">
           <Lock className="h-3 w-3 text-gray-400 mr-1" />

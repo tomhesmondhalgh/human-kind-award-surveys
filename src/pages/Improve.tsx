@@ -17,13 +17,20 @@ import BottomNavigation from '../components/action-plan/BottomNavigation';
 import ScreenOrientationOverlay from '../components/ui/ScreenOrientationOverlay';
 import { useOrientation } from '../hooks/useOrientation';
 import { useSubscription } from '../hooks/useSubscription';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import SurveyFocusAreas from '../components/action-plan/SurveyFocusAreas';
+import { useSectionSurveyScores } from '../hooks/useSectionSurveyScores';
 
 const Improve = () => {
   const { user } = useAuth();
   const { currentOrganization, isLoading: isOrgLoading, error: orgError, organizations } = useOrganization();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('summary');
+  const [searchParams] = useSearchParams();
+  // Links from the Analysis charts open a section directly with ?section=<key>.
+  const [activeTab, setActiveTab] = useState(() => {
+    const requested = searchParams.get('section');
+    return ACTION_PLAN_SECTIONS.some(section => section.key === requested) ? requested! : 'summary';
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [hasInitialized, setHasInitialized] = useState(() => {
     if (currentOrganization) {
@@ -39,6 +46,7 @@ const Improve = () => {
   const { hasAccess, isLoading: isSubscriptionLoading } = useSubscription();
   const [hasFoundationPlan, setHasFoundationPlan] = useState<boolean | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
+  const surveyScores = useSectionSurveyScores(hasFoundationPlan ? currentOrganization?.id : undefined);
 
   // Read initialization state when organization changes
   useEffect(() => {
@@ -309,6 +317,12 @@ const Improve = () => {
             </TabsList>
             
             <TabsContent value="summary" className="mt-6">
+              <SurveyFocusAreas
+                data={surveyScores.data}
+                isLoading={surveyScores.isLoading}
+                isError={surveyScores.isError}
+                onOpenSection={handleTabChange}
+              />
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {summaryData.map(section => (
                   <SectionSummary

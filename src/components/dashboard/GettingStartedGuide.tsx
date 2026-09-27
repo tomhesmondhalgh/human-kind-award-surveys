@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BookOpen, CheckCircle, List, Rocket } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { useAuth } from '@/contexts/AuthContext';
+import { useOrganization } from '@/contexts/OrganizationContext';
+import { supabase } from '@/integrations/supabase/client';
+import { getOnboardingProgress } from './onboardingProgress';
 
 interface OnboardingStep {
   id: string;
@@ -17,41 +20,43 @@ interface OnboardingStep {
   completed?: boolean;
 }
 
-const GettingStartedGuide = () => {
-  const { user } = useAuth();
+interface GettingStartedGuideProps {
+  totalSurveys: number | null;
+  totalRespondents: number | null;
+}
+
+// Step completion comes from the organisation's real data, not from clicks.
+const GettingStartedGuide = ({ totalSurveys, totalRespondents }: GettingStartedGuideProps) => {
+  const { currentOrganization } = useOrganization();
   const [open, setOpen] = useState(true);
-  const [completedSteps, setCompletedSteps] = useState<string[]>([]);
-  
-  // Load completed steps from localStorage on component mount
+  const [hasLiveSurvey, setHasLiveSurvey] = useState(false);
+
   useEffect(() => {
-    if (user) {
-      const localStorageKey = `completed-steps-${user.id}`;
-      const savedSteps = localStorage.getItem(localStorageKey);
-      
-      if (savedSteps) {
-        try {
-          const parsedSteps = JSON.parse(savedSteps);
-          if (Array.isArray(parsedSteps)) {
-            setCompletedSteps(parsedSteps);
-          }
-        } catch (error) {
-          console.error('Failed to parse completed steps from localStorage:', error);
+    if (!currentOrganization?.id) return;
+    let cancelled = false;
+    supabase
+      .from('survey_templates')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', currentOrganization.id)
+      .in('status', ['Sent', 'Completed'])
+      .then(({ count, error }) => {
+        if (error) {
+          console.error('Error checking for published surveys:', error);
+          return;
         }
-      }
-    }
-  }, [user]);
-  
-  const markStepComplete = (stepId: string) => {
-    if (!completedSteps.includes(stepId) && user) {
-      const updatedSteps = [...completedSteps, stepId];
-      setCompletedSteps(updatedSteps);
-      
-      // Save to localStorage using user ID to namespace the storage
-      const localStorageKey = `completed-steps-${user.id}`;
-      localStorage.setItem(localStorageKey, JSON.stringify(updatedSteps));
-    }
-  };
-  
+        if (!cancelled) setHasLiveSurvey((count ?? 0) > 0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentOrganization?.id]);
+
+  const done = getOnboardingProgress({
+    totalSurveys: totalSurveys ?? 0,
+    hasLiveSurvey,
+    totalRespondents: totalRespondents ?? 0,
+  });
+
   const onboardingSteps: OnboardingStep[] = [
     {
       id: 'create-survey',
@@ -60,20 +65,20 @@ const GettingStartedGuide = () => {
       icon: <List className="h-5 w-5 text-brandPurple-600" />,
       action: {
         text: 'Create Survey',
-        link: '/new-survey'
+        link: '/survey-editor'
       },
-      completed: completedSteps.includes('create-survey')
+      completed: done.createSurvey
     },
     {
       id: 'send-survey',
-      title: 'Send out your survey',
-      description: 'Share your survey with staff via email to collect responses.',
+      title: 'Publish and share your survey',
+      description: 'Publish your survey, then share the link or QR code with staff, or send email invitations.',
       icon: <Rocket className="h-5 w-5 text-orange-500" />,
       action: {
         text: 'View Surveys',
         link: '/surveys'
       },
-      completed: completedSteps.includes('send-survey')
+      completed: done.shareSurvey
     },
     {
       id: 'view-results',
@@ -84,7 +89,7 @@ const GettingStartedGuide = () => {
         text: 'Go to Analysis',
         link: '/analysis'
       },
-      completed: completedSteps.includes('view-results')
+      completed: done.getResponses
     },
     {
       id: 'explore-resources',
@@ -94,13 +99,12 @@ const GettingStartedGuide = () => {
       action: {
         text: 'View Resources',
         link: '/improve'
-      },
-      completed: completedSteps.includes('explore-resources')
+      }
     }
   ];
 
   // Calculate overall progress
-  const progress = Math.round((completedSteps.length / onboardingSteps.length) * 100);
+  const progress = done.percent;
   
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="mb-8">
@@ -157,12 +161,11 @@ const GettingStartedGuide = () => {
                       <Button 
                         variant={step.completed ? "outline" : "default"}
                         size="sm"
-                        onClick={() => markStepComplete(step.id)}
                         asChild
                       >
-                        <a href={step.action.link}>
-                          {step.completed ? 'Completed' : step.action.text}
-                        </a>
+                        <Link to={step.action.link}>
+                          {step.completed ? `Done: ${step.action.text}` : step.action.text}
+                        </Link>
                       </Button>
                     </div>
                   </div>
