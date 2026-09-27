@@ -1,6 +1,7 @@
 import React from 'react';
 import { BarChart3, TrendingUp, FileText, Info } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { MIN_RESPONSES_TO_SHOW_RESULTS } from '@/lib/anonymity';
 
 const EmptyAnalysisState = () => {
   return (
@@ -22,7 +23,7 @@ const EmptyAnalysisState = () => {
           </p>
           <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
             <Info className="h-4 w-4" />
-            <span>Analysis is available for surveys with at least one response</span>
+            <span>Results for a survey appear once at least {MIN_RESPONSES_TO_SHOW_RESULTS} colleagues have responded, to protect anonymity</span>
           </div>
         </CardContent>
       </Card>

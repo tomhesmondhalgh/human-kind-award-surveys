@@ -5,15 +5,21 @@ import RecommendationScoreSection from './RecommendationScoreSection';
 import LeavingContemplationChart from './LeavingContemplationChart';
 import WellbeingQuestionChart from './WellbeingQuestionChart';
 import TextResponsesSection from './TextResponsesSection';
+import ResultsHiddenNotice from './ResultsHiddenNotice';
+import { canShowResults } from '@/lib/anonymity';
+import type { LeavingContemplationData } from '@/utils/analysisUtils';
+import type { SummaryData } from '@/utils/summaryUtils';
 
 interface DataWrapperProps {
   isLoading: boolean;
-  summary: any;
+  responseCount: number;
+  dateFiltered: boolean;
+  summary: Partial<SummaryData>;
   recommendationScore: {
     score: number;
     nationalAverage: number;
   };
-  leavingContemplation: Record<string, number>;
+  leavingContemplation: LeavingContemplationData;
   detailedResponses: any[];
   textResponses: {
     doingWell: any[];
@@ -26,6 +32,8 @@ interface DataWrapperProps {
 
 const DataWrapper: React.FC<DataWrapperProps> = ({
   isLoading,
+  responseCount,
+  dateFiltered,
   summary,
   recommendationScore,
   leavingContemplation,
@@ -42,6 +50,10 @@ const DataWrapper: React.FC<DataWrapperProps> = ({
         <p className="mt-4 text-gray-600">Loading data...</p>
       </div>
     );
+  }
+
+  if (!canShowResults(responseCount)) {
+    return <ResultsHiddenNotice responseCount={responseCount} dateFiltered={dateFiltered} />;
   }
   
   return (

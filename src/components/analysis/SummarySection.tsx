@@ -1,12 +1,24 @@
 
 import React from 'react';
 import { Check, ArrowRight } from "lucide-react";
+import { MIN_RESPONSES_FOR_SUMMARY, type SummaryData } from "../../utils/summaryUtils";
 
 interface SummarySectionProps {
-  summary: any;
+  summary: Partial<SummaryData>;
 }
 
 const SummarySection: React.FC<SummarySectionProps> = ({ summary }) => {
+  if (summary.unavailable) {
+    return <div className="mb-12">
+        <h2 className="text-xl font-semibold mb-1 text-center">AI-Powered Summary</h2>
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center mt-6">
+          <h3 className="text-lg font-medium text-gray-700 mb-2">Summary unavailable right now</h3>
+          <p className="text-gray-500 max-w-md mx-auto">
+            We couldn't generate the AI summary this time. Please try again later. The survey results below are not affected.
+          </p>
+        </div>
+      </div>;
+  }
   if (summary.insufficientData) {
     return <div className="mb-12">
         <h2 className="text-xl font-semibold mb-1 text-center">AI-Powered Summary</h2>
@@ -18,7 +30,7 @@ const SummarySection: React.FC<SummarySectionProps> = ({ summary }) => {
             </svg>
             <h3 className="text-lg font-medium text-gray-700 mb-2">AI-Powered Summary Coming Soon</h3>
             <p className="text-gray-500 max-w-md">
-              An intelligent analysis of your survey data will be available when you have 10 or more responses.
+              An intelligent analysis of your survey data will be available when you have {MIN_RESPONSES_FOR_SUMMARY} or more responses.
             </p>
           </div>
         </div>
